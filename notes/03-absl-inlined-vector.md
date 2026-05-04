@@ -240,21 +240,3 @@ for (auto& future : futures) {
 ---
 
 *下一篇：[folly::fbstring · SSO 字符串优化](./04-folly-fbstring.md)*
-
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-05-04T21:23:34.920209
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-### 分析摘要
-InlinedVector 分析尚未实现完整逻辑
-
-### 📋 下一步行动
-
-1. **POC 验证**：选取 `processor/response.cpp` 或 `process/response_function.cpp` 中的单个 protobuf 消息，用 FlatBuffers 重写 schema 并对比延迟
-2. **brpc 协议适配**：调研 brpc 对 FlatBuffers 的支持程度，评估是否需要自定义 Protocol
-3. **灰度策略**：从内部服务通信（grg-grc）开始试点，逐步扩展到 client-facing 接口
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
