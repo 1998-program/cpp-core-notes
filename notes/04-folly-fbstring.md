@@ -189,3 +189,142 @@ fbstring SSO 减少了 `malloc`/`free` 次数，配合 jemalloc 的 `MALLOC_CONF
 ---
 
 *生成时间：2026-05-05 | 序号：04 | 模块：folly::fbstring*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-16T18:32:23.021161
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+### 分析摘要
+在两个业务代码库中，共发现 22 处 `SerializeToString` 调用和 18 处 `ParseFromString` 调用。
+目前主服务（feeda-mv-grg / feeda-mv-grc）已直接使用 FlatBuffers，
+但组织内其他仓库已有 FlatBuffers 使用经验（10 个相关文件）。
+
+#### feeda-mv-grg
+
+**Protobuf 序列化调用统计**：
+- `SerializeToString`：6 次，分布在 3 个文件
+  - `process/new_response_function.cpp`：2 次
+  - `process/response_function.cpp`：2 次
+  - `process/gen_embeding_cache_write.cpp`：2 次
+- `ParseFromString`：18 次，分布在 7 个文件
+  - `process/response_function.cpp`：4 次
+  - `parser/cube_parser.cpp`：4 次
+  - `strategy/cache_proxy/newhot_cache_proxy.cpp`：3 次
+  - `process/new_response_function.cpp`：3 次
+  - `operator/diversity/scatter_context.cpp`：2 次
+
+**FlatBuffers 使用情况**：已直接使用，涉及文件：
+- `process/meditation_user_model_parse.cpp`
+
+**典型使用示例**（前 3 个）：
+
+1. `operator/diversity/scatter_context.cpp:2173`
+   - 操作：`ParseFromString`
+   - 变量：`input`
+   ```cpp
+   DibarReddotSourceInfo source_info;
+        std::string author_mthid;
+        if (input.ParseFromString(vid_list_pb_str) && input.red_point_type() > 0) {
+            _redpoint_recall_by = input.recall_by();
+            author_mthid = input.author_mthid();
+            parse_from_string(author_mthid, source_info);
+   ```
+
+2. `operator/diversity/scatter_context.cpp:2256`
+   - 操作：`ParseFromString`
+   - 变量：`input`
+   ```cpp
+   if(Util::hit_abtest("is_hit_redpoint_ranknum_uplift_cont", *sid_info_ptr) 
+            || Util::hit_abtest("is_hit_redpoint_ranknum_uplift_expt", *sid_info_ptr)) {
+            if (input.ParseFromString(vid_list_pb_str) && input.rank_cnt() > 0) {
+                uplift_rank_cnt = input.rank_cnt();
+            }
+            LOG(NOTICE) << "uplift_redpoint_ranknum:"
+   ```
+
+3. `strategy/cache_proxy/newhot_cache_proxy.cpp:85`
+   - 操作：`ParseFromString`
+   - 变量：`_newhot_event_dict`
+   ```cpp
+   int32_t parse_nid_eid_map(uint64_t logid, NidToEidsMap& nid_map_eids, const std::string& pb_str, baidu::feed::gr::component::Context& context) {
+        ::baidu::feed_hot::newhot_event::NewHotDict _newhot_event_dict;
+        _newhot_event_dict.ParseFromString(pb_str);
+        if (_newhot_event_dict.eids_size() == 0) {
+            GRG_LOG(WARNING, logid) << "parse_nid_eid_map, pb eids size is 0";
+            return -1;
+   ```
+
+#### feeda-mv-grc
+
+**Protobuf 序列化调用统计**：
+- `SerializeToString`：16 次，分布在 9 个文件
+  - `processor/msv_nearline_cache_write_rpc.cpp`：4 次
+  - `processor/response.cpp`：3 次
+  - `processor/video_launch/response_for_grg.cpp`：3 次
+  - `plugin/cache_queue.cpp`：1 次
+  - `plugin/feed_ufs_plugin.cpp`：1 次
+
+**FlatBuffers 使用情况**：已直接使用，涉及文件：
+- `processor/meditation_user_model_parse.cpp`
+- `processor/vm_meditation_user_model_parse.cpp`
+
+**典型使用示例**（前 3 个）：
+
+1. `plugin/cache_queue.cpp:127`
+   - 操作：`SerializeToString`
+   - 变量：`queue_cache`
+   ```cpp
+   std::string cache_data_str = "";
+    cache_data_str.clear();
+    queue_cache.SerializeToString(&cache_data_str);
+    if (cache_data_str.empty()) {
+        GRC_LOG(WARNING, log_id) << "[data for cache SerializeToString fail!]";
+        return false;
+   ```
+
+2. `plugin/cache_queue.cpp:129`
+   - 操作：`SerializeToString`
+   - 变量：`unknown`
+   ```cpp
+   queue_cache.SerializeToString(&cache_data_str);
+    if (cache_data_str.empty()) {
+        GRC_LOG(WARNING, log_id) << "[data for cache SerializeToString fail!]";
+        return false;
+    }
+    if (!redis_req_res[0].request.AddCommand("SET %s %s EX 36000", gen_query_cache_key(fork_type, cuid).c_str(), cache_data_str.c_str())) {
+   ```
+
+3. `plugin/feed_ufs_plugin.cpp:128`
+   - 操作：`SerializeToString`
+   - 变量：`feed_request`
+   ```cpp
+   feed_gr::DeviceInfo* device_info = feed_request.mutable_device_info();
+    device_info->set_ua(std::to_string(common_info_p->ua));
+    if (!feed_request.SerializeToString(fork_request.mutable_req_str())) {
+        LOG(WARNING) << "ufs feed_request serialize failed";
+        return -1;
+    }
+   ```
+
+### 💡 适用性评估与建议
+
+- **高优先级替换场景**：`response_function.cpp` / `processor/response.cpp` 中的 `PredictorExtMsg` 序列化——高频、深层嵌套、每次请求都分配
+
+- **渐进式迁移策略**：先从内部 RPC 通信协议（grg ↔ grc 之间）试点 FlatBuffers，验证延迟收益
+
+- **利用现有基础设施**：`feeda-dc-gr` 仓库已有 `flatbuffers-32bits` 编译模块，可直接复用内部 FlatBuffers 工具链
+
+- **base64 编码环节优化**：当前代码路径 `SerializeToString → base64_encode → 传输` 中，FlatBuffers 二进制 buffer 可直接传输，省去 base64 开销
+
+### ⚠️ 引入风险与限制
+
+- FlatBuffers 写入时倒序构建，对写密集场景（如动态修改 PredictorExtMsg 字段）不友好
+
+- Schema 变更需重新生成代码，相比 Protobuf 的向后兼容机制，团队协作成本略高
+
+- brpc 框架默认使用 Protobuf，切换 FlatBuffers 需定制 Protocol 层（参考 brpc FlatBuffers 插件）
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
