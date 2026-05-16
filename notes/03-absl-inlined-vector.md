@@ -240,3 +240,144 @@ for (auto& future : futures) {
 ---
 
 *下一篇：[folly::fbstring · SSO 字符串优化](./04-folly-fbstring.md)*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-16T18:09:02.488494
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+### 分析摘要
+在两个业务代码库中，共发现 5016 处 `std::vector` 声明、4147 处 `push_back/emplace_back` 调用、980 处 `reserve` 调用。
+目前主服务（feeda-mv-grg / feeda-mv-grc）尚未直接使用 InlinedVector。
+
+#### feeda-mv-grg
+
+**std::vector 使用统计**：
+- `vector_declarations`：924 次，分布在 194 个文件
+  - `operator/diversity/scatter_context.cpp`：67 次
+  - `process/set2set_predict_function.cpp`：52 次
+  - `data/rid_tmp_info.h`：42 次
+  - `util/util.h`：41 次
+  - `process/newhot_replace.cpp`：31 次
+- `push_back_calls`：1058 次，分布在 130 个文件
+  - `util/util.h`：275 次
+  - `operator/diversity/scatter_context.cpp`：138 次
+  - `process/set2set_predict_function.cpp`：113 次
+  - `process/response_function.cpp`：74 次
+  - `process/user_model_service_input_function_gen_v5.cpp`：28 次
+- `reserve_calls`：150 次，分布在 55 个文件
+  - `operator/diversity/scatter_context.cpp`：13 次
+  - `process/diversity_merge.cpp`：11 次
+  - `process/post_mark.cpp`：10 次
+  - `process/tagcf_weight_function.cpp`：10 次
+  - `process/vids_gcf_embedding_function.cpp`：8 次
+
+**InlinedVector 使用情况**：尚未在主服务中直接使用
+
+**典型使用示例**（前 3 个）：
+
+1. `model/paddle_model.h:118`
+   ```cpp
+   bool is_from_cube = true) const {
+        std::vector<std::vector<float>> outputs;
+        std::vector<uint64_t> instance_id_vec;
+        std::vector<T> candidate_input_vec;
+        outputs.reserve(candidate_vec.size());
+        instance_id_vec.reserve(candidate_vec.size());
+   ```
+
+2. `model/paddle_model.h:119`
+   ```cpp
+   std::vector<std::vector<float>> outputs;
+        std::vector<uint64_t> instance_id_vec;
+        std::vector<T> candidate_input_vec;
+        outputs.reserve(candidate_vec.size());
+        instance_id_vec.reserve(candidate_vec.size());
+        candidate_input_vec.reserve(candidate_vec.size());
+   ```
+
+3. `model/paddle_model.h:197`
+   ```cpp
+   std::string _model_name;
+    std::vector<FieldAccessor> _score_fields;
+    const PredictClient* _predict_client{nullptr};
+
+    Context* _context{nullptr};
+   ```
+
+#### feeda-mv-grc
+
+**std::vector 使用统计**：
+- `vector_declarations`：4092 次，分布在 763 个文件
+  - `operator/adjuster/sketchy/duanju_adjuster.cpp`：132 次
+  - `processor/new_adjust/precise_score_init.cpp`：104 次
+  - `data/base.h`：94 次
+  - `processor/reddot/dibar_reddot_rank_query_words.cpp`：92 次
+  - `processor/video_launch/dibar/dibar_precise_fusion.cpp`：87 次
+- `push_back_calls`：3089 次，分布在 386 个文件
+  - `processor/new_adjust/precise_score_init.cpp`：177 次
+  - `processor/video_launch/dibar/dibar_precise_fusion.cpp`：127 次
+  - `processor/video_launch/response_for_grg.cpp`：111 次
+  - `processor/reddot/dibar_reddot_rank_query_words.cpp`：98 次
+  - `processor/new_adjust/precise_score_init_first_refresh.cpp`：77 次
+- `reserve_calls`：830 次，分布在 229 个文件
+  - `processor/video_launch/dibar/dibar_precise_fusion.cpp`：33 次
+  - `dict/kv_dict_parse.h`：28 次
+  - `operator/adjuster/sketchy/duanju_adjuster.cpp`：28 次
+  - `processor/new_adjust/precise_score_init.cpp`：26 次
+  - `strategy/reddot/reddot_xgb_sort.cpp`：25 次
+
+**InlinedVector 使用情况**：尚未在主服务中直接使用
+
+**典型使用示例**（前 3 个）：
+
+1. `service/grc_http_service.cpp:152`
+   ```cpp
+   std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+   ```
+
+2. `service/grc_http_service.cpp:153`
+   ```cpp
+   std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+    if (sub_access_off_vec_str != nullptr) {
+   ```
+
+3. `service/grc_service.cpp:370`
+   ```cpp
+   GraphData* after_adjust_rank_data = graph->find_data("AfterAdjustRankResult");
+        if (after_adjust_rank_data) {
+            std::vector<RidTmpInfoPtr> const* items = after_adjust_rank_data->cvalue<std::vector<RidTmpInfoPtr>>();
+            if (items && !items->empty()) {
+                //前置条件检查通过，开始打印日志
+                thread_local std::string log_str;
+   ```
+
+### 💡 适用性评估与建议
+
+- **优先替换场景**：函数局部临时容器（如存储 feature id 列表、候选 item score数组），元素数通常 ≤4~16，使用 InlinedVector 可避免堆分配
+
+- **渐进式迁移**：先从热点文件（如 `process/response_function.cpp`、`processor/response.cpp`）中的局部 vector 开始替换，观察 CPU 和延迟变化
+
+- **reserve 模式优化**：对于已经使用 `reserve` 的 vector，如枚举大小固定且小于 16，直接替换为 InlinedVector 可省去 reserve 调用
+
+- **注意栈帧大小**：InlinedVector 增加栈帧大小，对于深层递归或高并发线程，需测试 stack overflow 风险
+
+### ⚠️ 引入风险与限制
+
+- InlinedVector 增加对象大小，在大量存储于容器的容器（如 `std::vector<InlinedVector<T, N>>`）中可能导致内存浪费
+
+- 与 brpc/protobuf 等第三方库接口兼容性需验证，部分第三方 API 只接受 `std::vector`
+
+- 团队学习成本：InlinedVector API 与 vector 高度兼容，但内存布局差异可能影响 debug 和性能调试
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
