@@ -222,13 +222,3 @@ item_map.reserve(expected_size * 1.2);  // 预留20%空间避免 rehash
 *下一篇：[absl::InlinedVector · 栈上优化小容器](./03-absl-inlined-vector.md)*
 
 ---
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-05-16T17:54:22.092221
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-### 分析摘要
-flat_hash_map 分析尚未实现完整逻辑
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
