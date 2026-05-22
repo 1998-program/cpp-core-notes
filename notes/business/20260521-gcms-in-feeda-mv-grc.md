@@ -222,3 +222,295 @@ GRG response 子图里还有另一个 `DocFeatureWithCacheFunction`：`conf/plug
 - **IFCS SDK 配置未完全展开**：本地命中 `ifcs_sdk.conf` 名称，但未在当前片段中展开 SDK 内部路由/BNS/缓存层级。下一步搜索 `conf/common_component` 和外部 IFCS SDK 包。
 - **`MicroVideoInfo` 字段全量映射未枚举**：本次只列关键字段。下一步可基于 `src/data/video_info.h` 和 `ifcs/mv_grc_gcms.pb.h` 生成字段差异表。
 - **老 GCMS SDK 与 IFCS 的关系**：`src/plugin/gcms.h:18` 仍 include `gcms_sdk.h`，并有 `MyClosure`；但主查询链路已命中 IFCS `GcmsComponent`。下一步应确认旧 SDK 是否仍在某些非主路径使用。
+
+---
+
+## 本次增量分析（2026-05-22）
+
+### 背景
+
+今日继续深入追踪 GCMS 在 `feeda-mv-grc` 中的作用链，新增以下维度：
+
+1. 明确区分 `FillMetaBaseProcessor` 与 `FillMetaPipelineFunction` 两条并行 FillMeta 路径及其在 DAG 中的定位。
+2. 追踪 RecallResultWithMeta → DataWithMeta → OutputMap → 下游 consumer 的完整 Graph Data 流。
+3. 补充 `recall_fill_filter.conf` 模板实例化模式，展示 20+ 个召回渠道的正排填充复用结构。
+4. 深入 `GcmsData` 的 ObjectPool 内存管理机制。
+5. 追踪 `QueueContext::gcms_common_pb_meta_map` 在 Pipeline 中的传递。
+
+> ⚠️ 本次分析**不**把 `feeda-mv-grg` 的 GCMS 结论直接套用到 `feeda-mv-grc`；所有证据均来自 `feeda-mv-grc` 本地代码（`/home1/code_read/code-read-mv-grc/baidu/feed-gr/feeda-mv-grc`）。
+
+### 内网检索结果
+
+同昨日：认证失败（returnCode 60103，`开放应用不存在`）。无法读取 KU 正文。替代方案：基于本地代码 + 本地配置文件中引用的 KU 文档标题（`mv-grc已接入ifcs正排缓存服务`）确认业务语义。
+
+---
+
+### 1. 两条 FillMeta 路径的区分与 DAG 定位
+
+#### 1.1 FillMetaPipelineFunction（主路径，queue_vertex）
+
+配置：`conf/plugins/graph/queue_vertex.conf:24-57`
+
+```ini
+[@vertex]
+function: FillMetaPipelineFunction
+[.@depend]
+name: _queue_recall_result  # DsToRidInfoPipelineVertex 输出的 RecallResult
+data: QueueRecallResult
+[.@depend]
+name: _sid_info
+data: SidInfo
+[.@depend]
+name: _followed_tb_fid_set
+data: SketchyRankFollowedTbFidSet
+[.@depend]
+name: _followed_author_set
+data: SketchyRankFollowedAuthorSet
+[.@depend]
+name: _followed_mthid_set
+data: SketchyRankFollowedMthidSet
+[.@depend]
+name: _is_dibar_search_landing
+data: IsDibarSearchLanding
+[.@depend]
+name: _is_lite_search_landing
+data: IsLiteSearchLanding
+[.@emit]
+name: _fill_meta_pipeline_result
+data: FillMetaPipelineResult
+[.@emit]
+name: _card_fill_meta_result
+data: CardFillMetaResult
+[.@emit]
+name: _up_to_fill_meta_cost
+data: UpToFillMetaCost
+[.option]
+is_queue: 1
+```
+
+关键特征：`is_queue: 1` → 这个 vertex 是队列模式，意味着 `PipelineGraphFunction::processor()` 被调用，执行 `parallel_consume()` 并发分片。
+
+#### 1.2 FillMetaBaseProcessor（非 pipeline 路径）
+
+用于各个独立召回的正排填充，通过模板实例化多个 vertex。
+
+配置：`conf/plugins/graph/conf_template/recall_fill_filter.conf:29-45`
+
+```ini
+[@vertex]
+processor: FillMetaBaseProcessor
+name: FillMeta_<$service_name:$>_<$fork_type:$>
+[..@emit]
+name: RecallResultWithMeta
+data: <$data_prefix:$>ResultWithMeta
+[..@depend]
+data: <$data_prefix:$>RecallResult   # 匿名 anonymous depend，多个 RecallResult
+is_anonymous: 1
+[..@depend]
+data: SidInfo
+[..@depend]
+data: SketchyRankFollowedAuthorSet
+[..@depend]
+data: SketchyRankFollowedMthidSet
+[..@option]
+handle_name: <$service_name:$>_<$fork_type:$>
+```
+
+关键特征：非 queue 模式（无 `is_queue`），`is_anonymous: 1` 的匿名 depend 表示接受多个匿名 RecallResult，`setup()` 中通过 `vertex.anonymous_dependency_size()` 遍历（`src/processor/fill_meta.cpp:137-145`）。
+
+#### 1.3 两条路径的代码差异
+
+| 维度 | FillMetaPipelineFunction | FillMetaBaseProcessor |
+|---|---|---|
+| 配置 | `queue_vertex.conf` | `recall_fill_filter.conf` 模板实例化 |
+| 并发 | `parallel_consume()` 分片并发 | 单线程遍历 anonymous depend |
+| GCMS 查询 | `QueueContext::gcms_common_pb_meta_map`，每 batch 独立 | `FillMetaBaseContext::gcms_common_pb_meta_map`，全局共享 |
+| 数据结构 | `FillMetaPipelineResult`，含 `_video_info` | `RecallResultWithMeta`，emit 后被后续 vertex 依赖 |
+| 适用场景 | 主队列正排填充（视频/新闻/电商） | 20+ 独立召回渠道的正排填充（CF/UCF/UGC/Direct/HotIntervene 等） |
+
+代码证据（FillMetaPipelineFunction）：
+- `src/processor/video_launch/fill_meta_pipeline.cpp:118-123`：在每个 `process(queue_context)` 内调 `GcmsComponent::query_common(merge_rids, meta_map, gcms_context, log_id, _sid_info, &context)`，其中 `meta_map` 来自 `QueueContext::gcms_common_pb_meta_map`（`src/processor/grc.h:42` 定义）。
+- `src/processor/video_launch/fill_meta_pipeline.cpp:155-174`：分片内遍历 `rid_vec` 填充 `_video_info` / `gcms_data`。
+
+代码证据（FillMetaBaseProcessor）：
+- `src/processor/fill_meta.cpp:182-198`：遍历 `anonymous_dependency_size()` 收集所有 `RecallResult` 中的 rid 到 `merge_rids`。
+- `src/processor/fill_meta.cpp:244-249`：一次性对 `merge_rids` 调用 `GcmsComponent::query_common()`。
+
+---
+
+### 2. RecallResultWithMeta → OutputMap → 下游 consumer 链路
+
+#### 2.1 RecallResultWithMeta 的 emit 模式
+
+`RecallResultWithMeta` 由以下 vertex emit（按 `conf/plugins/graph/` 中的配置）：
+
+| vertex / function | 来源 conf | 场景 |
+|---|---|---|
+| `FillMeta_<$service$_$fork$>` | `conf_template/recall_fill_filter.conf` 展开 | 20+ 独立召回渠道（CF/UCF/Direct/NewHot/直播等） |
+| `ShowlistFillMetaBaseProcessor` | `request_handle.conf:41-56` | 历史/历史列表正排 |
+| `UaStrFillMetaBaseProcessor` | `vertex.conf:1964-1980` | UA 分桶召回正排 |
+| `ManjuAppFollowUpdateFillMetaBaseProcessor` | `manju_app_follow_update.conf:18-36` | 追更更新正排 |
+
+这些 `RecallResultWithMeta` 被下游 vertex 依赖，形成数据流：
+
+#### 2.2 OutputMap 转换：FillMetaToMapProcessor
+
+`src/processor/fill_meta_to_map.cpp` 中的 `FillMetaToMapProcessor` 把 `MultiQueueResult`（即 `RecallResultWithMeta`）展开为 `unordered_map<rid, RidTmpInfoPtr>`：
+
+- `src/processor/fill_meta_to_map.cpp:43-55`：遍历 `fill_meta_data` 的每个队列，把 `RidTmpInfoPtr` 按 rid emplace 到 `output_map`。
+- 注册：`src/processor/fill_meta_to_map.cpp:64` → `BABYLON_REGISTER_COMPONENT_WITH_TYPE_NAME(FillMetaToMapProcessor, GraphProcessor, FillMetaToMapProcessor)`。
+
+配置：`conf/plugins/graph/request_handle.conf:57-69`
+
+```ini
+[@vertex]
+processor: FillMetaToMapProcessor
+name: ShowlistFillMetaToMapProcessor
+[.@emit]
+name: OutputMap
+data: GrShowListlResultMetaMap
+[.@depend]
+name: DataWithMeta
+data: GrShowListlResultWithMeta
+```
+
+#### 2.3 下游 consumer 的数据依赖
+
+以 `fill_meta_to_map_for_msv_duration.cpp` 中的 `FillMetaToMapForMsvDurationProcessor` 为例，说明下游如何消费 OutputMap：
+
+- `src/processor/fill_meta_to_map_for_msv_duration.cpp:97-112`：从 `output_map` 中按 rid 查找 `RidTmpInfoPtr`。
+- `src/processor/fill_meta_to_map_for_msv_duration.cpp:215-229`：如果 `ridinfo != nullptr && ridinfo->gcms_data != nullptr`，则读取 `ridinfo->gcms_data->_video_info.get_new_sub_cate_v2()` 和 `get_new_cate_v2()`，用于类目维度的配额分析。
+- 这说明正排的二级类目字段在下游配额计算中被消费。
+
+#### 2.4 RecallResultWithMeta → downstream pipeline
+
+在 `queue_vertex.conf:59-74`：
+
+```ini
+[@vertex]
+function: RecallFunnelFunction
+[.@depend]
+name: _fill_meta_pipeline_result
+data: FillMetaPipelineResult
+[.@depend]
+name: _log_funnel
+data: FunnelSampleObj
+[.@emit]
+name: _upload_recall_funnel_done
+data: UploadRecallFunnelDone
+```
+
+然后 `GetVidClkPipelineFunction` → `FilterPipelineFunction` → `PreciseScoreInit` → `MultiRank` → `Adjust` → `Response`。
+
+---
+
+### 3. recall_fill_filter.conf 模板实例化：20+ 召回渠道的正排复用
+
+`conf/plugins/graph/conf_value/recall_fill_filter.conf` 实例化了 20+ 个独立召回渠道的正排填充 vertex，每个实例遵循 `FillMeta_<$service$_$fork$>` 命名模式：
+
+| service_name | fork_type | data_prefix |
+|---|---|---|
+| `video_micro_rec_new` | `video_micro_rec_new` | `VideoMicroRecNewRecall` |
+| `video_micro_cf_new` | `video_micro_um_new` | `VideoMicroUmNewRecall` |
+| `video_micro_cf_new` | `video_micro_ucf_new` | `VideoMicroUcfNewRecall` |
+| `video_micro_cf_new` | `video_micro_cf_new` | `VideoMicroCfNewRecall` |
+| `video_micro_cf_new` | `video_micro_mb_new` | `VideoMicroMbNewRecall` |
+| `grc_haokan_session` | `haokan_session_for_micro_short` | `HaokanSessionNewRecall` |
+| `grc_haokan_session` | `haokan_session_related_for_micro_short` | `HaokanSessionRelatedNewRecall` |
+| `grc_haokan_session` | `haokan_session_related` | `HaokanSessionRelatedSearch` |
+| `grc_haokan_content` | `haokan_cb_for_micro_short` | `HaokanCbNewRecall` |
+| `grc_haokan_content` | `haokan_cb_related_for_micro_short` | `HaokanCbRelatedNewRecall` |
+| `grc_direct` | `hk_direct_for_micro_short` | `HaokanDirectNewRecall` |
+| `video_direct` | `video_direct_no_dnn_for_micro_short` | `VideoDirectNoDnnForHaokanNewRecall` |
+| `shoubai_live_video` | `live_mvideo` | `LiveVideoNew` |
+| `shoubai_live_ecom` | `live_mvideo` | `LiveVideoEcom` |
+| `shoubai_live_ecom` | `shoubai_video_live` | `VideoLiveEcom` |
+
+完整定义见 `conf/plugins/graph/conf_value/recall_fill_filter.conf:1-121`。
+
+这说明 `FillMetaBaseProcessor` 通过模板化设计，复用了同一套正排填充逻辑，但每个 vertex 独立收集自己依赖的匿名 RecallResult。多个匿名 RecallResult 合并去重后，一次性查询 GCMS。
+
+---
+
+### 4. GcmsData 的 ObjectPool 内存管理
+
+`src/plugin/gcms.h:33-111` 中的 `GcmsData` 使用了 ObjectPool 优化：
+
+```cpp
+// src/plugin/gcms.h:37-44
+inline static void set_pool(size_t num) {
+    _pool.reset(new StaticMemoryPool());
+    _s_pool.reset(new MicroVideoInfoPool(num, 0, 0));
+    _s_pool->expose("gcms");
+}
+
+// src/plugin/gcms.h:45
+inline GcmsData() noexcept : _pooled_video_info(_s_pool->get()), _video_info(*_pooled_video_info), _video_info_ptr(&_video_info) {}
+```
+
+- `StaticMemoryPool`：在静态内存中连续分配，减少碎片。
+- `MicroVideoInfoPool`：基于 `ObjectPool` 的模板特化。
+- 构造函数中通过 pool 分配 `MicroVideoInfo`，并用引用 `_video_info` 持有。
+- 在 `RidTmpInfo` 中，`gcms_data` 以 `boost::shared_ptr<const GcmsData>` 保存：`src/processor/video_launch/fill_meta_pipeline.cpp:166` → `boost::make_shared<const microvideo::grc::GcmsData>(queue_iter->_video_info)`。
+
+这说明正排数据的生命周期由 `RidTmpInfo` 的生命周期管理，`GcmsData` 本身不直接持有堆分配的数据，而是持有从 ObjectPool 分配的对象。
+
+---
+
+### 5. GCMS 查询上下文构造细节
+
+`src/processor/fill_meta.cpp:203-236` 构造 `gcms_context`：
+
+```cpp
+// src/plugin/gcms_component.h:30-37
+int32_t query_common(
+    const std::unordered_set<uint64_t>& nids,
+    ::feed::ifcs::DocInfoMap<MicroVideoInfo>& result,
+    const ::baidu::feed::gr::component::Context& gcms_context,
+    uint64_t logid,
+    const SidInfo* sid_info,
+    const Context* context,
+    GcmsScene scene = GCMS_SECNE_RECALL);
+```
+
+`gcms_context` 的关键字段（`src/processor/fill_meta.cpp:204-236`）：
+
+1. `gcms_context.set_logid(log_id)`：用于 tracing。
+2. `gcms_smfw_columns_str_vec`：正排小流量字段列表，当前硬编码为 `autor_level_sm`（17 个 sid，如 `128644_2` 等）。这个列表决定 IFCS 返回哪些额外字段。
+3. `sids_str_vec`：根据实验命中的小流量 sid 列表，用于 small-flow merge 逻辑。
+4. `add_condition_value("ua", ua)` / `add_condition_value("flow_loc", flow_loc)`：ua/flow_loc 条件用于 IFCS 路由和缓存 key。
+
+GCMS scene 枚举（`src/plugin/gcms_component.h:19-24`）：
+- `GCMS_SECNE_RECALL = 0`：主召回场景，用于 FillMeta。
+- `GCMS_SECNE_NEWS = 1`：新闻场景。
+- `GCMS_SECNE_HISTORY = 2`：历史场景。
+- `GCMS_SECNE_SEARCH = 3`：搜索场景，在 `query_common` 中当 UA ∈ {69,77,86,123,155,156} 时切换。
+
+---
+
+### 6. 关键证据来源
+
+| 文件 | 行号 | 内容 |
+|---|---|---|
+| `conf/plugins/graph/queue_vertex.conf` | 24-57 | FillMetaPipelineFunction DAG 定义 |
+| `conf/plugins/graph/conf_template/recall_fill_filter.conf` | 29-45 | FillMetaBaseProcessor 模板定义 |
+| `conf/plugins/graph/conf_value/recall_fill_filter.conf` | 1-121 | 20+ 召回渠道实例化 |
+| `conf/plugins/graph/request_handle.conf` | 39-69 | ShowlistFillMeta / FillMetaToMap DAG |
+| `src/processor/video_launch/fill_meta_pipeline.cpp` | 118-174 | Pipeline 路径 GCMS 查询与挂载 |
+| `src/processor/fill_meta.cpp` | 203-236 | GCMS context 构造（小流量/sid/ua） |
+| `src/processor/fill_meta.cpp` | 244-249 | 非 pipeline 路径 GCMS 调用 |
+| `src/processor/fill_meta_to_map.cpp` | 43-55 | MultiQueueResult → OutputMap |
+| `src/processor/fill_meta_to_map_for_msv_duration.cpp` | 97-112, 215-229 | 下游消费 gcms_data 二级类目 |
+| `src/processor/grc.h` | 34-45 | QueueContext 定义，含 gcms_common_pb_meta_map |
+| `src/plugin/gcms.h` | 33-111 | GcmsData ObjectPool 内存管理 |
+| `src/plugin/gcms_component.h` | 19-24 | GCMS scene 枚举 |
+| `src/plugin/gcms_component.h` | 30-37 | query_common 接口签名 |
+
+---
+
+### 7. 本次未确认问题与下一步
+
+1. **IFCS SDK 内部实现未展开**：本地命中 `feed::ifcs::IfcsSdk`，但未展开 SDK 内部 BNS 路由/缓存层级。下一步在 `/home1/code_read` 下搜索 `ifcs_sdk.conf` 或 `ifcs_component.cpp` 的完整内容。
+2. **FillMetaPipelineFunction 的 concurrencts/batch_size 配置来源**：虽然 `parallel_consume()` 调用了 `context.concurrents()` 和 `context.batch_size()`，但 gflags/graph option 中这些值的赋值链路未追踪到。下一步追 `BaseGraphFunction::setup()` 如何读取这些 option。
+3. **`autor_level_sm` 小流量 sid 列表的动态更新机制**：当前代码中硬编码为 17 个 sid，`src/processor/fill_meta.cpp:208-220`。下一步确认是否有动态配置或实验参数化的方式。
+4. **FillMetaBaseProcessor 的 GCMS 查询结果如何与 anonymous depend 匹配**：代码显示对 `merge_rids` 一次性查询，但 `RecallResult` 中每个匿名 depend 的类型/来源处理逻辑（`src/processor/fill_meta.cpp:285-321`）仍有未完全解析的分支，如 `_hk_handle_names` / `_channel_handle_names` 对正排字段的特殊处理。
