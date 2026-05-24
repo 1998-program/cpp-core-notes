@@ -189,3 +189,167 @@ fbstring SSO 减少了 `malloc`/`free` 次数，配合 jemalloc 的 `MALLOC_CONF
 ---
 
 *生成时间：2026-05-05 | 序号：04 | 模块：folly::fbstring*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-24T16:31:48.639151
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`folly::fbstring`
+
+### 1. 分析摘要
+
+- 本次扫描覆盖 `feeda-mv-grg`（序列生成服务）和 `feeda-mv-grc`（召回汇聚服务）两个业务代码库，**暂未发现 `folly::fbstring` 的直接使用**，说明当前代码仍以 `std::string` 为主，尚未建立 fbstring 的业务落地经验或统一封装规范。
+
+- 从扫描规模看，两个代码库中的字符串使用非常密集：`feeda-mv-grg` 中 `std::string` 声明 2443 次、字符串拼接 1392 次；`feeda-mv-grc` 中 `std::string` 声明 7099 次、字符串拼接 4868 次。结合推荐在线系统中大量短 key、配置字段、请求标识、日志字段的业务特征，`folly::fbstring` 在**短字符串构造、临时字符串拼接、本地容器缓存、只读传递**等场景具备较明确的迁移收益。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 当前状态：
+  - 未扫描到 `folly::fbstring` 直接使用。
+  - 以 `std::string` 为主要字符串类型，使用规模较大。
+  - 字符串相关统计：
+    - `std::string_declaration`：2443 次，分布在 425 个文件
+    - `string_append`：113 次，分布在 52 个文件
+    - `string_concat`：1392 次，分布在 186 个文件
+    - `string_c_str`：366 次，分布在 99 个文件
+    - `string_copy`：726 次，分布在 164 个文件
+    - `char_array`：3 次，分布在 1 个文件
+
+- 典型位置：
+  - `main.cpp:55`
+    - `std::string dump_meta_str;`
+    - 用于 `ExpManager::dump_meta(dump_meta_str)` 输出实验元信息。
+    - 该字符串更偏向启动期/初始化期使用，不一定是请求热路径，迁移优先级较低。
+  - `model/paddle_model.h:192`
+    - `std::string _sid_path;`
+    - 模型侧路径类字段，通常生命周期较长、修改频率低。
+    - 若主要来源于配置，且长度稳定，可以保持 `std::string`；若频繁复制到请求上下文，可进一步评估。
+  - `model/paddle_model.h:196`
+    - `std::string _model_name;`
+    - 模型名称通常是短字符串，适合 fbstring SSO。
+    - 如果该字段在模型加载、日志、预测请求中频繁复制或作为 key 使用，可作为迁移候选。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 当前状态：
+  - 未扫描到 `folly::fbstring` 直接使用。
+  - 字符串使用规模显著高于 `feeda-mv-grg`，说明召回汇聚链路中存在更密集的 key 构造、配置读取、请求标识、日志拼接等场景。
+  - 字符串相关统计：
+    - `std::string_declaration`：7099 次，分布在 1219 个文件
+    - `string_append`：1036 次，分布在 314 个文件
+    - `string_concat`：4868 次，分布在 448 个文件
+    - `string_c_str`：1338 次，分布在 329 个文件
+    - `string_copy`：1950 次，分布在 604 个文件
+    - `char_array`：8 次，分布在 7 个文件
+
+- 典型位置：
+  - `main.cpp:96`
+    - `std::string dump_meta_str;`
+    - 与 `feeda-mv-grg` 类似，主要用于实验配置元信息 dump 和日志输出。
+    - 属于初始化路径，迁移收益有限。
+  - `user_data/pcs_precise_parallel_commented.cpp:81`
+    - `std::string c_name = (*config)["client_tag"].to_cstr(&err, "");`
+    - `client_tag` 通常是短字符串，适合 fbstring SSO。
+    - 如果该逻辑在请求级路径中执行，使用 `folly::fbstring` 可减少短字符串堆分配。
+  - `user_data/pcs_precise_parallel_commented.cpp:147`
+    - `std::string request_code = std::to_string(*context.get_logid());`
+    - 请求码构造属于典型请求热路径临时字符串。
+    - 如果后续仅用于 hash、日志或短生命周期传递，可考虑使用 `folly::fbstring` 或进一步改为栈上 buffer / `fmt::format_to`，减少临时分配。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `feeda-mv-grc` 的请求热路径中试点，而不是全局替换**
+  - `feeda-mv-grc` 的 `std::string_declaration` 达到 7099 次，`string_concat` 达到 4868 次，字符串操作密度明显更高。
+  - 建议优先选择 `user_data/pcs_precise_parallel_commented.cpp` 这类请求处理相关文件进行小范围试点。
+  - 例如：
+    ```cpp
+    std::string c_name = (*config)["client_tag"].to_cstr(&err, "");
+    ```
+    可评估替换为：
+    ```cpp
+    folly::fbstring c_name((*config)["client_tag"].to_cstr(&err, ""));
+    ```
+  - `client_tag` 通常长度较短，fbstring 的 23 字节 SSO 可以覆盖大部分场景，适合作为第一批迁移对象。
+
+- **建议 2：对 `user_data/pcs_precise_parallel_commented.cpp:147` 的请求码构造做专项优化**
+  - 当前代码：
+    ```cpp
+    std::string request_code = std::to_string(*context.get_logid());
+    ```
+  - `std::to_string` 返回 `std::string`，如果只是为了后续计算 hash 或拼接请求码，可能产生不必要的临时对象。
+  - 可分两步评估：
+    - 如果后续接口必须接收字符串，可改为：
+      ```cpp
+      folly::fbstring request_code = folly::to<folly::fbstring>(*context.get_logid());
+      ```
+    - 如果只是给 `MurmurHash32` 使用，优先考虑栈上 buffer：
+      ```cpp
+      char buf[32];
+      auto len = snprintf(buf, sizeof(buf), "%lu", *context.get_logid());
+      ```
+  - 该场景更接近请求级热路径，收益可能高于启动期配置 dump。
+
+- **建议 3：`model/paddle_model.h` 中短生命周期或频繁复制的模型标识字段可作为中优先级迁移对象**
+  - 当前字段：
+    ```cpp
+    std::string _model_name;
+    std::string _sid_path;
+    ```
+  - `_model_name` 多数情况下是短字符串，适合 `folly::fbstring`：
+    ```cpp
+    folly::fbstring _model_name;
+    ```
+  - `_sid_path` 可能是文件路径，长度不稳定，未必总能命中 SSO；如果主要是配置期读取、运行期只读，迁移收益不一定明显。
+  - 建议优先评估 `_model_name`，暂缓迁移 `_sid_path`，避免路径类长字符串在边界转换中引入额外复杂度。
+
+- **建议 4：`main.cpp` 中的 `dump_meta_str` 不建议作为第一批迁移目标**
+  - `feeda-mv-grg/main.cpp:55` 和 `feeda-mv-grc/main.cpp:96` 均存在：
+    ```cpp
+    std::string dump_meta_str;
+    ::feed_exp::ExpManager::dump_meta(dump_meta_str);
+    ```
+  - 该场景通常位于进程启动初始化阶段，不在请求热路径。
+  - 且 `dump_meta` 接口大概率以 `std::string&` 作为输出参数，直接替换为 `folly::fbstring` 可能需要改动上游接口。
+  - 建议保持 `std::string`，除非后续确认 `dump_meta_str` 在运行期频繁调用。
+
+- **建议 5：建立模块级别的字符串类型边界规范，避免零散替换**
+  - 当前两个代码库均无 fbstring 使用经验，不建议直接大规模将 `std::string` 全局替换为 `folly::fbstring`。
+  - 推荐策略：
+    - 请求内部临时 key、短 tag、短 name：允许使用 `folly::fbstring`
+    - 对外接口、Protobuf、brpc、第三方库边界：继续使用 `std::string`
+    - 容器内大量短字符串：可组合使用 `folly::fbvector<folly::fbstring>`
+  - 这样可以最大化 SSO 收益，同时控制 ABI、接口兼容和转换成本。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：与现有接口的 `std::string` 边界转换可能抵消收益**
+  - 代码库中存在大量 `std::string&`、`std::string*`、`c_str()` 调用。
+  - 例如 `ExpManager::dump_meta(dump_meta_str)` 这类接口如果固定要求 `std::string&`，替换成 `folly::fbstring` 需要额外转换。
+  - 建议只在模块内部使用 fbstring，不优先改公共接口。
+
+- **风险 2：brpc / Protobuf / 配置库等第三方接口通常仍以 `std::string` 为主**
+  - Protobuf 的 `string` 字段、brpc 的 body 设置、部分配置库接口通常直接返回或接收 `std::string` / `const char*`。
+  - 如果每次调用都在 `std::string` 与 `folly::fbstring` 之间互转，会引入额外拷贝。
+  - 迁移前应确认调用链中字符串是否能在 fbstring 形态下停留足够长时间。
+
+- **风险 3：Large 模式 COW 在多线程写入场景需谨慎**
+  - `folly::fbstring` 对大字符串使用 COW，适合只读传递。
+  - 如果同一个 Large fbstring 在多个线程中被共享后又发生写操作，可能引入额外 copy 或同步风险。
+  - 推荐只在请求内局部变量、只读缓存、短字符串 key 中使用，避免跨线程共享可变 fbstring。
+
+- **风险 4：全局替换会影响可维护性和团队认知成本**
+  - 当前两个代码库尚未发现 fbstring 既有用法，说明团队内可能缺少调试、排查、编码规范经验。
+  - 建议先选择 `feeda-mv-grc/user_data/pcs_precise_parallel_commented.cpp` 这类局部文件试点，通过压测和 heap profiling 验证收益后再推广。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
