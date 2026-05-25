@@ -196,3 +196,232 @@ int main() {
 ---
 
 *自动归档 by OpenClaw · 2026-05-08*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-25T19:01:34.369400
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`folly::F14Map`
+
+### 1. 分析摘要
+
+- 从扫描结果看，`folly::F14Map / F14Set` 在两个业务代码库中已经有一定落地基础：`feeda-mv-grg` 和 `feeda-mv-grc` 均已发现 **10 个文件**使用目标库，说明工程依赖、编译链路和基础用法大概率已经打通，可以优先从已有文件周边进行增量推广，而不是从零引入。
+
+- 两个代码库中 `std::unordered_map` 使用规模较大，具备明显迁移潜力：
+  - `feeda-mv-grg`：`std::unordered_map` 使用 **734 次**，分布在 **205 个文件**
+  - `feeda-mv-grc`：`std::unordered_map` 使用 **2799 次**，分布在 **633 个文件**
+
+- 从业务形态看，`feeda-mv-grg` 偏序列生成，常见场景包括候选集特征聚合、去重、计数、规则打分；`feeda-mv-grc` 偏召回汇聚，存在大量 parser、filter、adjuster 逻辑，通常会有高频 key-value 查找、特征字典访问、召回结果合并等场景。上述场景与 `folly::F14FastMap` / `F14FastSet` 的优化方向高度匹配，尤其适合替换热点路径中的 `std::unordered_map`。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标库使用：**10 个文件**
+  - `operator/diversity/author_days_ltv_rgh_qwlx_soft_rule.cpp`
+  - `process/msv_readlist_parse_function.cpp`
+  - `operator/diversity/quality_selection_soft_rule.cpp`
+  - `operator/diversity/heji_rhythm_soft_rule.cpp`
+  - `process/pk_generate_candidate_nid_emb_function_v5.cpp`
+
+- 现有 STL 容器使用情况：
+  - `std::vector`：**1969 次**，分布在 **356 个文件**
+  - `std::string`：**2443 次**，分布在 **425 个文件**
+  - `std::unordered_map`：**734 次**，分布在 **205 个文件**
+
+- 观察结论：
+  - 该代码库中 `std::unordered_map` 使用面较广，但目标库已经存在使用样例，迁移阻力相对较低。
+  - `operator/diversity/*_soft_rule.cpp` 一类文件通常属于在线规则链路，可能存在大量按 author、nid、category、tag、bucket 等维度的查找和去重，适合优先评估 `F14FastMap` / `F14FastSet`。
+  - `process/msv_readlist_parse_function.cpp`、`process/pk_generate_candidate_nid_emb_function_v5.cpp` 这类 process 逻辑可能涉及候选集解析、特征映射、embedding 数据组织，如果内部存在临时哈希表，适合替换为 F14 并配合 `reserve()`。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库使用：**10 个文件**
+  - `parser/recall_parser_new.cpp`
+  - `operator/adjuster/precise/author_interest.cpp`
+  - `parser/searchc_nid_ernie_parser.cpp`
+  - `operator/adjuster/precise/author_rgh_factor.cpp`
+  - `processor/filter/sparkle_black_queue_filter_operator.cc`
+
+- 现有 STL 容器使用情况：
+  - `std::vector`：**8330 次**，分布在 **1258 个文件**
+  - `std::string`：**7099 次**，分布在 **1219 个文件**
+  - `std::unordered_map`：**2799 次**，分布在 **633 个文件**
+
+- 观察结论：
+  - `feeda-mv-grc` 的 `std::unordered_map` 使用规模明显更大，是更具收益潜力的迁移目标。
+  - parser 类文件如 `parser/recall_parser_new.cpp`、`parser/searchc_nid_ernie_parser.cpp` 往往存在字符串 key、nid key、特征名 key 到结构化字段的映射，F14 在查找密集场景中收益较明显。
+  - adjuster / filter 类文件如 `operator/adjuster/precise/author_interest.cpp`、`operator/adjuster/precise/author_rgh_factor.cpp`、`processor/filter/sparkle_black_queue_filter_operator.cc` 通常位于在线召回后处理链路，延迟敏感，适合优先进行小范围 A/B 性能验证。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先替换在线热点路径中的 `std::unordered_map` 为 `folly::F14FastMap`**
+  - 适用文件：
+    - `feeda-mv-grg/operator/diversity/author_days_ltv_rgh_qwlx_soft_rule.cpp`
+    - `feeda-mv-grg/operator/diversity/quality_selection_soft_rule.cpp`
+    - `feeda-mv-grg/operator/diversity/heji_rhythm_soft_rule.cpp`
+    - `feeda-mv-grc/operator/adjuster/precise/author_interest.cpp`
+    - `feeda-mv-grc/operator/adjuster/precise/author_rgh_factor.cpp`
+  - 适用场景：
+    - author 维度计数
+    - nid / rid 到特征对象的映射
+    - category / tag 维度打分缓存
+    - 召回结果聚合时的去重和累加
+  - 推荐替换方式：
+    ```cpp
+    // 原逻辑
+    std::unordered_map<uint64_t, float> score_map;
+
+    // 推荐
+    folly::F14FastMap<uint64_t, float> score_map;
+    ```
+  - 如果 value 是小对象，例如 `int`、`float`、`double`、小型 struct，可进一步明确使用：
+    ```cpp
+    folly::F14ValueMap<uint64_t, float> score_map;
+    ```
+
+- **建议 2：对临时构建的大 map / set 统一增加 `reserve()`**
+  - 适用文件：
+    - `feeda-mv-grg/process/msv_readlist_parse_function.cpp`
+    - `feeda-mv-grg/process/pk_generate_candidate_nid_emb_function_v5.cpp`
+    - `feeda-mv-grc/parser/recall_parser_new.cpp`
+    - `feeda-mv-grc/parser/searchc_nid_ernie_parser.cpp`
+  - 适用场景：
+    - 解析召回结果时构建 `nid -> item` 映射
+    - 批量候选生成时构建 `rid -> embedding` 或 `nid -> feature` 映射
+    - 按请求临时构建去重集合
+  - 推荐写法：
+    ```cpp
+    folly::F14FastMap<uint64_t, ItemFeature> feature_map;
+    feature_map.reserve(candidate_vec.size());
+
+    for (const auto& item : candidate_vec) {
+        feature_map.try_emplace(item.nid, item.feature);
+    }
+    ```
+  - 对于 `F14FastSet`：
+    ```cpp
+    folly::F14FastSet<uint64_t> dedup_set;
+    dedup_set.reserve(candidate_vec.size());
+
+    for (const auto& item : candidate_vec) {
+        if (!dedup_set.insert(item.nid).second) {
+            continue;
+        }
+        // process item
+    }
+    ```
+
+- **建议 3：去重集合场景使用 `folly::F14FastSet` 替代 `std::unordered_set`**
+  - 适用文件：
+    - `feeda-mv-grc/processor/filter/sparkle_black_queue_filter_operator.cc`
+    - `feeda-mv-grc/parser/recall_parser_new.cpp`
+    - `feeda-mv-grg/process/msv_readlist_parse_function.cpp`
+  - 适用场景：
+    - 黑名单过滤
+    - 已处理 nid / rid 去重
+    - 作者、队列、召回源去重
+  - 推荐写法：
+    ```cpp
+    folly::F14FastSet<uint64_t> black_nids;
+    black_nids.reserve(black_queue.size());
+
+    for (auto nid : black_queue) {
+        black_nids.insert(nid);
+    }
+
+    if (black_nids.contains(item.nid)) {
+        return false;
+    }
+    ```
+  - 如果当前代码仍使用 `count(x) > 0`，可在 C++20 或 Folly 支持场景下逐步改为 `contains(x)`，表达更清晰。
+
+- **建议 4：字符串 key 的特征字典访问可优先试点 F14**
+  - 适用文件：
+    - `feeda-mv-grc/user_data/pcs_precise_parallel_commented.cpp`
+    - `feeda-mv-grc/parser/recall_parser_new.cpp`
+    - `feeda-mv-grc/parser/searchc_nid_ernie_parser.cpp`
+  - 扫描示例中存在大量 `std::vector<std::string>` 特征 key 列表，例如：
+    - `yitiao_latest_tgi_fea_key`
+    - `yitiao_3days_tgi_fea_key`
+  - 如果这些 key 后续会用于从特征 map 中取值，例如：
+    ```cpp
+    std::unordered_map<std::string, double> feature_map;
+    ```
+    可替换为：
+    ```cpp
+    folly::F14FastMap<std::string, double> feature_map;
+    ```
+  - 若查找时使用的是 `std::string_view`，建议确认 hash / equal 是否支持透明查找，避免因临时构造 `std::string` 抵消 F14 的性能收益。
+
+- **建议 5：已有 F14 使用文件可作为迁移参考样板**
+  - `feeda-mv-grg` 可参考：
+    - `operator/diversity/author_days_ltv_rgh_qwlx_soft_rule.cpp`
+    - `operator/diversity/quality_selection_soft_rule.cpp`
+    - `process/pk_generate_candidate_nid_emb_function_v5.cpp`
+  - `feeda-mv-grc` 可参考：
+    - `parser/recall_parser_new.cpp`
+    - `operator/adjuster/precise/author_interest.cpp`
+    - `processor/filter/sparkle_black_queue_filter_operator.cc`
+  - 建议在这些文件中沉淀统一写法，例如：
+    - 使用 `folly::F14FastMap` 作为默认替代
+    - 对小 value 使用 `folly::F14ValueMap`
+    - 对需要稳定引用 / 指针的场景使用 `folly::F14NodeMap`
+    - 对批量遍历型统计结果使用 `folly::F14VectorMap`
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **迭代器、引用、指针稳定性需要重点检查**
+  - `std::unordered_map` 在某些场景下节点地址相对稳定，但 `F14FastMap` 可能选择 value / vector 变体，rehash 后元素地址和迭代器可能失效。
+  - 如果业务代码中存在以下模式：
+    ```cpp
+    auto* ptr = &map[key];
+    // 后续 map 继续 insert / rehash
+    ```
+    应优先使用：
+    ```cpp
+    folly::F14NodeMap<Key, Value>
+    ```
+  - 建议重点检查：
+    - `operator/adjuster/precise/author_interest.cpp`
+    - `operator/adjuster/precise/author_rgh_factor.cpp`
+    - `process/pk_generate_candidate_nid_emb_function_v5.cpp`
+
+- **遍历顺序不能依赖**
+  - `std::unordered_map` 本身也不保证稳定顺序，但一些业务代码可能在实践中隐式依赖当前实现的遍历顺序。
+  - F14 替换后，遍历顺序大概率变化，可能影响：
+    - Top-K 平分时的 tie-break
+    - 日志输出顺序
+    - 序列生成结果的稳定性
+  - 对 `feeda-mv-grg` 的序列生成链路尤其需要关注，例如：
+    - `operator/diversity/heji_rhythm_soft_rule.cpp`
+    - `operator/diversity/quality_selection_soft_rule.cpp`
+
+- **小规模 map 不一定有显著收益**
+  - 如果 map 元素数量很小，例如小于 8 或 16 个，F14 的 SIMD chunk 优势不一定明显。
+  - 对短生命周期、小容量、低频访问的局部 map，不建议机械替换。
+  - 建议优先迁移：
+    - 请求级大 map
+    - 候选集级 map / set
+    - parser 中复用频繁的特征字典
+    - filter / adjuster 热路径中的查找结构
+
+- **依赖与编译配置需要统一**
+  - 虽然两个代码库已经发现目标库使用，但仍需确认所有子模块都能稳定 include：
+    ```cpp
+    #include <folly/container/F14Map.h>
+    #include <folly/container/F14Set.h>
+    ```
+  - 如果存在独立编译单元、特殊 Bazel/CMake target 或轻量工具模块，需要检查 Folly 依赖是否已透传。
+  - 建议先在已使用 F14 的模块附近试点，再扩大到 `std::unordered_map` 使用密集的 205 / 633 个文件范围。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
