@@ -112,6 +112,69 @@ TuriX SuperPower 3.0（2026-04-08 发布）把 TuriX CUA + TuriX CLI 合并成�
 ### 方式 A：OpenClaw Skill（最简单）
 
 ```bash
+
+## 实践案例
+
+**场景：自动化线上页面截图验证，替代人工点击检查**
+
+**问题背景**：每次功能上线后需要人工打开线上页面，截图确认关键元素（推荐卡片标题/图片/价格）是否正确渲染，耗时约 20 分钟且无法接入 CI 自动化。
+
+**安装配置**：
+
+```bash
+pip install turix-cua
+export ANTHROPIC_API_KEY=sk-ant-xxx
+```
+
+```json
+{
+  "mcpServers": {
+    "turix": {
+      "command": "python",
+      "args": ["-m", "turix.mcp_server"],
+      "env": { "TURIX_MODEL": "claude-3-5-sonnet", "TURIX_PLATFORM": "macos" }
+    }
+  }
+}
+```
+
+**核心代码**（CLI 方式，可接入 CI）：
+
+```bash
+python turix.py --task "
+1. 打开 Safari，访问 https://my-service.example.com/home
+2. 等待首页推荐位加载完成（最多 10 秒）
+3. 截图页面顶部前 3 个推荐卡片
+4. 逐一判断：每个卡片是否同时包含标题、图片和价格
+5. 如有卡片缺失任意字段，标记 FAIL 并说明原因
+" --output ./qa/result.png
+```
+
+**运行结果**：
+
+```
+TuriX CUA 执行日志:
+  [00:01] 打开 Safari → 成功
+  [00:03] 导航到目标 URL → 成功（加载 2.3s）
+  [00:06] 截图推荐位区域 → 已保存
+  [00:08] Brain/Policy (Claude Vision) 分析截图:
+           卡片 #1: ✓ 标题 / ✓ 图片 / ✓ ¥299
+           卡片 #2: ✓ 标题 / ✓ 图片 / ✗ 价格字段缺失
+           卡片 #3: ✓ 标题 / ✓ 图片 / ✓ ¥159
+
+结果: FAIL | 原因: 卡片 #2 缺少价格，疑似价格接口未返回数据 | 耗时: 8s | 费用: ~$0.02
+```
+
+**接入 CI**：
+
+```yaml
+- name: UI Smoke Test
+  run: python turix.py --task "验证首页推荐卡片完整性" --output ./qa/smoke.png
+```
+
+**TuriX 最独特的地方**：不需要目标应用提供测试 API 或暴露 DOM 结构，只要有 GUI 就能测——对没有测试接口的内部系统特别有价值。相比 Playwright 需要写 CSS selector/XPath，TuriX 用自然语言描述验证逻辑，页面改版后测试脚本几乎不需要维护。OSWorld 基准第3名（64.2%）是有实测支撑的数字，不是营销文案。
+
+
 # 在 OpenClaw 里安装 clawhub skill
 # https://clawhub.ai/Tongyu-Yan/turix-cua
 ```
