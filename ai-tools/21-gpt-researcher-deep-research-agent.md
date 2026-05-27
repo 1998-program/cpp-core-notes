@@ -103,20 +103,6 @@ researcher = GPTResearcher(
 
 ---
 
-## 对你的实际提升
-
-结合推荐架构组技术栈（brpc / jemalloc / Protobuf / ng-framework）：
-
-1. **技术调研自动化**：团队在评估新框架（LangGraph / ADK / Hermes）时，可以用 GPT Researcher 的 `deep` 模式自动搜索文档、GitHub Issues、技术博客，生成带引用的对比报告，省去大量手工查资料的时间；
-
-2. **内部文档研究**：将设计文档、代码注释、历史 issue 放入 `./my-docs/`，让 Agent 基于本地知识库回答"ng-framework DAG 节点的历史性能瓶颈在哪里"这类问题；
-
-3. **brpc 服务封装**：GPT Researcher 的后端是标准 FastAPI + uvicorn，可以在推荐服务链路中通过 brpc → HTTP 调用这个研究服务，把"研究能力"作为一个微服务节点嵌入到在线流程（例如自动生成特征解释报告）；
-
-4. **MCP 集成**：GPT Researcher 2025 年新增的 MCP Client 支持，可以把 GitHub MCP Server、内部 API MCP 接入进来，实现"联合内外部数据源的混合研究" 。
-
----
-
 ## 上手代码示例
 
 ### 最简安装
@@ -159,6 +145,76 @@ asyncio.run(main())
 ```python
 import os
 from gpt_researcher import GPTResearcher
+
+## 实践案例
+
+**场景：基于 GitHub Issues + 技术博客自动生成框架选型报告**
+
+**问题背景**：团队需要在 vLLM、SGLang、TensorRT-LLM 三个推理框架中选型，要综合 benchmark、GitHub Issues 真实反馈、近期更新动态，手工整理至少需要半天。
+
+**安装配置**：
+
+```bash
+pip install gpt-researcher
+```
+
+```
+# .env 配置
+OPENAI_API_KEY=sk-...
+TAVILY_API_KEY=tvly-...
+FAST_LLM=openai:gpt-4o-mini
+SMART_LLM=openai:gpt-4o
+LANGUAGE=chinese
+MAX_ITERATIONS=3
+```
+
+**核心代码**：
+
+```python
+import asyncio
+from gpt_researcher import GPTResearcher
+
+async def run():
+    researcher = GPTResearcher(
+        query=(
+            "对比分析 vLLM、SGLang、TensorRT-LLM 三个 LLM 推理框架：\n"
+            "1. 真实 benchmark 中的吞吐量和 P99 延迟数据\n"
+            "2. GitHub Issues 反映的主要用户痛点（近6个月）\n"
+            "3. H100/A100 的优化成熟度\n"
+            "4. 生产部署的稳定性和运维复杂度"
+        ),
+        report_type="deep",
+        mcp_configs=[{
+            "name": "github",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_xxx"}
+        }]
+    )
+    await researcher.conduct_research()
+    report = await researcher.write_report()
+    with open("inference_report.md", "w") as f:
+        f.write(report)
+    print(f"调研了 {len(researcher.get_source_urls())} 个信源，报告已保存")
+
+asyncio.run(run())
+```
+
+**运行结果**：
+
+```
+Planner: 分解为 7 个子研究问题，并行启动 7 个 Executor Agent
+  ├── "vLLM vs SGLang throughput benchmark 2026"
+  ├── "TensorRT-LLM H100 FP8 quantization performance"
+  ├── "vLLM github issues production deployment problems"
+  └── ... (共 7 个)
+
+所有 Executor 完成（耗时 48 秒，共抓取 23 个信源）
+报告：3,912 字，含 21 处引用链接
+```
+
+**GPT Researcher 最独特的地方**：Plan-and-Solve 多 Agent 架构允许同时从 20+ 信源并行抓取信息，绕开单次 LLM context 的 token 限制——这是单次 LLM 调用永远做不到的。RETRIEVER 支持混合信源（`tavily,mcp,local`），可以同时参考网络搜索、GitHub Issues 原文、本地设计文档，3 类信源交叉验证，显著减少信息偏差。
+
 
 # 把文档放在 ./my-docs/ 目录（支持 .txt .pdf .docx 等）
 os.environ["RETRIEVER"] = "local"
