@@ -152,6 +152,67 @@ Coding Agents 分类里有几个专门解决「多 agent 协作」的：
 ## 快速上手
 
 ```bash
+
+## 实践案例
+
+**场景：用 mcp-gateway 聚合多个 Server，解决 context 被工具描述占满的问题**
+
+**问题背景**：同时配置了 GitHub、PostgreSQL、Playwright、Slack 四个 MCP Server，Claude Code 每次对话开头 context 就被工具 schema 描述占掉 12,000+ token，可用于代码分析的空间严重不足。
+
+**安装配置**：
+
+```bash
+# 在 awesome-mcp-servers 的 Aggregators 分类找到 mcp-gateway
+npm install -g @viperJuice/mcp-gateway
+```
+
+```json
+{
+  "mcpServers": {
+    "gateway": {
+      "command": "mcp-gateway",
+      "args": ["--config", "./mcp-gateway.json"]
+    }
+  }
+}
+```
+
+```json
+{
+  "servers": [
+    { "name": "github",   "command": "npx", "args": ["@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_TOKEN": "ghp_xxx" } },
+    { "name": "postgres", "command": "npx", "args": ["@modelcontextprotocol/server-postgres"],
+      "env": { "DATABASE_URL": "postgresql://user:pass@localhost/mydb" } },
+    { "name": "playwright","command": "npx", "args": ["@playwright/mcp"] },
+    { "name": "slack",    "command": "npx", "args": ["@modelcontextprotocol/server-slack"],
+      "env": { "SLACK_BOT_TOKEN": "xoxb-xxx" } }
+  ],
+  "strategy": "lazy"
+}
+```
+
+**使用效果**（Claude Code 中正常使用，无感知）：
+
+```
+用户：查一下 payment_orders 表最近一天失败的订单数
+
+Claude → gateway.query_postgres:
+  SELECT COUNT(*) FROM payment_orders
+  WHERE status='failed' AND created_at > NOW() - INTERVAL '1 day';
+  结果：47 条（较昨天同期 +12%）
+```
+
+**Context 占用对比**：
+
+```
+直接配置 4 个独立 Server：工具 schema 描述 ~12,400 tokens，代码空间 ~3,600 tokens
+使用 mcp-gateway（lazy）：  工具描述 ~2,800 tokens（↓77%），代码空间 ~13,200 tokens
+```
+
+**awesome-mcp-servers 最独特的地方**：不只是工具列表，而是按使用场景分类的导航——Aggregators 分类专门解决"多 Server 导致 context 爆炸"的实际痛点，Security 分类有 SQLMap/NMAP/FFUF 的 MCP 封装，Cloud Platforms 有 AWS/Cloudflare/Kubernetes 官方实现。配套 [glama.ai/mcp/servers](https://glama.ai/mcp/servers) 支持按分类筛选，找到合适工具通常只需 2 分钟。
+
+
 # 1. 找到需要的 server（Web 目录更方便）
 # https://glama.ai/mcp/servers
 
