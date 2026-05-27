@@ -141,6 +141,64 @@ backend = "agentmemory"
 ## 安装（3 分钟上手）
 
 ```bash
+
+## 实践案例
+
+**场景：把 GitHub 仓库 + Notion 文档喂给 Agent，实现跨服务联动问答**
+
+**问题背景**：新接手一个 legacy 项目，每次问 AI 关于项目状态，都需要手动贴代码、翻 PR、打开 Notion，耗时且容易遗漏关键信息。
+
+**安装配置**：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tinyhumansai/openhuman/main/scripts/install.sh | bash
+```
+
+打开 OpenHuman 桌面 App → Settings → Integrations，依次授权 **GitHub**（选目标仓库）和 **Notion**（自动拉取所有 Page）。
+
+**关键配置**（`config.toml`）：
+
+```toml
+[memory]
+backend = "sqlite"
+sync_interval_minutes = 20
+
+[learning.summarizer]
+enabled = true
+model_hint = "fast"
+
+[token_juice]
+enabled = true
+```
+
+**同步完成后直接提问**：
+
+```
+用户：payment 模块最近有什么未解决的风险？
+
+OpenHuman：
+  根据 GitHub PR #234（3天前，still open）和 Slack #backend 讨论：
+
+  1. retry 逻辑竞态条件：高并发下 Redis 分布式锁可能失效
+     → PR #234 已有修复草案，@张三 正在 review
+
+  2. 幂等性保障未实现：Notion 设计文档（上周更新）记录了该 gap，
+     计划 Q3 补齐，目前靠上游去重兜底
+```
+
+**Memory Tree 同步结果**：
+
+```
+首次同步完成（耗时约 18 分钟）:
+  GitHub: 127 commits / 23 open issues / 8 PRs（含所有评论）
+  Notion: 45 个 Page → Jaccard 去重后 892 个 Memory chunks
+
+TokenJuice：HTML 15,000 token/页 → 压缩后 3,100 token/页（↓79%）
+```
+
+**OpenHuman 最独特的地方**：118+ 服务数据作为 typed tool 暴露给 Agent，跨服务联动问答是其核心能力——不只是"记住你说过的话"，而是持续追踪所有工作系统的最新状态，让 AI 在 20 分钟内从"刚入职的实习生"变成"熟悉所有背景的老员工"。
+
+
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/tinyhumansai/openhuman/main/scripts/install.sh | bash
 
