@@ -132,6 +132,59 @@ act,prompt,for_devs
 ## 快速上手
 
 ```bash
+
+## 实践案例
+
+**场景：通过 MCP Server 在 Claude Code 中按需切换专业角色**
+
+**问题背景**：日常用 Claude Code 做不同类型的工作——写代码、Code Review、排查安全漏洞——每次都要手动查找并粘贴对应的 system prompt，繁琐且效果参差不齐。
+
+**安装配置**：
+
+```bash
+# Node.js 18+ 前提
+cat > .claude/mcp.json << 'MCPEOF'
+{
+  "mcpServers": {
+    "prompts": { "command": "npx", "args": ["@f/prompts-mcp"] }
+  }
+}
+MCPEOF
+```
+
+**重启 Claude Code，直接使用**：
+
+```bash
+/prompts code reviewer     # 切换为代码审查员
+/prompts linux terminal    # 切换为 Linux 终端模拟器
+/prompts security expert   # 切换为安全专家
+```
+
+**完整使用示例**：
+
+```
+$ /prompts code reviewer
+✓ 匹配: "Code Reviewer" (for_devs: TRUE，社区验证)
+✓ System prompt 已注入 (142 tokens)
+
+[用户贴入代码]
+Claude：发现3个问题：
+  1. 第47行 SQL 拼接存在注入风险，建议改用参数化查询
+  2. 第89行循环内重复创建连接，应移到循环外
+  3. 缺少对空指针的防御判断
+```
+
+**批量导入备用方案**（离线/本地工具场景）：
+
+```bash
+curl -O https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv
+python3 scripts/import-to-lmstudio.py --dev-only
+# 输出: Successfully imported 403 prompts to LM Studio presets
+```
+
+**prompts.chat 最独特的地方**：1645 个 prompt 全部经过社区多轮打磨（CC0 协议），`for_devs=TRUE` 的约 400 个覆盖"Linux 终端"、"Code Reviewer"、"架构师"、"安全专家"等高频开发场景——比自己从零写 system prompt 质量更高，MCP Server 接入后切换角色只需一条命令。
+
+
 # 方式 1：直接用 CSV（最简单）
 curl https://raw.githubusercontent.com/f/awesome-chatgpt-prompts/main/prompts.csv
 
