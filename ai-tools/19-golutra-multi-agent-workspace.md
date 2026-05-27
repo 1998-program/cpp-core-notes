@@ -101,6 +101,63 @@ golutra (Tauri 桌面)
 
 ---
 
+## 实践案例
+
+**场景：并行调度三个 Agent 完成需求开发，节省 60%+ 时间**
+
+**问题背景**：一个中等规模需求（核心逻辑 + 单测 + 文档），串行让单个 Claude Code 完成需要 35+ 分钟，且中途需要频繁切换终端监控进度。
+
+**安装配置**：
+
+```bash
+# 下载 golutra 桌面 App（macOS）：https://github.com/golutra/golutra/releases
+# 安装后：Settings → Add Agent，依次添加 Claude Code、Codex CLI、Gemini CLI
+```
+
+**工作流配置**（golutra UI 拖拽，或导入 YAML）：
+
+```yaml
+name: "并行开发工作流"
+agents:
+  - { id: architect, cli: claude, role: "分析需求，生成接口设计和子任务拆解" }
+  - { id: developer, cli: codex,  role: "实现核心业务逻辑" }
+  - { id: tester,    cli: gemini, role: "编写单元测试，覆盖边界场景" }
+flow:
+  - step: architect
+    input: "{{user_task}}"
+    output_to: [developer, tester]
+  - parallel: [developer, tester]
+  - step: architect
+    input: "合并以上结果，生成最终 PR 描述"
+```
+
+**实际执行过程**：
+
+```
+用户输入："实现用户登录限流：IP 5次/分钟，账号 10次/小时，超限返回 429"
+
+→ architect (Claude Code, 3min)：生成接口设计 + 子任务拆分
+
+→ 并行启动（Stealth Terminal 实时查看各 Agent 日志）：
+   developer (Codex, 9min)：src/rate_limiter.py (156行) + src/redis_backend.py (89行)
+   tester (Gemini, 8min)：tests/test_rate_limiter.py (212行，覆盖率 94%)
+
+→ architect (Claude Code, 11min 总计)：汇总结果，生成 PR 描述
+```
+
+**运行结果**：
+
+```
+总耗时：11 分钟（串行估计 35 分钟，节省 69%）
+产出：
+  src/rate_limiter.py        156 行，Redis sliding window 实现
+  src/redis_backend.py        89 行，连接池 + 重试逻辑
+  tests/test_rate_limiter.py 212 行，覆盖率 94%
+```
+
+**golutra 最独特的地方**：通过 Stealth Terminal 直接向 Agent 进程 stdin 注入 prompt，不需要更换任何现有 CLI 工具——Claude Code、Codex、Gemini 仍然是独立进程，golutra 只是在外面加了调度和可视化层。相比 LangGraph 需要写 Python 图定义，golutra 用 GUI 实现同等效果，代码量为零。
+
+
 ## 局限性
 
 - **BSL 1.1 协议**：不是完全开源，商业竞品不能直接用其代码
