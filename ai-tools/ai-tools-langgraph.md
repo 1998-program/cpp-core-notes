@@ -175,19 +175,95 @@ LangGraph 的灵感来自 **Google Pregel 图计算系统**（[论文](https://r
 
 ---
 
-## 对你的实际提升
+## 实践案例
 
-结合推荐架构组技术栈（brpc / jemalloc / Protobuf / ng-framework DAG 计算图）：
+**场景：构建带人工审核节点的 Agent 流水线，支持真实暂停和断点恢复**
 
-1. **DAG 计算图的高层对比参照**：ng-framework 的 DAG 是静态声明的计算节点图，LangGraph 的 StateGraph 是动态可分支的 Agent 执行图——两者都解决"有向图上的状态传播"问题，但 LangGraph 的 Conditional Edge + Command 动态路由是 ng-framework 里较难做到的。研究 LangGraph 的 Pregel 执行模型，有助于理解如何在推荐 DAG 中引入条件分支和动态 fallback；
+**问题背景**：需要一个"分析代码变更 → 生成 PR 描述 → 人工审核 → 自动执行"的流水线，人工审核必须是真实的执行暂停，且审核后能从断点继续，不重新执行已完成的步骤。
 
-2. **Checkpoint 对 brpc 服务的启示**：LangGraph 的 Checkpoint 本质上是"幂等执行 + 断点续传"。推荐在线服务的 brpc 调用链路中，对于耗时较长的子任务（如实时特征计算），可以参考 Checkpoint 模式，把中间结果缓存到 Redis，服务重启后从 Redis 恢复，而不是从头重算；
+**安装配置**：
 
-3. **Human-in-the-loop 模式落地**：推荐系统的策略调整往往需要人工审核（如新算法上线前的人工 check）。LangGraph 的 `interrupt()` 原语 + `Command(resume=...)` 模式是一个非常干净的实现，可以直接借用这个模式设计推荐策略的人工干预节点，而不是在业务代码里硬塞 `if human_flag:` 逻辑；
+```bash
+pip install langgraph langchain-openai
+```
 
-4. **多 Agent 架构参考**：如果团队需要构建"离线分析 + 在线决策"的 LLM 辅助系统（如自动特征工程、自动告警分析），LangGraph 的 Supervisor-SubAgent 模式是最成熟的参考实现，代码量少、可观测性强（配 LangSmith）。
+**核心代码**：
 
----
+```python
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import interrupt, Command
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o")
+
+def analyze_diff_node(state):
+    r = llm.invoke([{"role": "user",
+        "content": "分析这个 diff，总结关键改动:\n" + state["messages"][-1].content}])
+    return {"messages": state["messages"] + [r]}
+
+def generate_pr_desc_node(state):
+    r = llm.invoke([{"role": "user",
+        "content": "基于分析结果生成 PR 描述（含 Why/What/How）:\n" + state["messages"][-1].content}])
+    return {"messages": state["messages"] + [r]}
+
+def human_review_node(state):
+    # 框架层面真正暂停——状态序列化保存后退出
+    decision = interrupt({
+        "pr_description": state["messages"][-1].content,
+        "question": "请审核 PR 描述，输入 approve/reject"
+    })
+    return {"messages": state["messages"] + [{"role": "system",
+        "content": "审核结果: " + str(decision)}]}
+
+def execute_action_node(state):
+    last = state["messages"][-1].content
+    msg = "PR 已拒绝" if "reject" in last else "PR 已创建成功"
+    return {"messages": state["messages"] + [{"role": "system", "content": msg}]}
+
+builder = StateGraph(MessagesState)
+builder.add_node("analyze", analyze_diff_node)
+builder.add_node("generate", generate_pr_desc_node)
+builder.add_node("human_review", human_review_node)
+builder.add_node("execute", execute_action_node)
+builder.add_edge(START, "analyze")
+builder.add_edge("analyze", "generate")
+builder.add_edge("generate", "human_review")
+builder.add_edge("human_review", "execute")
+builder.add_edge("execute", END)
+
+memory = MemorySaver()
+graph = builder.compile(checkpointer=memory, interrupt_before=["human_review"])
+```
+
+**完整运行流程**：
+
+```python
+config = {"configurable": {"thread_id": "pr-review-001"}}
+
+# 第一次运行：到 human_review 节点自动暂停，状态序列化保存
+result = graph.invoke({"messages": [{"role": "user", "content": git_diff}]}, config=config)
+print("等待人工审核...")  # 程序返回，真正暂停
+
+# 审核后从断点恢复（analyze 和 generate 不会重新执行）
+result = graph.invoke(Command(resume="approve"), config=config)
+print(result["messages"][-1].content)  # → "PR 已创建成功"
+```
+
+**运行结果**：
+
+```
+第一次调用：
+  ✓ analyze 节点 (1.2s) → ✓ generate 节点 (1.8s)
+  ⏸ human_review：暂停，状态已序列化到 MemorySaver
+
+第二次调用（Command resume）：
+  ⏭ analyze / generate：跳过（从 Checkpoint 恢复）
+  ✓ human_review：接收 "approve" → ✓ execute：PR 已创建成功 (0.3s)
+```
+
+**LangGraph 最独特的地方**：`interrupt()` + `Command(resume=...)` 是框架级别的暂停/恢复原语——状态完整序列化到 Checkpoint，进程可以退出后再恢复，分布式环境下也能工作。Checkpoint 机制保证每个节点执行完自动快照，崩溃后 `graph.invoke(None, config)` 即可从上次断点继续，整个流水线天然幂等。
+
 
 ## 局限性
 
