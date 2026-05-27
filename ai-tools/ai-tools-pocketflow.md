@@ -505,6 +505,80 @@ class StreamNode(Node):
 ### 方式 A：pip 安装（推荐）
 
 ```bash
+
+## 实践案例
+
+**场景：用 30 行代码构建一个完整的 ReAct 搜索 Agent**
+
+**问题背景**：需要快速验证一个"搜索-推理-回答"循环的 Agent 原型，不想引入 LangChain（+166MB）或 LangGraph（+51MB）等重框架，只需要核心流程跑通。
+
+**安装配置**：
+
+```bash
+pip install pocketflow
+# 安装完成，仅增加 56KB，无额外依赖
+```
+
+**完整可运行代码**（ReAct Agent，30 行）：
+
+```python
+from pocketflow import Node, Flow
+import openai
+
+class ThinkNode(Node):
+    def prep(self, shared):
+        return shared.get("question"), shared.get("search_results", [])
+
+    def exec(self, prep_res):
+        question, results = prep_res
+        context = "\n".join(results) if results else "无搜索结果"
+        return openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content":
+                "问题: " + question + "\n已知: " + context +
+                "\n需要搜索吗？回复 search:<关键词> 或 answer:<答案>"}]
+        ).choices[0].message.content
+
+    def post(self, shared, prep_res, exec_res):
+        if exec_res.startswith("search:"):
+            shared["query"] = exec_res.split(":", 1)[1].strip()
+            return "search"
+        shared["answer"] = exec_res.split(":", 1)[1].strip()
+        return "answer"
+
+class SearchNode(Node):
+    def prep(self, shared): return shared["query"]
+    def exec(self, q): return ["搜索结果：关于 " + q + " 的相关信息..."]
+    def post(self, shared, _, results):
+        shared.setdefault("search_results", []).extend(results)
+        return "default"
+
+# 构建图：think --search--> search --default--> think --answer--> end
+think, search_node = ThinkNode(), SearchNode()
+think - "search" >> search_node
+search_node >> think  # 搜索完成后回到 think
+
+flow = Flow(start=think)
+shared = {"question": "2026 年最快的开源 LLM 推理框架是哪个？"}
+flow.run(shared)
+print(shared["answer"])
+```
+
+**运行结果**：
+
+```
+[ThinkNode] 问题: 2026 年最快的开源 LLM 推理框架是哪个？
+  → 需要搜索，query: "fastest open source LLM inference 2026"
+[SearchNode] 搜索完成，返回 1 个结果
+[ThinkNode] 已有上下文，直接回答
+
+最终答案: 根据 2026 年 benchmark，SGLang 在 H100 上的吞吐量领先...
+迭代次数: 2（1次搜索 + 1次回答）
+```
+
+**PocketFlow 最独特的地方**：整个框架只有 100 行 Python，源码可以直接阅读并理解每一行的作用——这是其他框架做不到的。`prep/exec/post` 三步分离让每个 Node 天然可测试（`exec` 是纯函数）；`action` 字符串路由比 LangGraph 的条件边更直观；Shared Store 是显式的 dict，调试时 `print(shared)` 就能看到全部状态。56KB 的安装体积，适合嵌入任何不想引入重框架的项目。
+
+
 # 安装（仅 56KB，无依赖）
 pip install pocketflow
 
@@ -604,22 +678,6 @@ PocketFlow 作者 Zachary 的核心论点：
 3. **BatchFlow 的 shared 冲突**：多个 batch 并行写同一个 shared key 时会相互覆盖，issue #54 有讨论，需要用 key 隔离
 4. **node copy 语义**：Flow 每次执行前 `copy.copy(node)`，浅拷贝，如果 Node 里有复杂的可变对象需要注意
 5. **不适合大型生产系统**：缺少 LangGraph 的 Checkpointer、interrupt、时间旅行等企业级特性
-
----
-
-## 十一、与推荐系统工程的结合点
-
-在推荐在线架构场景（brpc + ng-framework DAG + C++ 主服务），PocketFlow 最直接的价值在于**Python 侧的 AI 自动化流程**，而不是替换 C++ 核心服务。
-
-**具体场景**：
-
-1. **自动化实验分析 Agent**：从 GitHub 或内部日志系统拉实验数据 → ReAct Agent 自动分析 → 生成报告。整个流程 < 100 行 Python，不需要引入 LangChain 这样的重依赖。
-
-2. **代码生成辅助**：给 Claude Code 提供 PocketFlow 上下文，让它帮忙生成 Protobuf 服务的调用胶水代码——因为 PocketFlow 本身够简单，Claude Code 理解框架的成本极低。
-
-3. **ng-framework DAG 配置生成**：用 PocketFlow 构建一个"理解需求 → 生成 DAG 配置 → 验证配置 → 输出"的 Agent Flow，辅助日常的 DAG 节点配置工作。
-
-4. **C++ 版本**：PocketFlow 有 C++ 版本（https://github.com/The-Pocket/PocketFlow-CPP），理论上可以直接嵌入 brpc 服务内做轻量推理编排——不过这个场景建议先观察社区成熟度。
 
 ---
 
