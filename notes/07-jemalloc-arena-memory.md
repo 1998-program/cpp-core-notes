@@ -159,3 +159,179 @@ export MALLOC_CONF="prof:true,lg_prof_sample:19,prof_prefix:jeprof"
 - [官方文档](http://jemalloc.net/jemalloc.3.html)
 - [性能调优指南](https://github.com/jemalloc/jemalloc/wiki/Use-Case:-Redis)
 - [与 tcmalloc 对比](https://github.com/jemalloc/jemalloc/wiki/Background)
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-28T19:02:45.961868
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 和 `feeda-mv-grc` 两个业务代码库中均已发现与目标内存分配库相关的使用痕迹，各扫描到 10 个文件，说明代码库并非完全没有 jemalloc 接入经验。已有使用点可以作为后续统一接入、配置规范化和性能验证的参考。
+
+- 两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模非常大，尤其是 `feeda-mv-grc` 中 `std::vector` 出现 8382 次、`std::string` 出现 7107 次、`std::unordered_map` 出现 2828 次。这类 STL 容器在请求处理、图计算、召回聚合、过滤排序等场景中会产生大量小对象和中等对象分配，比较适合通过 jemalloc 的 tcache、arena、slab 机制降低 malloc/free 锁竞争和碎片率。整体来看，两个代码库具备较高的 jemalloc 适配和收益验证价值。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标库相关使用：10 个文件，可作为 jemalloc 接入和配置参考，典型文件包括：
+  - `operator/diversity/diversity_rule_manual_tags.cpp`
+  - `operator/diversity/author_days_ltv_rgh_soft_rule.cpp`
+  - `operator/diversity/special_tag_rule.cpp`
+  - `util/util.h`
+  - `plugin/cache_plugin.h`
+
+- STL 容器使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 典型热点特征：
+  - `model/model.h`、`model/paddle_model.h` 中大量接口以 `std::vector<RidTmpInfoPtr>& candidate_vec` 作为候选集输入，说明序列生成链路中存在较多候选集合遍历、扩容和临时对象管理。
+  - 多个 `operator/diversity/*` 文件涉及多样性规则、标签规则、作者维度规则等，通常会伴随临时集合、去重表、分组 map 和字符串标签处理，容易产生频繁的小对象分配。
+  - `plugin/cache_plugin.h` 可能涉及缓存结构或缓存结果组织，如果存在高频插入/删除或请求级临时缓存，jemalloc 对碎片和分配延迟的改善空间较大。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库相关使用：10 个文件，可作为 jemalloc 接入参考，典型文件包括：
+  - `processor/reddot/dibar_reddot_rank_feed_interest.cpp`
+  - `strategy/short_micro/comment_sign_xgbv2_pcs_handler.cpp`
+  - `processor/sketchy_precompute.cpp`
+  - `processor/filter/low_agile_goodrate_filter_operator.cc`
+  - `processor/filter/content_quality_score_filter_operator.cc`
+
+- STL 容器使用规模：
+  - `std::vector`：8382 次，分布在 1266 个文件
+  - `std::string`：7107 次，分布在 1222 个文件
+  - `std::unordered_map`：2828 次，分布在 636 个文件
+
+- 典型热点特征：
+  - `service/grc_http_service.cpp` 中存在 `std::unordered_map<std::string, std::vector<int>> depend_map`，同时还包含多个 `std::vector<std::string>` 和 `std::string resp_str`，属于典型的请求级临时容器组合。
+  - 召回汇聚服务通常存在多路召回结果合并、过滤、排序、打散、重排等阶段，`std::vector` 和 `std::unordered_map` 的高频使用会带来大量动态内存分配。
+  - `processor/filter/*` 和 `strategy/*` 文件中如果存在逐请求构造过滤集合、打分特征、临时 map 的逻辑，jemalloc 对多线程请求并发下的锁竞争优化更可能体现出收益。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议一：优先采用“进程级替换分配器”，不要一开始大规模改业务代码**
+  - 适用代码库：`feeda-mv-grg`、`feeda-mv-grc`
+  - 建议方式：
+    - 优先通过链接 jemalloc 或运行时 `LD_PRELOAD` 接入，保持业务代码中的 `std::vector`、`std::string`、`std::unordered_map` 不变。
+    - 这样可以让 STL 容器内部的动态分配自动走 jemalloc，避免大面积侵入式修改。
+  - 推荐先验证的服务入口或高流量模块：
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+    - `feeda-mv-grg/model/model.h`
+    - `feeda-mv-grg/model/paddle_model.h`
+  - 评估指标：
+    - 请求 P99/P999 延迟
+    - RSS、active/allocated 比例
+    - malloc 锁竞争
+    - CPU 使用率
+    - 单请求内存分配次数
+
+- **建议二：以 `feeda-mv-grc/service/grc_http_service.cpp` 作为首批收益验证点**
+  - 该文件中已经出现：
+    - `std::unordered_map<std::string, std::vector<int>> depend_map`
+    - `std::vector<std::string> sub_access_off_vec`
+    - `std::vector<std::string> sub_access_on_vec`
+    - `std::string resp_str`
+  - 这些对象通常是请求级临时数据结构，生命周期短、分配频繁，非常适合 jemalloc 的 tcache 小对象缓存。
+  - 建议：
+    - 接入 jemalloc 后压测 HTTP 服务接口，比较 glibc malloc 与 jemalloc 下的延迟和 RSS。
+    - 对 `depend_map` 这类请求级 map，结合 `reserve()` 减少 rehash，再叠加 jemalloc 可进一步降低分配开销。
+    - 对 `resp_str` 建议检查是否可以提前 `reserve()`，避免字符串响应拼接过程多次扩容。
+
+- **建议三：在 `feeda-mv-grg` 的多样性规则模块中做局部压测**
+  - 推荐关注文件：
+    - `operator/diversity/diversity_rule_manual_tags.cpp`
+    - `operator/diversity/author_days_ltv_rgh_soft_rule.cpp`
+    - `operator/diversity/special_tag_rule.cpp`
+  - 这些文件属于规则计算和候选集处理模块，通常会产生大量临时 vector、set、map、string 标签对象。
+  - 建议：
+    - 先不改业务容器类型，直接通过 jemalloc 替换默认分配器。
+    - 对规则执行链路进行 A/B 压测，关注单请求耗时、CPU、分配热点。
+    - 如果 jemalloc 已在这些文件中存在显式调用或相关封装，可将其作为后续统一封装参考，避免不同模块各自配置。
+
+- **建议四：在 `feeda-mv-grc` 的过滤和预计算模块验证长时间运行下的碎片收益**
+  - 推荐关注文件：
+    - `processor/sketchy_precompute.cpp`
+    - `processor/filter/low_agile_goodrate_filter_operator.cc`
+    - `processor/filter/content_quality_score_filter_operator.cc`
+  - 过滤和预计算模块往往具有高频、批量、周期性分配特征，可能出现 RSS 增长和内存碎片。
+  - 建议：
+    - 使用 jemalloc 的 `stats.print` 或 `mallctl` 统计 `allocated`、`active`、`resident`。
+    - 重点观察长时间运行后 `active / allocated` 和 `resident / allocated` 的变化。
+    - 如果发现碎片明显，可进一步调整 `MALLOC_CONF`，例如：
+      ```bash
+      MALLOC_CONF="narenas:8,tcache:true,background_thread:true,dirty_decay_ms:10000,muzzy_decay_ms:10000"
+      ```
+
+- **建议五：统一封装和配置，避免各模块自行调用 `je_malloc` / `je_free`**
+  - 已发现目标库相关使用点包括：
+    - `feeda-mv-grg/util/util.h`
+    - `feeda-mv-grg/plugin/cache_plugin.h`
+    - `feeda-mv-grc/processor/reddot/dibar_reddot_rank_feed_interest.cpp`
+    - `feeda-mv-grc/strategy/short_micro/comment_sign_xgbv2_pcs_handler.cpp`
+  - 如果这些文件中存在显式 jemalloc API 调用，建议沉淀为统一内存分配封装，例如：
+    - `common/memory_allocator.h`
+    - `util/memory_util.h`
+  - 业务代码中尽量避免散落 `je_malloc`、`je_free`，否则容易出现跨库释放、异常路径遗漏释放、统计口径不统一等问题。
+  - 推荐策略：
+    - 默认使用进程级 malloc 替换。
+    - 只有缓存、对象池、大块 buffer 等明确热点场景才考虑显式 jemalloc API。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险一：跨分配器申请和释放会导致未定义行为**
+  - 如果某个对象由 `je_malloc` 分配，却被 `free`、`delete` 或其他 allocator 释放，可能导致崩溃或内存损坏。
+  - 尤其需要检查：
+    - `plugin/cache_plugin.h`
+    - `util/util.h`
+    - 第三方库回调中传递 buffer 的代码
+  - 建议在代码规范中明确：
+    - `je_malloc` 必须配对 `je_free`
+    - `new` 必须配对 `delete`
+    - 不建议业务代码混用多套 allocator API
+
+- **风险二：RSS 可能上升，需要结合 jemalloc 指标判断真实内存占用**
+  - jemalloc 为了提升性能会缓存 thread cache、arena chunk 和 dirty page，短期 RSS 可能高于 glibc malloc。
+  - 不应只看 `top` 中的 RES，需要同时观察：
+    - `stats.allocated`
+    - `stats.active`
+    - `stats.resident`
+    - `stats.mapped`
+  - 对长时间运行服务建议开启后台回收：
+    ```bash
+    MALLOC_CONF="background_thread:true,dirty_decay_ms:10000,muzzy_decay_ms:10000"
+    ```
+
+- **风险三：`narenas` 配置过大可能增加内存碎片**
+  - jemalloc 的多 arena 能降低锁竞争，但 arena 数量过多会导致每个 arena 持有更多未复用内存。
+  - 对 `feeda-mv-grc` 这类高并发召回服务，可以从 CPU 核心数或较小倍数开始验证，不建议直接设置过大。
+  - 建议配置起点：
+    ```bash
+    MALLOC_CONF="narenas:8,tcache:true,background_thread:true"
+    ```
+  - 后续根据线程数、QPS、RSS 和 P99 延迟调整。
+
+- **风险四：性能收益依赖真实分配热点，不能仅凭 STL 使用次数判断**
+  - `std::vector`、`std::string`、`std::unordered_map` 使用次数多，说明存在潜在收益，但最终收益取决于：
+    - 是否在请求热路径上
+    - 是否频繁扩容
+    - 对象生命周期是否短
+    - 多线程竞争是否明显
+  - 因此建议采用灰度验证：
+    - 先在 `service/grc_http_service.cpp`、`operator/diversity/*`、`processor/filter/*` 等热点路径压测
+    - 再逐步扩大到整个服务进程
+    - 保留一键回滚到默认 malloc 的能力
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
