@@ -1,322 +1,356 @@
 {
   "week_of": "2026-06-01",
-  "generated_at": "2026-05-29T16:00:38+08:00",
+  "generated_at": "2026-05-29T20:35:50+08:00",
   "codebases_scanned": [
     "feeda-mv-grc",
     "feeda-mv-grg"
   ],
   "internal_search_status": "部分成功",
-  "internal_search_summary": "OKR搜索3次均成功但0命中；会议搜索2次均成功但0命中；周报搜索feeda-mv-grc命中20条并fetch许云鹏/吴昊宇详情；知识库搜索dup service、IFCS正排缓存、graph engine均命中并读取3篇文档；内搜bthread并行消费、protobuf性能优化均命中。",
+  "internal_search_summary": "OKR 0；会议 0；周报 20；KU dup/IFCS/graph engine 各 10；内搜 bthread/protobuf 各 10。KU 未逐篇读取正文，仅用搜索摘要。",
   "base_lib_candidates": [
     {
       "rank": 1,
-      "topic": "GraphPool 与 GraphData 生命周期：ref/cref/reset 的性能与坑",
-      "scope": "GRC/GRG 图实例获取、数据注入、reset 后复用",
+      "topic": "GraphEngine GraphPool 对象池复用与 reset 生命周期",
+      "scope": "GRC/GRG 服务入口 GraphPool::try_get、run、reset 全链路",
       "priority": "P0",
-      "difficulty": "高",
-      "code_evidence": "GRC src/service/grc_service.cpp:177-220; GRG src/service/grg_service.cpp:48-91; GRC src/service/grc_service.cpp:87-149",
-      "okr_support": "无命中",
-      "meeting_support": "无命中",
-      "doc_evidence": "KU graph-engine解读：GraphData reset 不清理 Any 引用、GraphPool 多实例"
+      "difficulty": "中",
+      "code_evidence": "GRC src/service/grc_service.cpp:199；GRG src/service/grg_service.cpp:65",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "周报：feeda-mv-grc 成本优化；KU graph-engine 命中"
     },
     {
       "rank": 2,
-      "topic": "ExpressionProcessor / condition 如何影响图执行路径",
-      "scope": "GRC vertex.conf 中 condition 与表达式依赖",
+      "topic": "DynamicTimeOutPlugin 动态超时注入与场景映射",
+      "scope": "GRC/GRG dt controller 获取、scene 选择、timeout 写入 FrameworkContext",
       "priority": "P0",
       "difficulty": "中",
-      "code_evidence": "GRC conf/plugins/graph/vertex.conf:63-80; src/service/grc_service.cpp:184-199",
-      "doc_evidence": "KU graph-engine解读：ExpressionProcessor/SelectProcessor/condition"
+      "code_evidence": "GRC src/service/grc_service.cpp:255；GRG src/service/grg_service.cpp:190",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "代码热点支撑"
     },
     {
       "rank": 3,
-      "topic": "DynamicTimeOutPlugin 动态超时在 GRG 图中的注入与传播",
-      "scope": "GRG 入口 dynamic_timeout、FrameworkContext",
+      "topic": "bthread_async 批量并行模式与捕获安全",
+      "scope": "GRC parallel_predictor/doc_feature/user_intent 与 GRG diversity/user_predict 的 Future 模式",
       "priority": "P0",
-      "difficulty": "中",
-      "code_evidence": "GRG src/service/grg_service.cpp:48-67,177-200",
-      "doc_evidence": "代码热点支持，暂无文档命中"
+      "difficulty": "高",
+      "code_evidence": "GRC src/plugin/parallel_predictor.cpp:26；GRG src/process/diversity_merge.cpp:752",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "内搜 bthread 并行消费命中 bthread/ParkingLot/Ranker并行组件"
     },
     {
       "rank": 4,
-      "topic": "bthread_async 批量并发：Future 捕获安全与结果合并",
-      "scope": "GRC UserIntentPredictFunction 批量请求模式",
+      "topic": "PipelineGraphFunction parallel_consume 批消费框架",
+      "scope": "GRC/GRG pipeline_function 的 Channel 消费、mutable input、publisher 语义",
       "priority": "P0",
-      "difficulty": "高",
-      "code_evidence": "GRC src/processor/video_launch/user_intent_predict.cpp:99-137,143-167",
-      "doc_evidence": "内搜 bthread并行消费 命中 bthread 调度/并行消费资料"
+      "difficulty": "中",
+      "code_evidence": "GRC src/processor/base/pipeline_function.h:51；GRG src/process/base/pipeline_function.h:58",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "内搜 bthread并行消费命中 ChannelGraphProcessor/P2PChannel 摘要"
     },
     {
       "rank": 5,
-      "topic": "PipelineGraphFunction 与 Channel mini-batch 消费",
-      "scope": "GRG Set2setPredictFunction、GRC fill_meta/pipeline 类处理",
+      "topic": "Protobuf SerializeToString 热点与 FlatBuffers 替代方向",
+      "scope": "GRC set2set/response/cache_queue 与 GRG response/extmsg 序列化点",
       "priority": "P0",
       "difficulty": "高",
-      "code_evidence": "GRG src/process/set2set_predict_function.cpp:45-88; GRC src/processor/fill_meta.cpp:126-158",
-      "doc_evidence": "KU graph-engine解读：Channel mini batch"
+      "code_evidence": "GRC src/processor/set2set_predict_function.cpp:589；GRG src/process/response_function.cpp:4219",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "周报：gr->grg flat_buf 可有 3ms；内搜 protobuf性能优化命中"
     },
     {
       "rank": 6,
-      "topic": "IFCS SDK get 调用封装与 server_cache_only 场景切换",
-      "scope": "GRC GcmsComponent::query_common/query_news",
-      "priority": "P0",
+      "topic": "ObjectPool 热路径对象复用模式",
+      "scope": "GraphPool、DupClient pool、IFCS item pool、MultiStreamEngine pool",
+      "priority": "P1",
       "difficulty": "中",
-      "code_evidence": "GRC src/plugin/gcms_component.cpp:40-79,80-101",
-      "doc_evidence": "KU 正排字段添加指南-IFCS版"
+      "code_evidence": "GRC src/plugin/dup_service.cpp:26；GRG src/process/diversity_merge.cpp:1777",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "代码热点支撑"
     },
     {
       "rank": 7,
-      "topic": "ReusableUnorderedMap / 对象复用在 Merge 热路径中的作用",
-      "scope": "GRC MergeProcessor 大量 emit/clear/reuse",
+      "topic": "MultiStreamEngine bind_graph_dependency 桥接外层 GraphData",
+      "scope": "GRC video_launch 和 GRG diversity_merge 的 engine_vertex 绑定方式",
       "priority": "P1",
-      "difficulty": "中",
-      "code_evidence": "GRC src/processor/merge_recall.cpp:24-60,65-99",
-      "doc_evidence": "许云鹏周报：GRC CPU 水位高、调权/过滤热点优化"
+      "difficulty": "高",
+      "code_evidence": "GRC src/processor/video_launch/diversity_merge.cpp:57；GRG src/process/diversity_merge.cpp:89",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "KU graph engine 命中"
     },
     {
       "rank": 8,
-      "topic": "brpc ReusableRPCProtocol 与异步 Closure 回包链路",
-      "scope": "GRC/GRG 服务入口 run 后回包",
+      "topic": "Expression/条件图路由与 SelectProcessor 排查",
+      "scope": "GRC expression.conf 中条件表达式如何影响主链路/二跳链路",
       "priority": "P1",
       "difficulty": "中",
-      "code_evidence": "GRC src/service/grc_service.cpp:151-220; GRG src/service/grg_service.cpp:203-220"
+      "code_evidence": "GRC conf/plugins/graph/expression.conf:543；GRC conf/plugins/graph/common_vertex.conf:487",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "KU condition/graph engine 命中"
     },
     {
       "rank": 9,
-      "topic": "GraphData emit/clear 的热路径成本：MergeProcessor 案例",
-      "scope": "大量 GraphData emit 后 clear、map/vector 初始化",
+      "topic": "TraceLog/VIP/HashLog 采样与业务日志分层",
+      "scope": "is_vip_cuid 注入、print_trace_data、调整因子日志",
       "priority": "P1",
       "difficulty": "中",
-      "code_evidence": "GRC src/processor/merge_recall.cpp:24-60"
+      "code_evidence": "GRC src/service/grc_service.cpp:132；GRG src/service/grg_service.cpp:153",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "代码热点支撑"
     },
     {
       "rank": 10,
-      "topic": "Protobuf Parse/Serialize 优化在 GRC/GRG 回包链路中的排查方法",
-      "scope": "ProtoMessageToJson、ContentItem 拷贝、潜在 ParseFromString",
+      "topic": "ReusableRPCProtocol 与响应 Closure 生命周期",
+      "scope": "service run 后 Closure、response 填充、attachment 写入时序",
       "priority": "P1",
-      "difficulty": "高",
-      "code_evidence": "GRC src/service/grc_service.cpp:69-78; GRG src/service/grg_service.cpp:59-61,102-110",
-      "doc_evidence": "内搜 protobuf性能优化 命中 protobuf/Arena/序列化优化资料"
+      "difficulty": "中",
+      "code_evidence": "GRC src/service/grc_service.cpp:211；GRG src/service/grg_service.cpp:214",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "代码热点支撑"
     },
     {
       "rank": 11,
-      "topic": "ExecEngine MultiStreamEngine 绑定 GraphDependency 的机制",
-      "scope": "GRG diversity merge 与 exec_engine plugin",
+      "topic": "配置驱动组件注册与 ApplicationContext 获取模式",
+      "scope": "Set2setPredictorPlugin、DynamicTimeOutPlugin、GraphEngine 组件获取",
       "priority": "P1",
-      "difficulty": "高",
-      "code_evidence": "GRG src/process/diversity_merge.cpp:73-90,102-105"
+      "difficulty": "低",
+      "code_evidence": "GRC src/processor/set2set_predict_function.cpp:34；GRC src/service/grc_service.cpp:177",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "代码热点支撑"
     },
     {
       "rank": 12,
-      "topic": "TraceLog / SIA / BVAR 指标如何定位热点算子",
-      "scope": "GRC/GRG SIA_START/SIA_END、trace 打印",
+      "topic": "高频字典/实验参数访问反模式扫描",
+      "scope": "adjuster 内 GET_COMMON_DICT / EXPERIMENT_GET_PARAM 在循环中的位置",
       "priority": "P1",
       "difficulty": "中",
-      "code_evidence": "GRC src/service/grc_service.cpp:213-219; GRG src/process/diversity_merge.cpp:107-120"
+      "code_evidence": "GRC src/operator/adjuster/precise/microvideo_fancate_downrank_adjuster.cpp:70；GRC src/operator/adjuster/precise/kanju_lcn_precise_adjuster.cpp:44",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "近一周 adjuster 高频变更"
     },
     {
       "rank": 13,
-      "topic": "ExpInfo / SidInfo 在图入口与算子中的传递模型",
-      "scope": "小流量参数如何从入口进入 adjuster",
-      "priority": "P1",
-      "difficulty": "中",
-      "code_evidence": "GRC src/service/grc_service.cpp:147-149; GRG src/service/grg_service.cpp:165-170; GRC conf/sid_new.conf:1-20"
+      "topic": "SIA/BVAR 热点监控打点与性能归因",
+      "scope": "SIA_START/SIA_END、service latency bvar 与模块耗时定位",
+      "priority": "P2",
+      "difficulty": "低",
+      "code_evidence": "GRC src/processor/video_launch/data_merge.cpp:49；GRC src/service/grc_service.cpp:50",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "周报性能优化支撑"
     },
     {
       "rank": 14,
-      "topic": "Any::cref 与避免额外对象构造：GRC/GRG 实战模式",
-      "scope": "GraphData 引用注入 Request/ExpInfo/Response",
+      "topic": "Proto ParseFromString 与缓存代理解析成本",
+      "scope": "GRG cache_proxy/scatter_context parse 点与异常处理",
       "priority": "P2",
       "difficulty": "中",
-      "code_evidence": "GRC src/service/grc_service.cpp:91-148; GRG src/service/grg_service.cpp:127-176",
-      "doc_evidence": "KU graph-engine解读"
+      "code_evidence": "GRG src/operator/diversity/scatter_context.cpp:2174；GRG src/strategy/cache_proxy/newhot_cache_proxy.cpp:128",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "内搜 protobuf性能优化命中"
     },
     {
       "rank": 15,
-      "topic": "GraphEngine 条件图的 typo 与类型安全风险",
-      "scope": "magic string、GraphData 名称、类型匹配",
+      "topic": "Graph reset 前后数据引用生命周期",
+      "scope": "GraphData ref/cref、pooled_graph reset 后悬挂引用风险",
       "priority": "P2",
-      "difficulty": "中",
-      "code_evidence": "GRC conf/plugins/graph/vertex.conf:1-80; src/service/grc_service.cpp:205-206",
-      "doc_evidence": "KU graph-engine解读 Q&A"
+      "difficulty": "高",
+      "code_evidence": "GRC src/service/grc_service.cpp:220；GRG src/service/grg_service.cpp:91",
+      "okr_support": "无直接 OKR 命中",
+      "meeting_support": "KU graph-engine 解读命中"
     }
   ],
   "business_candidates": [
     {
       "rank": 1,
-      "topic": "GRC 性能优化主线：调权/过滤热点、回包截断与耗时反涨",
-      "scope": "GRC 性能热点、截断提前、PcsGrcExportFunction 影响",
+      "topic": "GRC 正排 GCMS/IFCS fill_meta 链路",
+      "scope": "FillMetaBaseProcessor -> GcmsComponent::query_common -> IFCS parser -> VideoInfo/NewsInfo",
       "priority": "P0",
       "difficulty": "高",
-      "code_entry": "GRC src/processor/merge_recall.cpp:16-60; src/operator/adjuster/precise/microvideo_hudong_v5_precise_adjuster.cpp:43-93",
-      "doc_evidence": "许云鹏周报：CPU 3%-5%，截断 CPU 降但耗时涨，调权过滤热点 CPU 降 2.62%"
+      "code_entry": "GRC src/processor/fill_meta.cpp:244；GRC src/plugin/ifcs_component.cpp:203",
+      "doc_evidence": "KU：正排字段添加指南-IFCS版、IFCS多级缓存介绍、IFCS-热点缓存",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 2,
-      "topic": "IFCS 正排字段新增到 GRC 业务结构体的端到端链路",
-      "scope": "IFCS proto/解析 -> VideoInfo/NewsInfo -> fill_meta -> 调权/过滤",
+      "topic": "GRC 成本/CPU 性能优化热点复盘",
+      "scope": "最近提交 feed-arch-36986 + 调权/过滤热点优化周报 + 序列化/PCS 热点",
       "priority": "P0",
       "difficulty": "高",
-      "code_entry": "GRC src/plugin/gcms_component.cpp:40-79; src/processor/fill_meta.cpp:126-170; src/data/video_info.h",
-      "doc_evidence": "KU 正排字段添加指南-IFCS版；吴昊宇周报 high_interact_groupkey"
+      "code_entry": "GRC src/operator/adjuster/precise/microvideo_fancate_downrank_adjuster.cpp:47；GRC src/processor/set2set_predict_function.cpp:589",
+      "doc_evidence": "周报：许云鹏/郑朋 feeda-mv-grc CPU 3%-5%、月化收益",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 3,
-      "topic": "二跳 nid 替换与 groupkey 互动实验",
-      "scope": "replace_nid_info.cpp 替换 nid/gcms_data/mark/type/rec_type",
+      "topic": "Dup Service 去重与 title dup 信号跨层流转",
+      "scope": "GRC DupClient 初始化、GRG is_title_dup 消费、GR 写缓存/Recall 查重模型",
       "priority": "P0",
-      "difficulty": "中",
-      "code_entry": "GRC src/processor/replace_nid_info.cpp:27-40,51-105",
-      "doc_evidence": "吴昊宇周报：同步替换 mark/type/type_vec/rec_type=1111 的影响"
+      "difficulty": "高",
+      "code_entry": "GRC src/plugin/dup_service.cpp:22；GRG src/operator/diversity/Rkcj_diversity_hard_rule.cpp:43",
+      "doc_evidence": "KU：dup-server标题lcs去重透传grg、二跳gr梳理",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 4,
-      "topic": "看剧/合集 LCN 调权链路",
-      "scope": "看剧资源扶持、合集/剧集 LCN、session LCN",
+      "topic": "GRC fake_id 关闭/替换链路",
+      "scope": "最近提交 feed-arch-37113；fake_id 在 feed_ufs/ctr_rank 请求下游处的覆盖",
       "priority": "P0",
       "difficulty": "中",
-      "code_entry": "GRC src/operator/adjuster/precise/kanju_lcn_precise_adjuster.cpp:43-83,99-120",
-      "doc_evidence": "提交 mvrec-23952 看剧资源扶持、mvrec-23941 lcn迭代"
+      "code_entry": "GRC src/plugin/feed_ufs_plugin.cpp:114；GRC src/processor/ctr_rank.cpp:609",
+      "doc_evidence": "代码提交热点支撑",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 5,
-      "topic": "用户 LCN 历史特征计算与过滤",
-      "scope": "ComputeLcnInfoProcessor、lcn_filter_operator、历史 read/show list",
+      "topic": "GRG 个性化推荐关闭开关 fakeid 兼容",
+      "scope": "最近提交 feed-arch-37111；GRG service 请求基础信息、cuid/uid/vip 注入",
       "priority": "P0",
-      "difficulty": "高",
-      "code_entry": "GRC src/processor/compute_lcn_info.cpp:11-37,41-70",
-      "doc_evidence": "代码热点 compute_lcn_info.cpp/lcn_filter_operator.cc"
+      "difficulty": "中",
+      "code_entry": "GRG src/service/grg_service.cpp:133；GRG src/service/grg_service.cpp:153",
+      "doc_evidence": "代码提交热点支撑",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 6,
-      "topic": "互动 V5 精调：收藏/点赞/评论/分享分位数如何影响 factor",
-      "scope": "MicrovideoHudongV5PreciseAdjuster 列表分位数和单 item 调权",
+      "topic": "召回 quota 与 video_launch 数据合并",
+      "scope": "DataMergeFunction 合并保量/非保量、_total_quota、mv/sv/dt/dj/heji 计数",
       "priority": "P0",
       "difficulty": "中",
-      "code_entry": "GRC src/operator/adjuster/precise/microvideo_hudong_v5_precise_adjuster.cpp:35-93,101-120",
-      "doc_evidence": "近期多次 cj_grc_0526 互动提交"
+      "code_entry": "GRC src/processor/video_launch/data_merge.cpp:51；GRC src/processor/video_launch/data_merge.cpp:79",
+      "doc_evidence": "会议搜索“召回quota”无结果，代码变更明显",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 7,
-      "topic": "Set2Set 集合级预测在 GRG/GRC 的接入与降级条件",
-      "scope": "GRG Set2setPredictFunction、GRC 同名处理器热点",
-      "priority": "P0",
-      "difficulty": "高",
-      "code_entry": "GRG src/process/set2set_predict_function.cpp:45-88,99-121; GRC src/processor/set2set_predict_function.cpp",
-      "doc_evidence": "GRC 热点文件 set2set_predict_function.cpp 3 次变更"
+      "topic": "看剧/合集/短剧 LCN 与扶持策略",
+      "scope": "kanju_lcn、kanju_days_lt、fuchi_boost、heji 分类链路",
+      "priority": "P1",
+      "difficulty": "中",
+      "code_entry": "GRC src/operator/adjuster/precise/kanju_lcn_precise_adjuster.cpp:44；GRC src/processor/video_launch/data_merge.cpp:93",
+      "doc_evidence": "最近提交：合集追打、看剧资源扶持",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 8,
-      "topic": "GRG 关闭个性化推荐：fakeid 代替 cuid 的入口兼容",
-      "scope": "GRG grg_service.cpp、用户标识注入、fakeid 兼容",
+      "topic": "互动调权 hudong_v4/v5 策略迭代",
+      "scope": "MicrovideoHudongV5PreciseAdjuster 与 UMS hudong 特征来源",
       "priority": "P1",
       "difficulty": "中",
-      "code_entry": "GRG src/service/grg_service.cpp:121-160,35-91",
-      "doc_evidence": "提交 feed-arch-37111 grg 兼容关闭个性化推荐关闭开关_fakeid 代替 cuid"
+      "code_entry": "GRC src/operator/adjuster/precise/microvideo_hudong_v5_precise_adjuster.cpp:17；GRC src/plugin/ums_parser.cpp:1825",
+      "doc_evidence": "最近提交：cj_grc_0526 互动",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 9,
-      "topic": "GRC 关闭自身 fake_id 及请求下游 fake_id",
-      "scope": "GRC 入口身份注入与下游请求构造",
+      "topic": "AIGC 低清降权与正排字段解析",
+      "scope": "aigc_resource/aigc_from/aigc_generate_type 从 IFCS/GCMS 到 adjuster",
       "priority": "P1",
       "difficulty": "中",
-      "code_entry": "GRC src/service/grc_service.cpp:98-105,151-211",
-      "doc_evidence": "提交 feed-arch-37113 grc 关闭自身 fake_id 及请求下游的 fake_id"
+      "code_entry": "GRC src/operator/adjuster/precise/microvideo_aigc_clarity_adjuster.cpp:26；GRC src/plugin/ifcs_component.cpp:339",
+      "doc_evidence": "最近提交：aigc低清降权",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 10,
-      "topic": "Dup Service 标题 LCS 透传与 GRG 消费机会",
-      "scope": "dup-server LCS score、HistorySimilar/HistoryScore、GRG 去重/多样性",
+      "topic": "Set2Set 预测与二跳 nid 替换",
+      "scope": "set2set predictors、sample 序列化、replace_nid_info/二跳替换提交",
       "priority": "P1",
       "difficulty": "高",
-      "code_entry": "GRG src/process/diversity_merge.cpp:58-90; GRC src/processor/replace_nid_info.cpp:1-3",
-      "doc_evidence": "KU dup-server标题lcs去重透传grg"
+      "code_entry": "GRC src/processor/set2set_predict_function.cpp:34；GRC src/processor/replace_nid_info.cpp:1",
+      "doc_evidence": "最近提交：二跳nid替换",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 11,
-      "topic": "GRG 多样性软规则与 MultiStreamEngine 配置",
-      "scope": "multi_stream_select_soft_rule.conf + DiversityMergeFunction",
+      "topic": "actual_reqnum 回传与 GR/GRC 结果数闭环",
+      "scope": "GRC service 读取 reqnum、response 透传 actual_reqnum 给 GR",
       "priority": "P1",
-      "difficulty": "高",
-      "code_entry": "GRG conf/plugins/exec_engine/multi_stream_select_soft_rule.conf:1-27; src/process/diversity_merge.cpp:73-90"
+      "difficulty": "低",
+      "code_entry": "GRC src/service/grc_service.cpp:182；GRC src/processor/response.cpp:370",
+      "doc_evidence": "代码热点支撑",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 12,
-      "topic": "GRG ResponseFunction 回包 q 值与资源维度监控",
-      "scope": "回包阶段 q 值统计、资源类型分组",
+      "topic": "DocFeatureWithCache/Yitu 用户意图延续",
+      "scope": "doc_feature_with_cache_yitu bthread 并行、用户意图实验参数",
       "priority": "P1",
       "difficulty": "中",
-      "code_entry": "GRG src/process/response_function.cpp:27-48,95-153"
+      "code_entry": "GRC src/processor/doc_feature_with_cache_yitu.cpp:15；GRC src/processor/doc_feature_with_cache_yitu.cpp:41",
+      "doc_evidence": "近一周 doc_feature_with_cache_yitu.cpp 变更 212 行",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 13,
-      "topic": "AIGC 低清降权链路",
-      "scope": "microvideo_aigc_clarity_adjuster、低清字段/调权参数",
+      "topic": "GRG DiversityMerge 多样性与 reqnum 截断",
+      "scope": "ScatterContext 读取 Reqnum、DiversityMergeFunction 调用 MultiStreamEngine",
       "priority": "P1",
-      "difficulty": "中",
-      "code_entry": "GRC src/operator/adjuster/precise/microvideo_aigc_clarity_adjuster.cpp; conf/plugins/graph/micro_frame/precise_adjust_part_all.conf",
-      "doc_evidence": "提交 aigc低清降权"
+      "difficulty": "高",
+      "code_entry": "GRG src/operator/diversity/scatter_context.cpp:1646；GRG src/process/diversity_merge.cpp:89",
+      "doc_evidence": "代码热点支撑",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 14,
-      "topic": "短剧/短视频队列解析与 duanju adjuster",
-      "scope": "queue_parser.cpp、duanju_adjuster.cpp、召回队列结构",
+      "topic": "GRG DeepesQuotaInfo 与多品类配额",
+      "scope": "DeepesQuotaInfo sv/mv/dt/dj/heji 比例在融合层的作用",
       "priority": "P2",
-      "difficulty": "中",
-      "code_entry": "GRC src/parser/queue_parser.cpp; src/operator/adjuster/sketchy/duanju_adjuster.cpp"
+      "difficulty": "低",
+      "code_entry": "GRG src/data/base.h:1248；GRG src/operator/diversity/scatter_context.cpp:8412",
+      "doc_evidence": "代码热点支撑",
+      "okr_support": "无直接 OKR 命中"
     },
     {
       "rank": 15,
-      "topic": "新作者/90 天过滤与生态策略联动",
-      "scope": "新作者过滤、小流量号切换、正排字段与过滤策略",
+      "topic": "IFCS 热点缓存与本地缓存雪崩风险",
+      "scope": "IFCS 多级缓存、热点缓存文档与 GRC fill_meta 本地查询链路",
       "priority": "P2",
       "difficulty": "中",
-      "code_entry": "GRC src/processor/filter/light_quality_recall_filter_operator.cc; src/processor/replace_nid_info.cpp:27-40",
-      "doc_evidence": "吴昊宇周报：90天新作者过滤小流量号切换测试"
+      "code_entry": "GRC src/plugin/ifcs_component.cpp:40；GRC src/processor/fill_meta.cpp:244",
+      "doc_evidence": "KU：IFCS多级缓存介绍、IFCS-热点缓存、2026稳定性问题记录",
+      "okr_support": "无直接 OKR 命中"
     }
   ],
   "recommended_7_plus_7": {
     "mon": {
-      "base_lib": "GraphPool 与 GraphData 生命周期",
-      "business": "GRC 性能优化主线",
-      "base_lib_doc_id": "muKpLwUg8HWtrc",
+      "base_lib": "GraphEngine GraphPool 对象池复用与 reset 生命周期",
+      "business": "GRC 正排 GCMS/IFCS fill_meta 链路",
+      "base_lib_doc_id": null,
       "business_doc_urls": []
     },
     "tue": {
-      "base_lib": "IFCS SDK get 调用封装",
-      "business": "IFCS 正排字段新增端到端链路",
-      "base_lib_doc_id": "rzlycnK9rMzhXQ",
-      "business_doc_urls": [
-        "https://ku.baidu-int.com/knowledge/HFVrC7hq1Q/SCIE54A-T7/vwbx5ZVfxu/rzlycnK9rMzhXQ"
-      ]
+      "base_lib": "Protobuf SerializeToString 热点与 FlatBuffers 替代方向",
+      "business": "GRC 成本/CPU 性能优化热点复盘",
+      "base_lib_doc_id": null,
+      "business_doc_urls": []
     },
     "wed": {
-      "base_lib": "bthread_async 批量并发",
-      "business": "用户 LCN 历史特征计算与过滤",
+      "base_lib": "bthread_async 批量并行模式与捕获安全",
+      "business": "Dup Service 去重与 title dup 信号跨层流转",
       "base_lib_doc_id": null,
       "business_doc_urls": []
     },
     "thu": {
-      "base_lib": "PipelineGraphFunction 与 Channel mini-batch 消费",
-      "business": "Set2Set 集合级预测接入与降级",
-      "base_lib_doc_id": "muKpLwUg8HWtrc",
+      "base_lib": "MultiStreamEngine bind_graph_dependency 桥接外层 GraphData",
+      "business": "召回 quota 与 video_launch 数据合并",
+      "base_lib_doc_id": null,
       "business_doc_urls": []
     },
     "fri": {
-      "base_lib": "ExecEngine MultiStreamEngine 绑定 GraphDependency",
-      "business": "GRG 多样性软规则与 MultiStreamEngine 配置",
+      "base_lib": "PipelineGraphFunction parallel_consume 批消费框架",
+      "business": "看剧/合集/短剧 LCN 与扶持策略",
       "base_lib_doc_id": null,
       "business_doc_urls": []
     },
     "sat": {
-      "base_lib": "ExpressionProcessor / condition 执行路径",
-      "business": "看剧/合集 LCN 调权链路",
-      "base_lib_doc_id": "muKpLwUg8HWtrc",
+      "base_lib": "DynamicTimeOutPlugin 动态超时注入与场景映射",
+      "business": "GRC fake_id 关闭/替换链路",
+      "base_lib_doc_id": null,
       "business_doc_urls": []
     },
     "sun": {
-      "base_lib": "Protobuf Parse/Serialize 优化排查方法",
-      "business": "二跳 nid 替换与 groupkey 互动实验",
+      "base_lib": "TraceLog/VIP/HashLog 采样与业务日志分层",
+      "business": "GRG 个性化推荐关闭开关 fakeid 兼容",
       "base_lib_doc_id": null,
       "business_doc_urls": []
     }
