@@ -385,3 +385,218 @@ bthread 是 brpc 高性能的核心引擎，通过 M:N work-stealing 调度实�
 2. 绝不在 bthread 中调用阻塞系统调用（用 `bthread_usleep`/`BTHREAD_ATTR_PTHREAD`）
 3. `thread_local` → `bthread_key_t`，`std::mutex` → `bthread::Mutex`
 4. `bthread_start_urgent`（立即抢占）vs `bthread_start_background`（后台异步）
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-31T19:13:23.904104
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：brpc::bthread
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 和 `feeda-mv-grc` 两个业务代码库中已经存在对目标技术库的使用痕迹，各发现 **10 个相关文件**。这说明业务侧并非完全从零引入 `bthread`，已有一定的落地基础，可优先复用现有使用方式作为迁移参考，例如：
+  - `feeda-mv-grg/plugin/ums_parser.cpp`
+  - `feeda-mv-grg/operator/diversity/new_hot_diversity_rule.cpp`
+  - `feeda-mv-grc/operator/adjuster/precise/comment_sign_xgb_adjust.cpp`
+  - `feeda-mv-grc/processor/reddot/reddot_data.h`
+
+- 从业务形态看，两个代码库都属于推荐/召回链路中的高并发服务，存在大量候选集处理、召回聚合、过滤、排序、图执行等场景。`bthread` 的主要价值不在于替换 `std::vector`、`std::string`、`std::unordered_map` 等容器，而在于优化 **并发执行模型**：将部分 `std::thread`、线程池任务、同步 RPC 等阻塞式逻辑迁移为 bthread 友好的同步风格，从而降低线程切换开销，提升高并发下的吞吐与尾延迟稳定性。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标库使用：**10 个文件**
+  - `plugin/ums_parser.cpp`
+  - `operator/diversity/new_hot_diversity_rule.cpp`
+  - `strategy/diversity/rule/interest_diversity_rule.cpp`
+  - `operator/diversity/quality_selection_soft_rule.cpp`
+  - `operator/diversity/kanju_days_lt_adjust_soft_rule.cpp`
+
+- 现有 `std` 基础类型使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 典型代码集中在模型预测、候选集处理和多策略规则执行上，例如：
+  - `model/model.h`
+  - `model/paddle_model.h`
+  - `operator/diversity/*`
+  - `strategy/diversity/rule/*`
+
+- 从代码形态看，`model/model.h`、`model/paddle_model.h` 中大量以 `std::vector<RidTmpInfoPtr>& candidate_vec` 作为候选集输入，说明服务内部存在明显的批量候选处理路径。该类路径如果存在多模型、多特征、多规则并行执行需求，适合进一步评估使用 `bthread` 将独立计算单元并发化。
+
+---
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库使用：**10 个文件**
+  - `operator/adjuster/precise/comment_sign_xgb_adjust.cpp`
+  - `processor/reddot/reddot_data.h`
+  - `operator/diversity/new_hot_diversity_rule.cpp`
+  - `processor/filter/boutique_filter_opratore.cc`
+  - `processor/filter/item_cold_filter_operator.cc`
+
+- 现有 `std` 基础类型使用规模更大：
+  - `std::vector`：8382 次，分布在 1266 个文件
+  - `std::string`：7107 次，分布在 1222 个文件
+  - `std::unordered_map`：2828 次，分布在 636 个文件
+
+- 典型代码显示该服务中存在 DAG/图执行、HTTP 请求处理、召回依赖关系构建等场景，例如：
+  - `service/grc_http_service.cpp:62`
+    - 使用 `std::unordered_map<std::string, std::vector<int>> depend_map`
+    - 遍历 `graph_engine->get_vertexs_message(graph_name)` 构建节点依赖关系
+  - `service/grc_http_service.cpp:81`
+    - 使用静态颜色列表生成图可视化信息
+  - `service/grc_http_service.cpp:152`
+    - 解析 HTTP query 参数，包括 `off`、`on` 等开关参数
+
+- `feeda-mv-grc` 的业务特征更贴近 `bthread` 的典型收益场景：多召回源并发、图节点并发执行、过滤器/调整器流水线并发、下游 RPC 并发请求等。相比 `feeda-mv-grg`，该代码库具备更高的并发调度优化潜力。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以已有 bthread 使用文件作为迁移参考，先统一封装并发执行工具**
+  - 参考文件：
+    - `feeda-mv-grg/operator/diversity/new_hot_diversity_rule.cpp`
+    - `feeda-mv-grg/strategy/diversity/rule/interest_diversity_rule.cpp`
+    - `feeda-mv-grc/operator/diversity/new_hot_diversity_rule.cpp`
+    - `feeda-mv-grc/operator/adjuster/precise/comment_sign_xgb_adjust.cpp`
+  - 建议先梳理这些文件中对 bthread 的使用方式，包括：
+    - 是否直接调用 `bthread_start_urgent`
+    - 是否使用 `bthread::CountdownEvent`
+    - 是否存在手写任务上下文结构体
+    - 是否存在异常路径未 `signal()` 的风险
+  - 建议沉淀一个统一工具，例如：
+    - `BthreadTaskGroup`
+    - `RunParallelTasks`
+    - `ParallelForCandidates`
+  - 避免每个 operator/filter/rule 中重复手写 bthread 创建、参数传递、等待和资源释放逻辑。
+
+- **建议 2：在 `feeda-mv-grc/service/grc_http_service.cpp` 的图依赖处理路径中评估 DAG 节点并发化**
+  - `service/grc_http_service.cpp:62` 附近存在对 `graph_engine->get_vertexs_message(graph_name)` 的遍历，并构建 `depend_map`。
+  - 如果该文件不仅用于图展示，还参与在线执行图构建或调试执行，建议进一步评估：
+    - 同一层无依赖节点是否可以并发执行
+    - 每个 vertex 的处理是否包含 RPC、特征读取、过滤、召回等阻塞操作
+    - 当前是否存在串行遍历导致的耗时累加
+  - 对于同层节点执行，可采用：
+    - `bthread_start_urgent`
+    - `bthread::CountdownEvent`
+    - 分层 DAG 调度
+  - 适合的改造模式是：
+    - 每一层 DAG 节点并发提交 bthread
+    - 当前主 bthread 使用 `CountdownEvent::wait()` 等待
+    - 下游 RPC 或 IO 阻塞时让出 pthread，提升整体并发度
+
+- **建议 3：在 `feeda-mv-grg/model/paddle_model.h` 的批量预测路径中评估候选集分片并行**
+  - 当前接口示例：
+    - `model/model.h`
+      ```cpp
+      virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+      ```
+    - `model/paddle_model.h`
+      ```cpp
+      int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                                    general_predict::PredictSample* predict_sample = nullptr,
+                                    bool is_from_cube = true) const
+      ```
+  - 如果 `candidate_vec` 较大，且预测前后的特征构建、打分、后处理可以按候选 item 分片独立执行，可以考虑使用 bthread 做分片并行。
+  - 适合场景：
+    - 单次请求候选数较多
+    - 每个候选的特征计算相互独立
+    - 当前 CPU 计算耗时明显
+    - 不涉及共享模型对象的非线程安全写操作
+  - 不建议直接对模型推理本身盲目并发化，尤其是 Paddle/TensorRT/自研预测器内部可能已有线程池或 batch 优化。更推荐并行化模型调用前后的轻量逻辑，例如候选过滤、特征拼装、结果 merge。
+
+- **建议 4：在 `feeda-mv-grc/processor/filter/*` 中评估过滤器并发执行或分片执行**
+  - 可优先关注：
+    - `processor/filter/boutique_filter_opratore.cc`
+    - `processor/filter/item_cold_filter_operator.cc`
+  - 这些过滤器通常对候选集合进行遍历判断，若单个请求候选量大，且过滤逻辑依赖的数据只读，可以将候选集切分为多个 shard，通过 bthread 并行处理。
+  - 推荐方式：
+    - 每个 bthread 处理一段 `[begin, end)` 候选区间
+    - 每个任务写入自己的局部结果容器
+    - 主 bthread 汇总结果，避免多个 bthread 竞争写同一个 `std::vector`
+  - 需要注意：
+    - 不要在多个 bthread 中同时修改共享 `std::unordered_map`
+    - 不要并发修改候选对象中的共享字段，除非有明确的同步策略
+    - 对小候选集不建议并发化，避免调度开销大于收益
+
+- **建议 5：在召回聚合路径优先使用 brpc 同步风格 + bthread，而不是业务侧手写 pthread 阻塞等待**
+  - `feeda-mv-grc` 是召回汇聚服务，天然存在多下游召回源并发请求场景。
+  - 如果当前代码中存在：
+    - 多个下游 RPC 串行调用
+    - 使用 `std::thread` 或普通线程池并发调用
+    - 主线程使用 `std::future::get()`、`condition_variable` 等阻塞 pthread
+  - 建议迁移为：
+    - brpc `ParallelChannel`
+    - 或每个召回源一个 bthread
+    - 主 bthread 使用 `CountdownEvent` / butex 等 bthread 友好等待方式
+  - 这样可以保持同步代码风格，同时避免阻塞底层 pthread，提高高并发场景下的资源利用率。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：不能把所有阻塞操作都默认视为 bthread 友好**
+  - brpc RPC、bthread mutex、butex 等是 bthread 友好的，阻塞时会让出 pthread。
+  - 但普通系统调用、第三方 SDK、同步文件 IO、阻塞数据库客户端、`pthread_mutex` 等可能直接阻塞 pthread。
+  - 如果在 bthread 中调用这些阻塞接口，可能导致整个 worker pthread 被占用，削弱 M:N 调度收益。
+  - 迁移前需要重点排查：
+    - DB client
+    - Redis client
+    - 本地文件读写
+    - 第三方模型推理 SDK
+    - 使用 `pthread_mutex` / `std::mutex` 的共享资源
+
+- **风险 2：`thread_local` 在 bthread 场景下语义不等价**
+  - bthread 是 M:N 调度，一个 pthread 会连续执行多个 bthread。
+  - 如果业务代码中使用 `thread_local` 保存 trace、请求上下文、用户状态、临时 buffer，可能出现不同 bthread 之间共享同一个 pthread local 数据的问题。
+  - 建议排查：
+    - trace context
+    - AB 实验上下文
+    - 请求级 cache
+    - 日志 MDC/NDC
+  - 对请求级数据应优先使用：
+    - 显式参数传递
+    - request context
+    - `bthread_key_t` / bthread-local storage
+
+- **风险 3：bthread 栈较小，深递归或大栈对象可能溢出**
+  - bthread 默认小栈通常远小于 pthread 默认栈。
+  - 如果业务代码中存在：
+    - 大型局部数组
+    - 深层递归
+    - 复杂模板对象在栈上构造
+    - 大 `std::vector` / `std::string` 对象的栈上组合结构
+  - 需要改为堆分配，或为特定任务使用更大的 bthread 栈属性。
+  - 重点关注模型、图执行和复杂规则文件，例如：
+    - `model/paddle_model.h`
+    - `service/grc_http_service.cpp`
+    - `operator/diversity/*`
+
+- **风险 4：并发化后需要重新审视容器和对象的线程安全**
+  - 扫描结果显示两个代码库大量使用：
+    - `std::vector`
+    - `std::string`
+    - `std::unordered_map`
+  - 这些容器本身不是线程安全的。
+  - 如果将原本串行逻辑改为多个 bthread 并发执行，需要避免：
+    - 多个 bthread 同时 `push_back` 同一个 `std::vector`
+    - 多个 bthread 同时写同一个 `std::unordered_map`
+    - 多个 bthread 修改同一个候选对象字段
+  - 推荐模式是：
+    - 每个 bthread 使用局部结果
+    - 主 bthread 统一 merge
+    - 共享只读数据可以直接访问
+    - 共享可写数据必须加锁或分片隔离
+
+---
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
