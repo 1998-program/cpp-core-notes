@@ -349,3 +349,208 @@ cc_library(
 - **与推荐栈的契合点**：brpc 无锁调度 + jemalloc 大块分配 + ng-framework DAG 节点间通信，三者结合后能让预取延迟降低一个量级
 
 掌握 MPMCQueue 的底层机制，有助于在 DAG 节点设计时正确选型，避免引入不必要的锁竞争。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-31T19:16:45.514001
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`folly::MPMCQueue`
+
+### 1. 分析摘要
+
+- 当前在 `feeda-mv-grg` 和 `feeda-mv-grc` 两个业务代码库中，**尚未发现 `folly::MPMCQueue` 的直接使用**，说明现有代码尚未引入该无锁 MPMC 队列，也缺少可直接复用的内部迁移样例。后续如果引入，需要从依赖接入、容量评估、线程退出语义、监控埋点等方面建立统一实践。
+
+- 从扫描结果看，两个代码库中存在一定规模的生产者/消费者相关模式线索：`feeda-mv-grg` 中 `producer_consumer` 命中 75 次，分布在 22 个文件；`feeda-mv-grc` 中 `producer_consumer` 命中 243 次，分布在 55 个文件，同时还存在少量 `std::mutex` / `bthread::Mutex` 使用。虽然部分命中可能是业务字段、注释或非队列语义的误报，但整体上 `feeda-mv-grc` 的并发/异步场景更密集，**迁移潜力高于 `feeda-mv-grg`**。建议优先在召回汇聚、异步 RPC 聚合、批量任务分发等 hot path 中小范围试点。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grg`：序列生成服务
+
+- **目标库使用情况**
+  - 未发现 `folly::MPMCQueue` 的直接使用。
+  - 当前没有可作为参考的业务内落地样例。
+
+- **现有等价/相关模式**
+  - `producer_consumer`：75 次，分布在 22 个文件。
+  - 扫描示例主要集中在 `data/ums_feature.h`：
+    - `data/ums_feature.h:34`
+    - `data/ums_feature.h:56`
+    - `data/ums_feature.h:76`
+
+- **初步判断**
+  - 当前展示出的 `data/ums_feature.h` 片段主要是用户画像字段定义、清理和宏注册，例如 `income`、`education`、`consume_level` 等，并非典型生产者/消费者队列场景。
+  - 因此，`feeda-mv-grg` 的扫描结果中可能存在较多语义误报，不能仅凭 `producer_consumer` 命中次数判断存在可直接替换的队列。
+  - 建议后续进一步定位是否存在如下模式：
+    - `std::queue` / `deque` + `std::mutex`
+    - `condition_variable`
+    - 单独工作线程消费任务
+    - RPC 结果异步回调入队
+    - 批量特征、样本或序列生成任务分发队列
+
+#### 2.2 `feeda-mv-grc`：召回汇聚服务
+
+- **目标库使用情况**
+  - 未发现 `folly::MPMCQueue` 的直接使用。
+  - 当前也没有内部参考代码。
+
+- **现有等价/相关模式**
+  - `mutex_lock`：2 次，分布在 1 个文件。
+  - `std::mutex`：4 次，分布在 2 个文件。
+  - `producer_consumer`：243 次，分布在 55 个文件。
+
+- **典型文件与场景**
+  - `plugin/gcms_sndb.cpp:167`
+    ```cpp
+    int64_t begin = base::gettimeofday_us();
+    bthread::Mutex async_lock;
+    async_lock.lock();
+    int ret = _db.query(rids, _cols, small_flow_list, logid, data, new GcmsSndbClosure(&async_lock));
+    async_lock.lock();  // 阻塞等待返回结果
+    return ret;
+    ```
+  - `plugin/gcms_sndb.cpp:169`
+    ```cpp
+    async_lock.lock();
+    int ret = _db.query(rids, _cols, small_flow_list, logid, data, new GcmsSndbClosure(&async_lock));
+    async_lock.lock();  // 阻塞等待返回结果
+    return ret;
+    }
+    ::std::unique_ptr<GcmsSndbData::VideoSonarInfoPool> GcmsSndbData::_s_pool_show_click;
+    ```
+  - `dict/dict_manager.h:205`
+    ```cpp
+    template <typename T, typename std::enable_if<std::is_base_of<Dict, T>::value, int>::type = 0>
+      int32_t bind_dict_accessor(const std::string_view dict_name, DictAccessor<T> &dict_accessor) {
+          ::std::lock_guard<::std::mutex> lock(_mutex);
+          _units.emplace_back();
+          auto& unit = ...
+    ```
+
+- **初步判断**
+  - `plugin/gcms_sndb.cpp` 中存在明显的异步 RPC 后等待回调完成的模式，但当前实现是通过 `bthread::Mutex` 进行阻塞等待，属于“同步等待异步结果”的写法。该场景本身不一定适合直接替换为 `MPMCQueue`，但如果该文件中存在大量请求结果汇聚、批量任务派发、异步回调转工作线程处理，则可以考虑引入队列解耦。
+  - `dict/dict_manager.h` 中的 `std::mutex` 用于字典 accessor 绑定和 `_units` 元数据修改，属于低频管理面临界区，通常不建议为了无锁化而替换为 `MPMCQueue`。
+  - `feeda-mv-grc` 中 `producer_consumer` 命中规模明显更大，召回汇聚服务天然存在多路召回、异步 RPC、结果归并等并发模式，因此更适合作为 `MPMCQueue` 的试点代码库。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `feeda-mv-grc/plugin/gcms_sndb.cpp` 周边排查异步 RPC 回调是否可以改造为“回调入队 + worker 消费”**
+  - 当前 `plugin/gcms_sndb.cpp` 中通过 `bthread::Mutex async_lock` 阻塞等待 `_db.query(...)` 的异步回调返回，本质上仍是同步等待。
+  - 如果该路径在高 QPS 下存在大量并发请求，且回调中包含非轻量逻辑，例如结果解析、过滤、特征补全、召回结果归并，则可以考虑：
+    - RPC 回调线程只做轻量封装，将结果写入 `folly::MPMCQueue<GcmsSndbResultTask>`；
+    - 后端固定数量 worker 从队列中消费并执行较重处理；
+    - 生产端使用 `writeIfNotFull()`，队列满时走原同步逻辑或降级逻辑，避免阻塞 brpc/bthread 回调线程。
+  - 适用收益：
+    - 降低回调线程上的业务处理耗时；
+    - 减少锁竞争和临界区等待；
+    - 对召回汇聚这类多生产者、多消费者场景更友好。
+
+- **建议 2：`feeda-mv-grc/dict/dict_manager.h` 中的 `_mutex` 不建议直接替换为 `MPMCQueue`**
+  - `dict/dict_manager.h:205` 中：
+    ```cpp
+    ::std::lock_guard<::std::mutex> lock(_mutex);
+    _units.emplace_back();
+    ```
+  - 该逻辑看起来是字典 accessor 绑定或初始化管理，属于共享元数据保护，而不是任务队列。
+  - 对这类场景，`MPMCQueue` 不是等价替代品。更合适的优化方向是：
+    - 确认该路径是否只在启动期或 reload 期执行；
+    - 如果是低频路径，保留 `std::mutex` 即可；
+    - 如果是高频读、低频写，可以评估 `std::shared_mutex`、RCU、双 buffer 或原子指针切换。
+  - 不建议为了“无锁”而将简单临界区改造为队列，否则会增加时序复杂度和维护成本。
+
+- **建议 3：在 `feeda-mv-grc` 的 55 个 `producer_consumer` 命中文件中，优先筛选真正的任务队列场景**
+  - 当前 `producer_consumer` 命中 243 次，分布在 55 个文件，说明存在较大排查空间。
+  - 建议按以下特征筛选候选文件：
+    - 存在 `std::queue`、`std::deque`、`std::list` 作为任务容器；
+    - 同时存在 `std::mutex` / `bthread::Mutex` / `condition_variable`；
+    - 有多个生产线程写入任务，一个或多个消费者线程处理任务；
+    - 队列位于请求 hot path、召回结果处理、特征请求、异步 RPC 回调、日志异步落盘等路径。
+  - 对满足上述条件的场景，可以将：
+    ```cpp
+    std::queue<Task> queue;
+    std::mutex mutex;
+    std::condition_variable cv;
+    ```
+    改造为：
+    ```cpp
+    folly::MPMCQueue<Task> queue(capacity);
+    ```
+  - 生产端建议优先使用：
+    ```cpp
+    queue.writeIfNotFull(std::move(task));
+    ```
+    消费端建议使用：
+    ```cpp
+    queue.readIfNotEmpty(task);
+    ```
+    或超时读取，避免线程退出时长期阻塞。
+
+- **建议 4：`feeda-mv-grg/data/ums_feature.h` 当前示例不适合迁移，应继续寻找真正的异步任务分发点**
+  - 扫描示例中的 `data/ums_feature.h` 更像是用户属性结构体字段定义和清理逻辑，例如：
+    ```cpp
+    std::string income;
+    std::string education;
+    std::string consume_level;
+    ```
+  - 这类代码与 `MPMCQueue` 没有直接关系，不应作为迁移目标。
+  - 对 `feeda-mv-grg`，更建议检查以下方向：
+    - 序列生成过程是否有批量样本生产、异步特征拉取、异步日志写入；
+    - 是否存在“主线程生成任务，多个 worker 消费”的流水线；
+    - 是否存在 `std::queue + mutex` 的热点等待。
+  - 如果后续在序列生成服务中发现类似异步特征预取或批量任务分发逻辑，可参考技术笔记中的 `PrefetchTask` 模式，使用固定容量队列做削峰。
+
+- **建议 5：建议先在 `feeda-mv-grc` 做小规模灰度试点，而不是全局替换**
+  - `MPMCQueue` 的收益集中在高并发、短任务、固定容量、生产消费频繁的 hot path。
+  - 对低频配置管理、启动初始化、字典绑定等路径，保留锁往往更简单可靠。
+  - 推荐试点路径：
+    - 选择一个明确的召回或异步 RPC 结果处理队列；
+    - 以 `folly::MPMCQueue<Task>` 替换原 `queue + mutex` 实现；
+    - 增加队列满计数、消费延迟、排队长度估算、降级次数等指标；
+    - 对比替换前后的 P99 延迟、CPU 使用率、上下文切换数和吞吐。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **固定容量带来的丢弃、阻塞或降级风险**
+  - `folly::MPMCQueue` 是定容队列，构造后容量不可动态扩展。
+  - 容量过小会导致 `writeIfNotFull()` 失败，容量过大又会增加内存占用。
+  - 业务迁移时必须明确队列满时策略：
+    - 直接降级同步执行；
+    - 丢弃非关键任务；
+    - 返回错误；
+    - 或记录监控后限流。
+  - 不建议在请求主路径中使用无超时的阻塞 `write()`，否则队列满时可能放大尾延迟。
+
+- **自旋等待可能与 bthread 调度模型冲突**
+  - `MPMCQueue` 的高性能来自无锁和自旋等待，适合 OS thread 上的短等待场景。
+  - 如果在大量 bthread 中使用阻塞读写接口，可能造成 CPU 空转或影响 bthread 调度公平性。
+  - 在 `feeda-mv-grc/plugin/gcms_sndb.cpp` 这类 brpc/bthread 场景中，建议优先使用：
+    - `writeIfNotFull()`
+    - `readIfNotEmpty()`
+    - `tryWriteUntil()`
+    - 超时 read
+  - 避免在 bthread 中长时间 spin 等待。
+
+- **`size()` / `empty()` / `full()` 只能作为近似监控，不应用于严格控制**
+  - `MPMCQueue::size()` 在高并发下是估算值，不能用于：
+    - 精确判断是否可以入队；
+    - 精确判断是否已经消费完成；
+    - 作为线程退出的唯一条件。
+  - 正确做法是以 `writeIfNotFull()` / `readIfNotEmpty()` 的返回值作为控制依据，并结合独立的停止标记，例如 `std::atomic<bool> running`。
+
+- **任务对象类型需要满足移动、析构和生命周期要求**
+  - 队列中保存的 `Task` 如果包含指针、引用、回调、上下文对象，需要确保生命周期跨线程安全。
+  - 尤其是类似 `PrefetchTask` 中捕获 `ctx` 的 callback，在迁移到异步队列后要确认：
+    - `ctx` 是否可能提前释放；
+    - 回调是否可能跨请求生命周期执行；
+    - 是否需要使用 `shared_ptr`、请求级 arena 或显式 cancel 机制。
+  - 否则无锁队列本身是安全的，但业务对象生命周期仍可能产生 use-after-free。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
