@@ -261,3 +261,241 @@ abseil-cpp/
 ---
 
 *自动生成 · 2026-05-17 · OpenClaw Daily Task*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-31T19:07:11.695127
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`absl::Cord`
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库中已经存在目标库相关使用痕迹，均发现约 10 个文件涉及目标库使用，说明代码库已经具备一定的 Abseil 引入基础，后续引入 `absl::Cord` 的工程阻力相对较低。可优先复用已有 Abseil 使用位置作为编码风格、依赖配置和编译链路参考。
+
+- 两个代码库中 `std::string` 使用规模较大：`feeda-mv-grg` 中有 2443 次、覆盖 425 个文件；`feeda-mv-grc` 中有 7107 次、覆盖 1222 个文件。结合业务类型来看，`grg` 偏序列生成，`grc` 偏召回汇聚与 HTTP 服务，均可能存在大响应拼接、跨模块字符串传递、序列化/反序列化、日志或调试输出等场景。`absl::Cord` 不适合替换所有 `std::string`，但在“大字符串、多段拼接、频繁拷贝、可零拷贝持有外部内存”的路径上具备明确迁移收益。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标库使用：约 10 个文件，当前扫描样例包括：
+  - `operator/diversity/explore_long_term_soft_rule.cpp`
+  - `process/llm2cf_weight_function.cpp`
+  - `operator/diversity/shortplay_hard_rule.cpp`
+  - `service/grg_http_service.cpp`
+  - `operator/diversity/vec_diversity_rule.cpp`
+
+- 现有 STL 使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 典型代码集中在模型预测、候选集处理、策略规则和 HTTP 服务层：
+  - `model/model.h`
+  - `model/paddle_model.h`
+  - `service/grg_http_service.cpp`
+  - `process/llm2cf_weight_function.cpp`
+  - `operator/diversity/*.cpp`
+
+- 适配判断：
+  - `model/model.h`、`model/paddle_model.h` 中主要是 `std::vector<RidTmpInfoPtr>` 等候选集处理，不是 `Cord` 的直接收益点。
+  - `service/grg_http_service.cpp` 更可能涉及 HTTP 请求解析、响应体拼接、序列化输出，是 `absl::Cord` 的优先排查对象。
+  - `process/llm2cf_weight_function.cpp` 如果存在大文本特征、LLM 结果拼接、JSON 构造或多段字符串合并，也适合作为试点。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库使用：约 10 个文件，当前扫描样例包括：
+  - `plugin/parallel_predictor.h`
+  - `operator/adjuster/sketchy/explore_by_tag_sketchy.cpp`
+  - `processor/get_hot_prefer_level.cpp`
+  - `operator/adjuster/precise/dibar/interest_card_adjuster.cpp`
+  - `operator/adjuster/precise/dibar/attract_score_adjust.cpp`
+
+- 现有 STL 使用规模：
+  - `std::vector`：8382 次，分布在 1266 个文件
+  - `std::string`：7107 次，分布在 1222 个文件
+  - `std::unordered_map`：2828 次，分布在 636 个文件
+
+- 典型代码样例：
+  - `service/grc_http_service.cpp:62`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    ```
+  - `service/grc_http_service.cpp:81`
+    ```cpp
+    static std::vector<std::string> colors{...};
+    ```
+  - `service/grc_http_service.cpp:152`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+    
+- 适配判断：
+  - `service/grc_http_service.cpp` 是最明显的候选文件，尤其是 `resp_str` 这类 HTTP 响应构造变量。如果响应由多段内容拼接生成，`absl::Cord` 可以减少中间 `std::string` 扩容和拷贝。
+  - `plugin/parallel_predictor.h` 如果涉及多线程预测结果聚合、序列化数据传递，`Cord` 的 O(1) 拷贝和引用共享可能减少跨模块传参成本。
+  - `operator/adjuster/precise/dibar/*.cpp` 与 `operator/adjuster/sketchy/*.cpp` 主要看是否存在大 JSON、大调试信息、特征字符串拼接；如果只是短字符串 key 或标签，不建议替换。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先评估 HTTP 响应构造路径，将大响应拼接从 `std::string` 迁移为 `absl::Cord`**
+  - 重点文件：
+    - `service/grg_http_service.cpp`
+    - `service/grc_http_service.cpp`
+  - 适用场景：
+    - 响应体由多段字符串、多个 item、多个 JSON fragment 拼接而成。
+    - 当前代码中存在类似 `std::string resp_str;`，随后多次 `append`、`+=`、`absl::StrAppend` 或循环拼接。
+  - 推荐方式：
+    ```cpp
+    absl::Cord resp;
+    resp.Append(header);
+    for (const auto& item : items) {
+        resp.Append(BuildItemFragment(item));
+    }
+    resp.Append(footer);
+    ```
+  - 如果底层 HTTP 框架最终只能接收 `std::string`，可以在边界处统一 `Flatten()`，避免中间多次扩容：
+    ```cpp
+    std::string output(resp.Flatten());
+    ```
+  - 注意：`Flatten()` 是 O(n)，因此应只在最终输出边界调用一次。
+
+- **建议 2：在 `feeda-mv-grc/service/grc_http_service.cpp` 中针对 `resp_str` 做定点改造试点**
+  - 扫描样例中已发现：
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+  - 如果 `resp_str` 用于拼接召回链路、依赖图、调试 HTML、JSON 或批量结果，建议将其替换为：
+    ```cpp
+    absl::Cord resp_cord;
+    ```
+  - 对于静态短字符串，如：
+    ```cpp
+    static std::vector<std::string> colors{...};
+    ```
+    不建议迁移为 `Cord`。这些字符串体积小、生命周期长、随机访问简单，`std::string` 更合适。
+  - 迁移收益预期：
+    - 减少大响应构造过程中的内存重分配。
+    - 减少函数间传递大响应时的拷贝成本。
+    - 方便未来接入零拷贝 chunk 输出。
+
+- **建议 3：在 `feeda-mv-grg/process/llm2cf_weight_function.cpp` 排查 LLM/特征文本拼接**
+  - 该文件名显示存在 LLM 到 CF 权重处理逻辑，常见场景包括 prompt、特征文本、模型输入输出、中间解释信息拼接。
+  - 如果代码中存在如下模式：
+    ```cpp
+    std::string text;
+    for (...) {
+        text += part;
+    }
+    ```
+    或：
+    ```cpp
+    std::string feature = prefix + content + suffix;
+    ```
+    可考虑改为：
+    ```cpp
+    absl::Cord feature;
+    feature.Append(prefix);
+    feature.Append(content);
+    feature.Append(suffix);
+    ```
+  - 如果最终还要传给只接受 `std::string` 或 `absl::string_view` 的模型接口，则建议：
+    - 中间拼接阶段使用 `Cord`。
+    - 接口边界处判断 `TryFlat()`，能零拷贝则零拷贝，否则再 `Flatten()`。
+    ```cpp
+    if (auto flat = feature.TryFlat(); flat.has_value()) {
+        CallModel(*flat);
+    } else {
+        CallModel(feature.Flatten());
+    }
+    ```
+
+- **建议 4：跨模块传递“大字符串结果”时优先使用 `const absl::Cord&` 或按值返回 `absl::Cord`**
+  - 重点文件：
+    - `plugin/parallel_predictor.h`
+    - `processor/get_hot_prefer_level.cpp`
+    - `operator/adjuster/precise/dibar/interest_card_adjuster.cpp`
+    - `operator/adjuster/precise/dibar/attract_score_adjust.cpp`
+  - 适用场景：
+    - predictor、processor、adjuster 之间传递较大的序列化结果、解释信息、调试信息或召回明细。
+    - 多个模块共享同一份大字符串，但只有少数路径会修改。
+  - 推荐方式：
+    ```cpp
+    absl::Cord BuildDebugInfo(...);
+
+    void ConsumeDebugInfo(const absl::Cord& debug_info);
+    ```
+  - 原因：
+    - `absl::Cord` 拷贝构造是 O(1)，只增加引用计数。
+    - 对于多消费者读取场景，可以显著降低大字符串复制成本。
+
+- **建议 5：已有目标库使用文件可作为引入参考，但不要全量替换 `std::string`**
+  - 可参考已有目标库使用文件：
+    - `operator/diversity/explore_long_term_soft_rule.cpp`
+    - `operator/diversity/shortplay_hard_rule.cpp`
+    - `operator/diversity/vec_diversity_rule.cpp`
+    - `operator/adjuster/sketchy/explore_by_tag_sketchy.cpp`
+    - `operator/adjuster/precise/dibar/interest_card_adjuster.cpp`
+  - 这些文件可用于确认：
+    - Abseil 头文件引入方式。
+    - BUILD/CMake 依赖配置。
+    - 代码风格和命名习惯。
+  - 但 `Cord` 的迁移应限制在以下场景：
+    - 大字符串。
+    - 多段 append/prepend。
+    - 需要 O(1) 拷贝共享。
+    - 可复用外部 buffer 或 mmap 数据。
+  - 不建议替换：
+    - map key，例如 `std::unordered_map<std::string, ...>` 中的短 key。
+    - 静态短字符串，例如颜色表、标签名、配置名。
+    - 需要频繁随机访问单个字符的字符串。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：`Cord` 不适合小字符串和频繁随机访问场景**
+  - `absl::Cord` 对 ≤15 字节有 inline 优化，但整体语义仍然是 rope/chunk 序列。
+  - 如果业务只是短字符串 key、标签、颜色值、配置字段，例如：
+    ```cpp
+    static std::vector<std::string> colors{...};
+    ```
+    保持 `std::string` 更合适。
+  - 如果代码频繁使用 `operator[]` 逐字节访问，`Cord` 的随机访问是 O(log n)，可能比 `std::string` 慢。
+
+- **风险 2：不要在热路径中滥用 `Flatten()`**
+  - `Flatten()` 会将所有 chunk 合并成连续内存，复杂度 O(n)，会发生分配和拷贝。
+  - 如果迁移后每个函数入口或每次处理都调用 `Flatten()`，可能抵消 `Cord` 的收益。
+  - 建议只在框架边界调用，例如 HTTP 框架必须接收 `std::string` 时，最终输出前统一转换。
+
+- **风险 3：`MakeCordFromExternal` 必须严格管理外部内存生命周期**
+  - 如果后续希望将 mmap、RPC buffer、压缩包解码 buffer 等外部内存零拷贝接入 `Cord`，必须保证 Releaser 真实接管生命周期。
+  - 禁止使用空 Releaser 包装临时 buffer：
+    ```cpp
+    absl::MakeCordFromExternal(view, [](absl::string_view) {});
+    ```
+  - 否则当 `Subcord` 或异步任务延长数据引用时，容易出现悬垂指针和线上随机崩溃。
+
+- **风险 4：接口生态需要逐步适配，避免一次性大范围替换**
+  - 当前代码中 `std::string` 使用面非常广：
+    - `feeda-mv-grg`：2443 次
+    - `feeda-mv-grc`：7107 次
+  - 但很多第三方库、HTTP 框架、模型接口、日志库可能仍只接受 `std::string` 或 `char*`。
+  - 推荐迁移策略：
+    - 先选 `service/grc_http_service.cpp`、`service/grg_http_service.cpp` 这类响应构造路径试点。
+    - 用压测对比 CPU、内存分配次数、P99 延迟。
+    - 收益明确后，再扩展到 `process/llm2cf_weight_function.cpp`、`plugin/parallel_predictor.h` 等大字符串传递路径。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
