@@ -709,3 +709,272 @@ public:
 - [Issue #846: use-after-free with unsafe iterators](https://github.com/oneapi-src/oneTBB/issues/846)
 - [Intel TBB Design Patterns](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-tbb-tutorial.html)
 - [Herb Sutter: Lock-Free Programming](https://www.youtube.com/watch?v=c1gO9aB9nbs)
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-31T19:17:59.020726
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`tbb::concurrent_queue`
+
+### 1. 分析摘要
+
+- 从本次扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库中**尚未发现 `tbb::concurrent_queue` 或 oneTBB 并发队列的直接使用**，说明当前代码库还没有形成基于 TBB 并发容器的实践沉淀。若后续引入，需要从依赖管理、编译配置、运行时行为验证等方面进行完整适配。
+
+- 现有代码中存在一定规模的并发/生产消费相关线索：`feeda-mv-grg` 扫描到 `producer_consumer` 相关命中 75 次，分布在 22 个文件；`feeda-mv-grc` 扫描到 `producer_consumer` 相关命中 243 次，分布在 55 个文件，同时还有 `std::mutex`、`bthread::Mutex` 等同步原语使用。整体来看，**`feeda-mv-grc` 的并发改造潜力更高**，尤其是召回汇聚服务中可能存在多路召回、异步查询、结果聚合等 MPMC 或生产消费模型，适合作为 `tbb::concurrent_queue` 的优先评估对象。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 feeda-mv-grg：序列生成服务
+
+- 当前状态：
+  - 未发现 `tbb::concurrent_queue` 直接使用。
+  - 未发现可复用的 oneTBB 并发容器封装或迁移样例。
+  - 扫描到 `producer_consumer` 相关命中 75 次，分布在 22 个文件。
+
+- 扫描样例：
+  - `data/ums_feature.h:34`
+    ```cpp
+    std::string income;
+    std::string education;
+    std::string consume_level;
+    std::string stage;
+    std::string assets;
+    std::string profession;
+    ```
+  - `data/ums_feature.h:56`
+    ```cpp
+    income.clear();
+    education.clear();
+    consume_level.clear();
+    profession.clear();
+    stage.clear();
+    assets.clear();
+    ```
+  - `data/ums_feature.h:76`
+    ```cpp
+    MEMBER(ProfileAttribute, income)
+    MEMBER(ProfileAttribute, education)
+    MEMBER(ProfileAttribute, stage)
+    MEMBER(ProfileAttribute, assets)
+    MEMBER(ProfileAttribute, profession)
+    ```
+
+- 初步判断：
+  - 当前展示的 `data/ums_feature.h` 命中更像是业务字段或宏展开命中，**未能直接证明存在典型的生产者-消费者队列场景**。
+  - 对 `feeda-mv-grg` 而言，`tbb::concurrent_queue` 的适配优先级应低于 `feeda-mv-grc`。
+  - 建议后续继续扫描以下类型代码：
+    - 显式队列：`std::queue`、`std::deque`、`std::list`。
+    - 队列保护锁：`std::mutex + std::condition_variable`。
+    - 异步任务缓冲：`push task` / `pop task` / `consumer thread`。
+    - 批量特征生成、样本生成、异步落盘等链路。
+
+#### 2.2 feeda-mv-grc：召回汇聚服务
+
+- 当前状态：
+  - 未发现 `tbb::concurrent_queue` 直接使用。
+  - 扫描到并发同步相关代码：
+    - `mutex_lock`：2 次，分布在 1 个文件。
+    - `std::mutex`：4 次，分布在 2 个文件。
+    - `producer_consumer`：243 次，分布在 55 个文件。
+
+- 典型代码：
+  - `plugin/gcms_sndb.cpp:167`
+    ```cpp
+    int64_t begin = base::gettimeofday_us();
+    bthread::Mutex async_lock;
+    async_lock.lock();
+    int ret = _db.query(rids, _cols, small_flow_list, logid, data, new GcmsSndbClosure(&async_lock));
+    async_lock.lock();  // 阻塞等待返回结果
+    return ret;
+    ```
+  - `plugin/gcms_sndb.cpp:169`
+    ```cpp
+    async_lock.lock();
+    int ret = _db.query(rids, _cols, small_flow_list, logid, data, new GcmsSndbClosure(&async_lock));
+    async_lock.lock();  // 阻塞等待返回结果
+    return ret;
+    }
+    ::std::unique_ptr<GcmsSndbData::VideoSonarInfoPool> GcmsSndbData::_s_pool_show_click;
+    ```
+  - `dict/dict_manager.h:205`
+    ```cpp
+    template <typename T, typename std::enable_if<std::is_base_of<Dict, T>::value, int>::type = 0>
+    int32_t bind_dict_accessor(const std::string_view dict_name, DictAccessor<T> &dict_accessor) {
+        ::std::lock_guard<::std::mutex> lock(_mutex);
+        _units.emplace_back();
+        auto& unit = ...
+    ```
+
+- 初步判断：
+  - `feeda-mv-grc` 存在更多异步访问、锁等待和潜在生产消费场景，是更适合尝试 `tbb::concurrent_queue` 的代码库。
+  - `plugin/gcms_sndb.cpp` 中的 `bthread::Mutex` 用法是典型的异步查询等待模式，目前不是队列模型，但如果该模块存在批量请求、回调结果汇聚、异步结果缓冲，则可以进一步评估是否改造成队列驱动。
+  - `dict/dict_manager.h` 中的 `std::mutex` 用于字典访问器绑定，属于低频控制面操作，不建议直接替换为并发队列。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `feeda-mv-grc` 中寻找真实的“多生产者-多消费者”队列场景，而不是直接替换所有锁**
+  - 适用范围：
+    - `feeda-mv-grc` 中 `producer_consumer` 命中较多的 55 个文件。
+    - 重点关注召回结果聚合、异步 RPC 回调、批量请求拆分、结果归并等模块。
+  - 建议动作：
+    - 继续精确扫描：
+      ```cpp
+      std::queue
+      std::deque
+      std::condition_variable
+      std::mutex
+      push(...)
+      pop(...)
+      wait(...)
+      notify_one(...)
+      notify_all(...)
+      ```
+    - 若发现如下模式：
+      ```cpp
+      std::mutex mutex;
+      std::condition_variable cv;
+      std::queue<Task> queue;
+      ```
+      且队列存在多线程 `push` / `pop`，可以作为 `tbb::concurrent_queue<Task>` 的候选迁移点。
+  - 预期收益：
+    - 降低队列头尾锁竞争。
+    - 提升多召回源并发写入、聚合线程消费时的吞吐。
+    - 减少锁粒度不当导致的尾延迟抖动。
+
+- **建议 2：`plugin/gcms_sndb.cpp` 可作为异步回调链路的重点排查对象，但不建议机械替换 `bthread::Mutex`**
+  - 当前代码片段：
+    ```cpp
+    bthread::Mutex async_lock;
+    async_lock.lock();
+    int ret = _db.query(..., new GcmsSndbClosure(&async_lock));
+    async_lock.lock();  // 阻塞等待返回结果
+    return ret;
+    ```
+  - 分析：
+    - 这里的核心问题是“异步查询后同步等待”，本质上更像一次性同步信号，而不是队列。
+    - 如果每个请求只等待单个回调完成，`tbb::concurrent_queue` 并不是最直接的替代方案。
+  - 建议：
+    - 若 `GcmsSndbClosure` 只是唤醒当前线程，优先考虑改成更清晰的同步原语，例如 `bthread::ConditionVariable`、`bthread::CountdownEvent`、`std::promise/std::future` 或项目内已有异步等待封装。
+    - 若该回调会产生多个结果，并由后续聚合线程批量消费，则可以引入：
+      ```cpp
+      tbb::concurrent_queue<ResultItem> result_queue;
+      ```
+      在 callback 中 `push`，在聚合逻辑中 `try_pop` 批量消费。
+
+- **建议 3：`dict/dict_manager.h` 中的 `_mutex` 不建议替换为 `tbb::concurrent_queue`，但可以评估读多写少优化**
+  - 当前代码：
+    ```cpp
+    ::std::lock_guard<::std::mutex> lock(_mutex);
+    _units.emplace_back();
+    ```
+  - 分析：
+    - `bind_dict_accessor` 看起来是字典访问器注册或绑定逻辑，属于配置加载、初始化、控制面操作。
+    - 该场景不符合 `tbb::concurrent_queue` 的 FIFO 任务传递模型。
+  - 建议：
+    - 保留 `std::mutex`。
+    - 如果该路径在运行时高频调用，可考虑：
+      - 读多写少场景：`std::shared_mutex`。
+      - 初始化期集中注册：减少运行时锁竞争。
+      - 预分配 `_units` 容量，减少锁内存分配开销。
+  - 结论：
+    - 该文件不适合作为 `tbb::concurrent_queue` 的迁移试点。
+
+- **建议 4：`feeda-mv-grg` 中 `data/ums_feature.h` 当前命中不具备队列迁移价值，应先过滤误报**
+  - 当前样例主要是：
+    ```cpp
+    std::string income;
+    std::string education;
+    std::string consume_level;
+    ```
+  - 分析：
+    - 这些字段更像用户画像、特征字段或宏注册项，并非并发容器。
+    - 不建议基于当前扫描结果直接引入 `tbb::concurrent_queue`。
+  - 建议：
+    - 对 `feeda-mv-grg` 做第二轮更精确扫描，重点查找：
+      - 样本生成 pipeline。
+      - 特征计算任务队列。
+      - 异步日志、异步落盘。
+      - 多线程批处理中的任务分发容器。
+    - 只有在发现 `std::queue + mutex` 或自研阻塞队列后，再评估替换收益。
+
+- **建议 5：如果后续新建召回结果聚合队列，优先封装一层业务队列适配器，而不是在业务代码中裸用 TBB**
+  - 推荐封装：
+    ```cpp
+    template <typename T>
+    class ConcurrentResultQueue {
+    public:
+        void push(T value) {
+            _queue.push(std::move(value));
+        }
+
+        bool try_pop(T& value) {
+            return _queue.try_pop(value);
+        }
+
+    private:
+        tbb::concurrent_queue<T> _queue;
+    };
+    ```
+  - 好处：
+    - 屏蔽 TBB 依赖，便于灰度和回滚。
+    - 可以统一增加监控指标，例如入队数、出队数、队列近似长度、丢弃数。
+    - 后续可替换为 `folly::MPMCQueue`、`boost::lockfree::queue` 或项目自研队列，而不影响业务逻辑。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：`tbb::concurrent_queue` 是无界队列，可能带来内存不可控增长**
+  - `tbb::concurrent_queue` 默认是无界 MPMC 队列。
+  - 如果生产速度持续高于消费速度，队列会不断分配 page，造成内存上涨。
+  - 对召回、特征、日志等高 QPS 链路，必须配套：
+    - 队列长度监控。
+    - 入队限流。
+    - 超时丢弃策略。
+    - 请求级资源预算。
+
+- **风险 2：`try_pop` 是非阻塞语义，不能直接等价替换阻塞队列**
+  - 如果现有代码是：
+    ```cpp
+    queue.pop();  // 阻塞等待
+    ```
+    或：
+    ```cpp
+    cv.wait(lock, ...)
+    ```
+    那么不能简单替换成：
+    ```cpp
+    while (!q.try_pop(x)) {}
+    ```
+  - 这种写法会造成 CPU 空转。
+  - 正确做法是结合：
+    - `tbb::concurrent_queue + semaphore`
+    - `tbb::concurrent_queue + condition_variable`
+    - 或者直接使用更适合阻塞场景的队列封装。
+
+- **风险 3：引入 oneTBB 会增加构建与运行时依赖**
+  - 当前两个代码库未发现 TBB 直接使用，说明构建系统中可能尚未接入 oneTBB。
+  - 需要确认：
+    - 编译器版本。
+    - oneTBB 版本。
+    - 链接方式：静态/动态。
+    - 线上镜像是否包含运行时库。
+    - 与 bthread/brpc 线程模型是否存在调度层面的不匹配。
+  - 建议先在单模块、小流量链路做灰度验证。
+
+- **风险 4：并发队列只能解决“队列锁竞争”，不能替代所有锁**
+  - 例如 `dict/dict_manager.h` 中的 `_mutex` 是保护 `_units` 容器修改，不是任务队列。
+  - 这类场景应继续使用互斥锁或读写锁。
+  - 迁移时需要区分：
+    - 任务传递：适合 `tbb::concurrent_queue`。
+    - 共享状态保护：适合 `std::mutex` / `std::shared_mutex`。
+    - 异步完成通知：适合 condition variable、future、semaphore 或 bthread 同步原语。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
