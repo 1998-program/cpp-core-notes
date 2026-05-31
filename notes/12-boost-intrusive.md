@@ -276,3 +276,225 @@ boost::intrusive     0             ~280
 ---
 
 *生成时间：2026-05-16 · 系列：C++ 核心组件深度研究 · 项目：boostorg/intrusive*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-05-31T19:06:00.012780
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 本次扫描的两个业务代码库 `feeda-mv-grg` 与 `feeda-mv-grc` 中，**尚未发现 Boost.Intrusive 的直接使用**，说明当前代码库没有侵入式容器的既有实践，也没有可直接复用的本地封装或迁移范例。
+- 从等价容器使用规模看，两个代码库中 `std::list` 使用量中等：`feeda-mv-grg` 中 66 次、`feeda-mv-grc` 中 76 次；`std::vector` 使用量非常大，但 `Boost.Intrusive` 并不是 `std::vector` 的直接替代品，因此迁移重点应放在 **频繁链表插入/删除、对象生命周期由外部管理、需要 O(1) 从对象删除节点** 的场景，而不是广泛替换 STL 容器。
+- 结合当前扫描样例来看，现有 `std::list` 多数用于保存 `std::string`、`int` 等值类型，直接迁移为 `boost::intrusive::list` 的收益有限。更适合的方向是：在缓存、队列、定时器、连接池、候选集去重/淘汰等对象型数据结构中引入侵入式 hook，以减少链表节点分配和查找删除成本。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg
+
+- 当前未发现 `boost::intrusive` 相关使用。
+- STL 等价物使用情况：
+  - `std::list`：66 次，分布在 11 个文件
+  - `std::vector`：1969 次，分布在 356 个文件
+- 典型扫描位置集中在 `operator/diversity/scatter_context.h`：
+  - `operator/diversity/scatter_context.h:462`
+    ```cpp
+    std::unordered_map<std::string, int> _item_resource_type_map;
+    std::list<std::string> _accepted_item_resource_type;
+    std::unordered_map<std::string, int> _small_item_resource_type_map;
+    std::list<std::string> _small_accepted_item_resource_type;
+    ```
+  - `operator/diversity/scatter_context.h:474`
+    ```cpp
+    ReusableUnorderedSet<int> _cluster_cate_set;
+    std::list<int> _accepted_cluster_cates;
+    ReusableUnorderedSet<std::string> _new_cate_set;
+    ReusableUnorderedSet<std::string> _kuashua_new_cate_set;
+    std::list<std::string> _accepted_kuashua_new_cates;
+    ```
+- 初步判断：
+  - 这些 `std::list<std::string>` / `std::list<int>` 更像是“已接受资源类型 / 类目”的有序记录容器。
+  - 如果只是顺序追加、遍历、清空，`Boost.Intrusive` 迁移收益不高。
+  - 如果这些 list 存在高频 `erase`、去重、LRU 淘汰、根据 map/set 中对象反向删除等逻辑，则可进一步评估用侵入式节点对象统一承载 map key、计数和链表 hook。
+
+#### feeda-mv-grc
+
+- 当前未发现 `boost::intrusive` 相关使用。
+- STL 等价物使用情况：
+  - `std::list`：76 次，分布在 13 个文件
+  - `std::vector`：8382 次，分布在 1266 个文件
+- 典型扫描位置集中在 `service/grc_service.h` 与 `service/grc_service.cpp`：
+  - `service/grc_service.h:49`
+    ```cpp
+    private:
+      static const std::list<std::string> _labels;
+      bvar::MultiDimension<bvar::LatencyRecorder> _latency_recorder;
+    ```
+  - `service/grc_service.cpp:48`
+    ```cpp
+    const std::list<std::string> GenericGRCService::_labels = {"ua", "flow_loc"};
+
+    GenericGRCService::GenericGRCService()
+        : _latency_recorder(GenericGRCService::_labels) {
+    }
+    ```
+  - `service/grc_service.cpp:468`
+    ```cpp
+    std::list<std::string> labels_value{
+        std::to_string(sctx.ua()),
+        std::to_string(sctx.flow_loc())
+    };
+    bvar::LatencyRecorder* latencyrecorder =
+        _latency_recorder.get_stats(labels_value);
+    ```
+- 初步判断：
+  - `service/grc_service.h/.cpp` 中的 `std::list<std::string>` 主要用于 bvar `MultiDimension` 的 label 定义和查询参数传递。
+  - 该场景 list 长度固定且很小，通常只有 2 个 label，且容器生命周期短或静态固定。
+  - 这类代码不适合迁移到 `Boost.Intrusive`，因为侵入式容器需要用户对象内嵌 hook，而这里元素是临时 `std::string`，没有对象节点复用场景。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：`operator/diversity/scatter_context.h` 中的多组 `std::list<std::string>` 暂不直接替换，先确认是否存在高频中间删除**
+  - 涉及字段：
+    - `_accepted_item_resource_type`
+    - `_small_accepted_item_resource_type`
+    - `_accepted_kuashua_new_cates`
+  - 当前这些字段是 `std::list<std::string>`，如果只是记录已接受类型并顺序遍历，迁移到 `boost::intrusive::list` 需要额外定义节点类型，改造成本高于收益。
+  - 如果业务逻辑中存在如下操作，则可以考虑迁移：
+    - 根据资源类型字符串从链表中 O(1) 删除；
+    - 同一个资源类型同时存在于多个候选队列；
+    - 高频 clear / erase 导致大量 list node 分配释放；
+    - 与 `_item_resource_type_map`、`_small_item_resource_type_map` 存在重复 key 存储。
+  - 可选改造方向：
+    ```cpp
+    struct ResourceTypeNode {
+        boost::intrusive::list_member_hook<> accepted_hook;
+        std::string resource_type;
+        int count{0};
+    };
+
+    using AcceptedResourceList = boost::intrusive::list<
+        ResourceTypeNode,
+        boost::intrusive::member_hook<
+            ResourceTypeNode,
+            boost::intrusive::list_member_hook<>,
+            &ResourceTypeNode::accepted_hook
+        >
+    >;
+    ```
+  - 这样可以由 `unordered_map<std::string, ResourceTypeNode*>` 或对象池管理节点，链表只负责排序和淘汰，不再额外分配 list node。
+
+- **建议 2：`operator/diversity/scatter_context.h` 中的 `_accepted_cluster_cates` 可作为轻量试点，但前提是类目节点已有稳定生命周期**
+  - 涉及字段：
+    ```cpp
+    ReusableUnorderedSet<int> _cluster_cate_set;
+    std::list<int> _accepted_cluster_cates;
+    ```
+  - 当前 `std::list<int>` 保存的是值类型 `int`，直接替换为侵入式链表并不自然。
+  - 如果只是保存少量类目 ID，建议保持现状，甚至可评估是否改为 `std::vector<int>` 以提升遍历缓存局部性。
+  - 如果实际场景是“类目对象”有更多状态，例如计数、权重、命中时间、是否已接受等，可以将其抽象为节点：
+    ```cpp
+    struct ClusterCateNode {
+        boost::intrusive::list_member_hook<> hook;
+        int cate_id;
+        int count;
+        int64_t last_seen_ts;
+    };
+    ```
+  - 适合优化的场景：
+    - 根据 `cate_id` 从 map 中定位节点后，需要从 accepted 队列中删除；
+    - 类目在多个队列中切换；
+    - 每个请求内大量构造 / 析构 `std::list<int>` 节点。
+
+- **建议 3：`service/grc_service.h` / `service/grc_service.cpp` 中的 bvar label list 不建议迁移到 Boost.Intrusive**
+  - 涉及代码：
+    ```cpp
+    static const std::list<std::string> _labels;
+    const std::list<std::string> GenericGRCService::_labels = {"ua", "flow_loc"};
+    ```
+    ```cpp
+    std::list<std::string> labels_value{
+        std::to_string(sctx.ua()),
+        std::to_string(sctx.flow_loc())
+    };
+    ```
+  - 该场景的主要成本不是 list 节点管理，而是 `std::to_string` 和临时字符串构造。
+  - 如果 `bvar::MultiDimension` 接口必须接收 `std::list<std::string>`，则保持现状即可。
+  - 如果接口允许其他容器，可优先考虑减少临时分配，例如：
+    - 复用 `labels_value` 容器；
+    - 使用预分配字符串；
+    - 如果 bvar 支持，改用 `std::array<std::string, 2>` 或小型定长结构。
+  - 不建议为了两个 label 引入侵入式 hook，收益很低且会增加代码复杂度。
+
+- **建议 4：优先在“对象型队列 / 缓存 / 定时器”中引入 Boost.Intrusive，而不是批量替换 `std::list`**
+  - 当前扫描只展示了部分 `std::list` 使用位置，两个代码库中仍有多个文件使用 `std::list`：
+    - `feeda-mv-grg`：11 个文件
+    - `feeda-mv-grc`：13 个文件
+  - 建议后续重点排查如下模式：
+    - `std::list<T*>`
+    - `std::list<std::shared_ptr<T>>`
+    - `std::list<std::unique_ptr<T>>`
+    - `std::unordered_map<Key, std::list<T>::iterator>`
+    - LRU / TTL / timer queue / retry queue / pending queue
+  - 这些模式更适合替换为：
+    ```cpp
+    boost::intrusive::list<T, member_hook<...>>
+    ```
+  - 典型收益：
+    - 减少 `std::list` 每个节点的额外堆分配；
+    - 可通过 `iterator_to(*obj)` 实现 O(1) 删除；
+    - 同一对象可通过多个 `member_hook` 同时挂入多个业务队列。
+
+- **建议 5：如果未来在 `scatter_context` 类请求级上下文中使用侵入式容器，建议配合对象池或请求级 arena**
+  - `operator/diversity/scatter_context.h` 看起来属于请求处理过程中的上下文数据结构。
+  - 如果每个请求都会构造大量临时节点，单独使用 `Boost.Intrusive` 只能减少容器节点分配，不能解决业务对象本身分配问题。
+  - 推荐组合方式：
+    - 请求级对象池 / arena 负责节点生命周期；
+    - `boost::intrusive::list` 负责 O(1) 串联、删除、移动；
+    - `unordered_map` / `ReusableUnorderedSet` 负责按 key 查找；
+    - 请求结束后统一释放 arena，避免逐个 erase/delete。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **侵入式容器不拥有元素，生命周期必须由业务代码保证**
+  - `boost::intrusive::list` 不会拷贝、分配或释放元素。
+  - 如果对象析构时仍挂在容器中，会产生悬空指针风险。
+  - 可考虑使用：
+    ```cpp
+    list_member_hook<link_mode<auto_unlink>>
+    ```
+    但 `auto_unlink` 对容器配置有限制，通常需要关闭 constant-time size。
+
+- **一个 hook 同一时间只能挂入一个容器**
+  - 如果同一个对象需要同时进入多个队列，必须定义多个 `member_hook`。
+  - 例如：
+    ```cpp
+    struct Item {
+        list_member_hook<> lru_hook;
+        list_member_hook<> pending_hook;
+    };
+    ```
+  - 不能用同一个 hook 同时加入两个 `boost::intrusive::list`，否则会破坏链表结构。
+
+- **迁移 `std::list<std::string>` / `std::list<int>` 这类值容器收益有限**
+  - 当前扫描样例中，`operator/diversity/scatter_context.h` 与 `service/grc_service.cpp` 都以值类型 list 为主。
+  - 侵入式容器更适合“业务对象节点”而不是裸值类型。
+  - 如果仅为了替换 STL 容器而包装 `int`、`std::string`，可能会增加代码量、降低可读性，并不一定提升性能。
+
+- **需要关注对象大小、ABI 和调试复杂度**
+  - 每个 hook 至少会增加若干指针字段，业务对象体积会上升。
+  - 如果核心对象数量很大，需要评估内存增长是否抵消分配优化收益。
+  - 侵入式结构调试门槛高于 STL 容器，链表损坏通常更难定位。
+  - 建议先在单一热点场景试点，并配合 ASAN、UBSAN、压测和链表一致性检查。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
