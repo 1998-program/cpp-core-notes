@@ -1172,3 +1172,246 @@ for (int i = 0; i < 8; ++i) {
 
 *C++ 核心笔记系列 #21 | 2026-06-04*  
 *GitHub: https://github.com/1998-program/cpp-core-notes*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-04T19:01:57.740365
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`folly::ConcurrentHashMap`
+
+### 1. 分析摘要
+
+- 当前在 `feeda-mv-grg`（序列生成服务）和 `feeda-mv-grc`（召回汇聚服务）两个业务代码库中，**尚未发现 `folly::ConcurrentHashMap` 的直接使用**，因此代码库内暂无可直接复用的迁移样板或封装经验。现有代码主要仍依赖 `std::unordered_map`、`std::vector`、`std::string` 等标准库容器。
+
+- 从扫描规模看，两个代码库中 `std::unordered_map` 使用量较高：`feeda-mv-grg` 中出现 **734 次 / 205 个文件**，`feeda-mv-grc` 中出现 **2834 次 / 637 个文件**。其中 `feeda-mv-grc` 的 map 类容器使用更密集，且服务形态偏召回汇聚，通常存在多线程请求处理、共享配置、图结构缓存、依赖关系索引等场景，因此具备更高的迁移潜力。建议优先在 **读写并发明显、当前依赖外部锁保护 `std::unordered_map`、或存在全局/静态缓存表** 的位置评估引入 `folly::ConcurrentHashMap`。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grg`
+
+- 当前未扫描到 `folly::ConcurrentHashMap` 的直接使用。
+- 标准库容器使用情况：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+- 已扫描到的典型代码主要集中在模型预测接口和候选集处理链路，例如：
+  - `model/model.h`
+  - `model/paddle_model.h`
+
+示例：
+
+```cpp
+// model/model.h
+class Model {
+public:
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+};
+```
+
+```cpp
+// model/paddle_model.h
+int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+            general_predict::PredictSample* predict_sample = nullptr,
+            bool is_from_cube = true) const {
+    return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+}
+```
+
+- 从当前样例看，`feeda-mv-grg` 更明显的热点是 `std::vector` 传递与候选集处理，尚未从样例中直接看到共享 `std::unordered_map` 的并发访问场景。
+- 因此在 `feeda-mv-grg` 中不建议大规模直接替换容器，而应先对 `std::unordered_map` 的实际使用点进行二次筛选：
+  - 是否为全局缓存；
+  - 是否被多个预测线程共享；
+  - 是否通过 `std::mutex` / `pthread_mutex` / `folly::SharedMutex` 保护；
+  - 是否存在运行期更新、增删节点、模型依赖缓存刷新等写入行为。
+
+#### 2.2 `feeda-mv-grc`
+
+- 当前未扫描到 `folly::ConcurrentHashMap` 的直接使用。
+- 标准库容器使用情况：
+  - `std::vector`：8402 次，分布在 1269 个文件
+  - `std::string`：7115 次，分布在 1223 个文件
+  - `std::unordered_map`：2834 次，分布在 637 个文件
+- `feeda-mv-grc` 的 `std::unordered_map` 使用规模明显高于 `feeda-mv-grg`，且召回汇聚服务通常存在：
+  - 请求级依赖图构建；
+  - 召回源配置缓存；
+  - 子链路开关状态；
+  - 图节点元信息索引；
+  - AB 参数、路由规则、召回结果缓存等共享数据结构。
+
+已扫描到的典型代码：
+
+```cpp
+// service/grc_http_service.cpp
+std::unordered_map<std::string, std::vector<int>> depend_map;
+auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+for (int i = 0; i < all_vertex.size(); ++i) {
+    for (auto &depend : all_vertex[i].depends) {
+        ...
+    }
+}
+```
+
+```cpp
+// service/grc_http_service.cpp
+static std::vector<std::string> colors{
+    "#FFB6C1", "#DC143C", "#DB7093", "#FF1493", "#FF00FF", "#800080",
+    ...
+};
+```
+
+```cpp
+// service/grc_http_service.cpp
+std::vector<std::string> sub_access_off_vec;
+std::vector<std::string> sub_access_on_vec;
+const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+```
+
+- 其中 `service/grc_http_service.cpp` 中的 `depend_map` 是请求内局部变量，生命周期短、无线程共享，**不适合直接替换为 `folly::ConcurrentHashMap`**。
+- 但该文件暴露出一个重要业务场景：图节点依赖关系构建与访问。如果类似的依赖关系、图结构、节点信息在 `graph_engine` 内部存在跨请求共享缓存，则其内部 `std::unordered_map` 是更适合评估迁移的目标。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：不要替换请求内局部 `std::unordered_map`，例如 `service/grc_http_service.cpp` 中的 `depend_map`**
+  - 位置：`feeda-mv-grc/service/grc_http_service.cpp`
+  - 当前代码：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    ```
+  - 该变量看起来用于单次 HTTP 请求内构建图依赖关系，生命周期局限在函数调用栈内，不涉及跨线程共享。
+  - 对这类场景，`folly::ConcurrentHashMap` 不仅收益很低，还会引入分段锁、Hazard Pointer、节点分配等额外成本。
+  - 建议继续使用 `std::unordered_map`，必要时可优化为：
+    - 提前 `reserve()`，减少 rehash；
+    - 若 key 数量小且生命周期短，可评估 `folly::F14FastMap` / `folly::F14NodeMap`；
+    - 如果主要是字符串 key，可关注 string 拷贝和 hash 成本。
+
+- **建议 2：优先排查 `graph_engine->get_vertexs_message(graph_name)` 背后的共享索引或图缓存**
+  - 位置：`feeda-mv-grc/service/grc_http_service.cpp`
+  - 相关代码：
+    ```cpp
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    ```
+  - 该调用很可能访问图结构元信息或节点依赖缓存。如果 `graph_engine` 内部使用类似：
+    ```cpp
+    std::unordered_map<std::string, GraphInfo> graph_map_;
+    std::unordered_map<std::string, std::vector<Vertex>> vertex_map_;
+    ```
+    并且这些 map 被多个请求线程并发读取或动态更新，则适合评估迁移为：
+    ```cpp
+    folly::ConcurrentHashMap<std::string, GraphInfo>
+    folly::ConcurrentHashMap<std::string, std::shared_ptr<const GraphInfo>>
+    ```
+  - 推荐迁移方向：
+    - 如果图配置是“少写多读”，可将 value 设计为 `std::shared_ptr<const T>`；
+    - 更新时构造新对象后整体替换，避免在 map value 内部做细粒度修改；
+    - 读取线程通过 `find()` 获取稳定引用或拷贝 `shared_ptr`，降低锁持有时间。
+
+- **建议 3：`feeda-mv-grc` 的全局配置、召回源状态、开关表是优先收益点**
+  - 代码库：`feeda-mv-grc`
+  - 扫描显示 `std::unordered_map` 使用达到 2834 次，分布在 637 个文件，说明 map 型索引结构使用非常广泛。
+  - 建议重点筛选如下模式：
+    ```cpp
+    static std::unordered_map<...> xxx;
+    std::unordered_map<...> xxx_;  // Service / Manager / Engine 成员变量
+    std::mutex xxx_mutex_;
+    ```
+  - 对以下场景可考虑替换：
+    - 多线程共享的召回源配置表；
+    - 子通道开关状态；
+    - graph name 到图结构的索引；
+    - 实验参数、降级策略、路由规则缓存；
+    - 请求间复用的召回结果缓存。
+  - 替换后可以减少大锁竞争，将原来的“整个 map 一把锁”拆成 `ConcurrentHashMap` 内部的分段锁，提高多 key 并发访问吞吐。
+
+- **建议 4：`feeda-mv-grg` 暂不建议作为首批迁移对象，但可关注模型级共享缓存**
+  - 位置：
+    - `feeda-mv-grg/model/model.h`
+    - `feeda-mv-grg/model/paddle_model.h`
+  - 当前扫描样例主要是候选集向量传递：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - 这类接口本身不适合引入 `ConcurrentHashMap`。
+  - 但如果 `paddle_model.h` 或模型实现文件中存在以下结构，则可以纳入评估：
+    ```cpp
+    std::unordered_map<std::string, TensorCache> tensor_cache_;
+    std::unordered_map<uint64_t, FeatureCache> feature_cache_;
+    std::unordered_map<std::string, ModelDependInput> depend_input_cache_;
+    ```
+  - 适合迁移的条件：
+    - 多个预测线程共享；
+    - 读多写少或读写并存；
+    - 当前通过一把 mutex 保护；
+    - key 粒度较分散，能够利用分段锁降低竞争。
+  - 不适合迁移的条件：
+    - 每次请求临时构造；
+    - 只在单线程初始化阶段写入，之后只读；
+    - value 本身需要复杂事务性更新。
+
+- **建议 5：迁移时优先做局部封装，而不是全量替换 `std::unordered_map`**
+  - 由于两个代码库都没有 `folly::ConcurrentHashMap` 使用经验，建议先封装业务语义明确的缓存组件，例如：
+    ```cpp
+    class GraphCache {
+    public:
+        bool get(const std::string& key, std::shared_ptr<const GraphInfo>* out) const;
+        void update(const std::string& key, std::shared_ptr<const GraphInfo> value);
+
+    private:
+        folly::ConcurrentHashMap<std::string, std::shared_ptr<const GraphInfo>> map_;
+    };
+    ```
+  - 这样可以避免业务代码直接依赖过多容器细节，也方便后续回滚到 `std::unordered_map + mutex` 或替换为 `folly::F14Map`、`AtomicHashMap` 等其他实现。
+  - 首批建议选择：
+    - 访问频率高；
+    - 竞争明显；
+    - key 空间分散；
+    - 逻辑相对独立；
+    - 有压测指标可验证的缓存模块。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：`ConcurrentHashMap` 不是 `std::unordered_map` 的无成本替代品**
+  - 对请求内局部变量、单线程构建的数据结构、小 map、短生命周期 map，`folly::ConcurrentHashMap` 可能更慢。
+  - 例如 `service/grc_http_service.cpp` 中的局部 `depend_map`，使用并发哈希表通常不会带来收益，反而增加内存分配和锁管理开销。
+
+- **风险 2：value 的线程安全仍然需要业务保证**
+  - `folly::ConcurrentHashMap` 只保证 map 结构层面的并发安全，不自动保证 `mapped_type` 内部对象的并发安全。
+  - 如果 value 是：
+    ```cpp
+    std::vector<int>
+    std::map<...>
+    CustomStruct
+    ```
+    多线程拿到同一个 value 后继续修改，仍可能发生数据竞争。
+  - 建议对复杂 value 使用不可变对象或 `std::shared_ptr<const T>`，更新时整体替换。
+
+- **风险 3：接口语义与 `std::unordered_map` 不完全一致**
+  - 不能假设所有 `std::unordered_map` 用法都可以机械替换。
+  - 需要重点检查：
+    - `operator[]` 依赖默认构造的场景；
+    - 遍历过程中修改 map 的逻辑；
+    - 持有 iterator 后跨函数、跨线程使用；
+    - 对引用稳定性的隐含依赖；
+    - erase 后仍访问旧对象的逻辑。
+  - 迁移时应逐点改造为 `find()`、`insert()`、`assign()`、`assign_if_equal()` 等更明确的并发接口。
+
+- **风险 4：需要验证 Folly 版本、编译选项和运行时依赖**
+  - 技术笔记参考的是 Folly 2024.x，当前业务构建环境需要确认：
+    - 是否已经引入 Folly；
+    - Folly 版本是否包含目标 `ConcurrentHashMap` API；
+    - 是否启用了 Hazard Pointer 相关实现；
+    - 编译器版本是否满足 C++17/C++20 要求；
+    - 与现有 brpc、protobuf、模型推理依赖是否存在 ABI 或编译选项冲突。
+  - 如果业务当前没有 Folly 使用基础，建议先在独立模块或压测分支引入，避免一次性影响主链路构建。
+
+---
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
