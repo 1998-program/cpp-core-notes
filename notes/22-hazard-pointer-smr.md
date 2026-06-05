@@ -976,3 +976,312 @@ Hazard Pointer 是无锁编程工具箱中不可或缺的安全内存回收利�
 4. [libcds Hazard Pointer GC](https://github.com/khizmax/libcds/tree/master/cds/gc/details)
 5. [Folly PR #14231 - Asymmetric Barrier](https://github.com/facebook/folly/pull/14231)
 6. Hart, T. E., McKenney, P. E., Brown, A. D. (2007). *Making Lockless Synchronization Fast: Performance Implications of Memory Reclamation*. IPDPS 2007.
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-05T19:02:22.983874
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：Hazard Pointer 无锁内存安全回收
+
+### 1. 分析摘要
+
+- 从本次扫描结果看，`feeda-mv-grg` 和 `feeda-mv-grc` 两个业务代码库中已经存在大量 STL 容器与指针/对象引用相关代码，尤其是 `std::vector`、`std::string`、`std::unordered_map` 使用规模较大。其中 `feeda-mv-grc` 的容器使用量明显更高，`std::vector` 达到 8402 次，`std::unordered_map` 达到 2834 次，说明该服务中存在较多聚合、索引、召回结果、配置图结构等数据处理逻辑。
+
+- Hazard Pointer 本身不是 `std::vector` / `std::unordered_map` 的直接替代品，而是用于**无锁数据结构中的安全内存回收**。因此迁移重点不应是全量替换 STL 容器，而应聚焦在以下场景：  
+  - 多线程共享的读多写少配置；
+  - 召回图、特征缓存、模型对象、策略规则对象的热更新；
+  - 使用裸指针、`shared_ptr`、全局 map/cache 或原子指针管理生命周期的地方；
+  - 未来计划引入 lock-free queue / lock-free hash table / RCU-like 配置发布机制的模块。
+
+- 当前扫描结果中提到两个代码库均有“目标库使用”命中文件，但从给出的代码片段看，尚未直接体现标准 Hazard Pointer API 或 SMR 机制的使用。因此更合理的结论是：**业务代码中具备引入 Hazard Pointer 的潜在收益，但应按模块增量试点，不建议大规模直接迁移。**
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 feeda-mv-grg：序列生成服务
+
+- 扫描发现：
+  - 已发现目标库使用：10 个文件。
+  - 典型命中文件包括：
+    - `process/history_interest_info_function.cpp`
+    - `plugin/feature_service.h`
+    - `operator/diversity/douyin_popular_soft_rule.cpp`
+    - `operator/diversity/newhotip_adjust_soft_rule.cpp`
+    - `operator/diversity/novel_user_duanju_soft_rule.cpp`
+
+- STL 使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+
+- 典型代码形态：
+  - `model/model.h`
+    ```cpp
+    class Model {
+    public:
+        virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    };
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+
+- 初步判断：
+  - `feeda-mv-grg` 的核心逻辑集中在候选集处理、模型预测、特征服务和多样性规则上。
+  - 当前示例中的 `std::vector<RidTmpInfoPtr>& candidate_vec` 更像是请求内局部数据传递，不是 Hazard Pointer 的首要适配点。
+  - 更值得关注的是：
+    - `plugin/feature_service.h` 中是否存在全局特征缓存、异步更新缓存、配置热更新；
+    - `operator/diversity/*.cpp` 中是否有规则表、阈值表、实验参数的读多写少访问；
+    - `model/paddle_model.h` 中模型对象是否存在热加载、异步替换、后台释放。
+
+#### 2.2 feeda-mv-grc：召回汇聚服务
+
+- 扫描发现：
+  - 已发现目标库使用：10 个文件。
+  - 典型命中文件包括：
+    - `operator/adjuster/sketchy/days_ltv_cupai_qgap_sketchy_adjuster.cpp`
+    - `operator/adjuster/sketchy/rec_set_tgi_adjust_new.cpp`
+    - `processor/video_launch/dibar/dibar_precise_adjust_truncation.cpp`
+    - `operator/adjuster/precise/news_shixiao.cpp`
+    - `operator/adjuster/precise/duraton_ltv_factor.cpp`
+
+- STL 使用规模：
+  - `std::vector`：8402 次，分布在 1269 个文件。
+  - `std::string`：7115 次，分布在 1223 个文件。
+  - `std::unordered_map`：2834 次，分布在 637 个文件。
+
+- 典型代码形态：
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::set<std::pair<int, int>, decltype(comp_pair)> p_set(comp_pair);
+    static std::vector<std::string> colors{"#FFB6C1", "#DC143C", "#DB7093", ...};
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+    ```
+
+- 初步判断：
+  - `feeda-mv-grc` 的数据结构规模更大，召回图、调整器、截断器、HTTP 管理接口等场景较多。
+  - `service/grc_http_service.cpp` 中 `graph_engine->get_vertexs_message(graph_name)` 是一个值得重点检查的点：
+    - 如果 `graph_engine` 内部图结构会被后台线程热更新；
+    - 同时线上请求线程或 HTTP 管理线程会读取图结构；
+    - 那么当前返回引用 `auto &all_vertex` 的方式需要确认生命周期是否安全。
+  - 如果图结构使用锁保护，Hazard Pointer 可以作为后续优化方向；如果图结构已经存在无锁读路径，则应重点评估是否存在 Use-After-Free 风险。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `service/grc_http_service.cpp` 检查 `graph_engine->get_vertexs_message(graph_name)` 的生命周期管理**
+  - 当前代码中存在：
+    ```cpp
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    ```
+  - 如果 `graph_engine` 支持图配置热更新、DAG 重载、节点依赖关系变更，那么 `all_vertex` 返回引用可能依赖内部容器的稳定性。
+  - 建议排查：
+    - `get_vertexs_message` 返回的是全局 `std::vector` 引用还是副本；
+    - 图结构更新时是否会替换底层 `vector` / `unordered_map`；
+    - 是否存在读线程遍历旧图时，写线程释放旧图的问题。
+  - 若当前使用粗粒度锁保护，可先保持不变；若希望降低读路径锁开销，可以考虑引入：
+    - `std::atomic<GraphSnapshot*> current_graph`;
+    - 读线程通过 Hazard Pointer protect 当前快照；
+    - 写线程构建新图后 CAS / store 发布；
+    - 旧图进入 retire list，等待无读者保护后再释放。
+  - 该场景是 `feeda-mv-grc` 中最适合试点 Hazard Pointer 的位置之一。
+
+- **建议 2：在 `plugin/feature_service.h` 中排查特征缓存、特征服务实例的并发读写**
+  - `feeda-mv-grg` 中 `plugin/feature_service.h` 被扫描命中，通常这类模块可能包含：
+    - 特征配置；
+    - 特征服务 client；
+    - 特征缓存；
+    - 实验开关；
+    - 动态参数表。
+  - 如果存在类似以下模式：
+    ```cpp
+    FeatureConfig* cfg = global_cfg.load();
+    // 多线程读取 cfg
+    ```
+    或：
+    ```cpp
+    std::unordered_map<std::string, Feature*>* feature_map;
+    ```
+    则需要重点关注更新时的释放安全。
+  - 对于读多写少的特征配置，可以考虑将配置组织为不可变快照：
+    ```cpp
+    std::atomic<FeatureConfigSnapshot*> current;
+    ```
+    读线程使用 Hazard Pointer 保护 `current`，写线程发布新快照后 retire 旧快照。
+  - 这样可以避免在每次特征读取时使用 `std::shared_mutex` 或 `std::shared_ptr` 引入额外引用计数开销。
+
+- **建议 3：`model/model.h` 和 `model/paddle_model.h` 不建议直接引入 Hazard Pointer，但应检查模型热更新路径**
+  - 当前示例：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - `candidate_vec` 是请求内候选集，通常不涉及跨线程对象释放，不适合作为 Hazard Pointer 改造对象。
+  - 但 `Model` / `PaddleModel` 本身如果存在热加载，例如：
+    - 后台线程加载新模型；
+    - 请求线程持续调用旧模型 `predict`；
+    - 更新线程替换全局模型指针并释放旧模型；
+  - 则这类模型对象生命周期非常适合用 Hazard Pointer 或 RCU-like 机制管理。
+  - 建议在 `model/paddle_model.h` 相关实现中检查：
+    - 是否有全局 `Model*`；
+    - 是否有 `std::shared_ptr<Model>` 高频拷贝；
+    - 是否有锁保护的模型切换。
+  - 如果当前使用 `std::shared_ptr<Model>` 且 QPS 很高，可以评估 Hazard Pointer 替代引用计数的收益。
+
+- **建议 4：在 `operator/diversity/*.cpp` 和 `operator/adjuster/*.cpp` 中优先识别“只读规则表 + 后台更新”的场景**
+  - `feeda-mv-grg` 命中文件：
+    - `operator/diversity/douyin_popular_soft_rule.cpp`
+    - `operator/diversity/newhotip_adjust_soft_rule.cpp`
+    - `operator/diversity/novel_user_duanju_soft_rule.cpp`
+  - `feeda-mv-grc` 命中文件：
+    - `operator/adjuster/sketchy/days_ltv_cupai_qgap_sketchy_adjuster.cpp`
+    - `operator/adjuster/sketchy/rec_set_tgi_adjust_new.cpp`
+    - `operator/adjuster/precise/news_shixiao.cpp`
+    - `operator/adjuster/precise/duraton_ltv_factor.cpp`
+  - 这些规则/adjuster 模块通常具有明显的读多写少特征：
+    - 请求线程高频读取规则参数；
+    - 配置中心或定时任务低频更新参数；
+    - 更新时可能替换 `unordered_map`、规则对象、阈值表。
+  - 如果当前实现中存在全局 `std::unordered_map` + mutex，可以考虑将其改为不可变快照：
+    ```cpp
+    struct RuleSnapshot {
+        std::unordered_map<std::string, RuleParam> rules;
+    };
+
+    std::atomic<RuleSnapshot*> current_rules;
+    ```
+  - 读路径：
+    - 使用 Hazard Pointer 保护 `current_rules`；
+    - 无锁读取 `rules`；
+    - 读取完成后清空 HP slot。
+  - 写路径：
+    - 构建新 `RuleSnapshot`；
+    - 原子替换旧指针；
+    - retire 旧快照。
+  - 该方式适合规则参数较稳定、更新频率低、请求读取压力高的业务路径。
+
+- **建议 5：不要以 `std::vector` / `std::unordered_map` 使用次数作为直接迁移依据，应优先定位“跨线程共享所有权”**
+  - 两个代码库中 STL 容器使用量都很大，尤其是 `feeda-mv-grc`：
+    - `std::vector`：8402 次；
+    - `std::unordered_map`：2834 次。
+  - 但大部分容器可能只是请求内临时变量，例如 `service/grc_http_service.cpp` 中：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+    这类局部变量不需要 Hazard Pointer。
+  - 迁移筛选标准应是：
+    - 容器或对象是否被多个线程并发读写；
+    - 是否通过裸指针、引用、`atomic<T*>` 暴露；
+    - 更新线程是否可能释放读线程仍在访问的对象；
+    - 当前是否依赖 `shared_ptr` 高频引用计数或全局锁保证生命周期。
+  - 建议先做一次二次扫描，重点匹配：
+    - `std::atomic<.*\*>`
+    - `load() / store()` 全局指针
+    - `new` / `delete`
+    - `shared_ptr` 高频读路径
+    - `unordered_map` 全局静态对象
+    - 配置 reload / update / swap 相关函数
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：Hazard Pointer 只能解决内存回收安全，不自动解决数据一致性问题**
+  - Hazard Pointer 能保证“读线程访问的对象不会被提前释放”，但不能保证对象内部字段不会被并发修改。
+  - 因此适配对象最好设计为不可变快照，例如：
+    - `GraphSnapshot`
+    - `RuleSnapshot`
+    - `FeatureConfigSnapshot`
+    - `ModelSnapshot`
+  - 写线程不要原地修改旧对象，而是构建新对象后整体发布。
+
+- **风险 2：内存序与 protect 双重检查必须严格实现**
+  - Hazard Pointer 读路径通常需要：
+    - acquire load 读取共享指针；
+    - release store 公告 HP；
+    - 再次 acquire load 验证指针未变化。
+  - 如果省略双重检查，可能出现 TOCTOU 问题：
+    - 读线程刚读到指针；
+    - 写线程替换并 retire；
+    - 读线程才公告 HP；
+    - 此时对象可能已经被释放。
+  - 因此不建议业务模块自行临时实现，应封装统一的 `HazardPointerDomain`、`HazardPointerGuard` 和 `retire()` 接口。
+
+- **风险 3：retire list 扫描会带来尾延迟，需要控制阈值和 deleter 成本**
+  - 示例中 `K_RETIRE_THRESHOLD = 64`，达到阈值后会扫描所有线程 HP slot。
+  - 在线上高 QPS 服务中，如果扫描发生在请求线程，可能引入延迟尖刺。
+  - 建议：
+    - 对大对象释放使用轻量 deleter；
+    - 对复杂析构对象考虑后台回收线程；
+    - 为 retire list 大小、扫描次数、延迟分布增加监控；
+    - 对模型、图快照这类大对象谨慎设置回收策略。
+
+- **风险 4：线程生命周期和线程池复用需要特别处理**
+  - 业务服务通常使用 brpc / bthread / 线程池。
+  - Hazard Pointer 的典型实现依赖 `thread_local ThreadLocalHP`。
+  - 如果运行在线程池中，问题不大；但如果运行在 bthread、协程或用户态调度场景中，需要确认：
+    - HP record 是否绑定 OS thread 还是 coroutine；
+    - 任务切换时是否可能持有 HP slot；
+    - 线程退出时 retire list 是否能可靠 drain。
+  - 对 brpc/bthread 场景，建议先在普通 pthread 工作线程路径试点，避免直接在复杂协程调度路径引入。
+
+---
+
+### 5. 建议落地顺序
+
+- 第一阶段：静态排查
+  - 在 `service/grc_http_service.cpp` 追踪 `graph_engine->get_vertexs_message(graph_name)` 的底层生命周期。
+  - 在 `plugin/feature_service.h` 检查是否存在全局特征配置或缓存热更新。
+  - 在 `model/paddle_model.h` 及其实现中检查模型对象热加载方式。
+  - 在 `operator/diversity/*.cpp`、`operator/adjuster/*.cpp` 中排查规则表是否为读多写少共享对象。
+
+- 第二阶段：小范围试点
+  - 优先选择 `feeda-mv-grc` 的图结构快照或 adjuster 规则快照。
+  - 原因是 `feeda-mv-grc` 的容器规模和共享数据结构复杂度更高，读多写少场景更可能获得收益。
+
+- 第三阶段：统一封装
+  - 不建议各业务文件直接操作 HP slot。
+  - 推荐封装：
+    - `HazardPointerGuard<T>`
+    - `retire<T>(T* ptr)`
+    - `AtomicSnapshot<T>`
+  - 业务侧只感知：
+    ```cpp
+    auto guard = current_snapshot.protect();
+    const auto* snapshot = guard.get();
+    ```
+  - 这样可以降低迁移风险，并统一监控 retire list、scan 次数和延迟。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
