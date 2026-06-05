@@ -1,0 +1,28 @@
+{
+  "cpp_modules": [
+    "01-flatbuffers-zero-copy.md",
+    "02-absl-flat-hash-map.md",
+    "03-absl-inlined-vector.md",
+    "04-folly-fbstring.md",
+    "05-folly-f14map.md",
+    "06-mimalloc-segmented-allocator.md",
+    "07-jemalloc-arena-memory.md",
+    "08-rocksdb-block-cache.md",
+    "09-leveldb-skiplist.md",
+    "10-seastar-future-coroutine.md",
+    "11-dpdk-rte-ring.md",
+    "12-boost-intrusive.md",
+    "13-abseil-cord-rope.md",
+    "14-folly-atomichashmap.md",
+    "15-tcmalloc-threadcache.md",
+    "16-flatbuffers-zero-copy.md",
+    "17-protobuf-arena-allocator.md",
+    "18-brpc-bthread.md",
+    "19-folly-mpmcqueue.md",
+    "20-tbb-concurrent-queue.md",
+    "21-folly-concurrenthashmap.md",
+    "22-hazard-pointer-smr.md"
+  ],
+  "last_updated": "2026-06-05",
+  "total": 22
+}
