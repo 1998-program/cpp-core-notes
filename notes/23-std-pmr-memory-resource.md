@@ -1421,3 +1421,192 @@ class MyResource : public std::pmr::memory_resource {
 > - [Bryce Adelstein Lelbach: The C++17 PMR Interface](https://cppcon2017.sched.com/event/BgsE)  
 > - [libstdc++ source: include/std/memory_resource](https://github.com/gcc-mirror/gcc/blob/master/libstdc%2B%2B-v3/include/std/memory_resource)  
 > - [LLVM libc++: memory_resource implementation](https://github.com/llvm/llvm-project/blob/main/libcxx/include/__memory/memory_resource.h)
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-07T19:01:55.102450
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`std::pmr::memory_resource` 在两个业务代码库中的直接使用仍然很少：`feeda-mv-grg` 尚未发现直接使用，`feeda-mv-grc` 仅在 `service/grc_service.cpp` 中发现 1 处使用。这说明当前业务代码整体仍以传统 `std::vector`、`std::string`、`new` / `malloc` 等方式进行内存管理，PMR 尚未形成规模化实践。
+
+- 但从潜在迁移空间看，两个代码库都存在大量标准容器和动态分配行为：`feeda-mv-grg` 中 `std::vector` 出现 1969 次、`std::string` 出现 2443 次、`new` 出现 65 次；`feeda-mv-grc` 中 `std::vector` 出现 8402 次、`std::string` 出现 7115 次、`new` 出现 449 次。这类代码通常集中在请求处理、结果构造、召回聚合、临时对象拼装等路径中，具备引入 `std::pmr::monotonic_buffer_resource` 或 `std::pmr::unsynchronized_pool_resource` 优化小对象和临时容器分配的潜力。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 当前未发现 `std::pmr::memory_resource`、`std::pmr::vector`、`std::pmr::string` 等目标库直接使用。
+- 传统动态分配和标准容器使用规模较大：
+  - `new_operator`：65 次，分布在 34 个文件
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+- 典型动态分配场景出现在 `plugin/predictor.cpp`：
+  - `plugin/predictor.cpp:18`
+
+    ```cpp
+    _predictor_stub = std::unique_ptr<::baidu::feed::mlarch::PredictorService_Stub>(
+        new ::baidu::feed::mlarch::PredictorService_Stub(predictor_channel));
+    ```
+
+  - `plugin/predictor.cpp:73`
+
+    ```cpp
+    BABYLON_REGISTER_CUSTOM_COMPONENT_WITH_NAME(PredictorPlugin, set2set_predictor_exp, [](){
+        return new PredictorPlugin("set2set_predictor_exp");
+    });
+    ```
+
+- 从示例看，`plugin/predictor.cpp` 中的 `new` 主要用于服务组件、RPC stub、插件对象构造。这类对象通常是长生命周期对象，不一定是 PMR 的首要优化目标。更适合优先扫描请求级临时 `std::vector` / `std::string` 构造较多的逻辑，例如候选序列生成、特征拼接、请求上下文构造等路径。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库使用 1 处：
+  - `service/grc_service.cpp`
+- 这说明 `feeda-mv-grc` 已经存在 PMR 的引入经验，后续迁移可以优先参考 `service/grc_service.cpp` 中的使用方式，包括：
+  - `memory_resource` 的生命周期如何管理
+  - 是否使用 `monotonic_buffer_resource`
+  - 是否将资源绑定到请求级上下文
+  - 是否存在跨线程或异步回调场景
+- 传统标准容器和动态分配使用规模非常大：
+  - `new_operator`：449 次，分布在 311 个文件
+  - `malloc_call`：3 次，分布在 1 个文件
+  - `std::vector`：8402 次，分布在 1269 个文件
+  - `std::string`：7115 次，分布在 1223 个文件
+- 典型动态分配场景出现在 `service/grc_http_service.h`：
+  - `service/grc_http_service.h:65`
+
+    ```cpp
+    HttpCntlData() {
+        _thread_mutex_vec.reserve(64);
+        _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+        _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+    }
+    ```
+
+  - `service/grc_http_service.h:102`
+
+    ```cpp
+    std::shared_ptr<OffSet> new_off_set(new OffSet);
+
+    // 恢复当前配置
+    *new_off_set = *fore_set;
+    ```
+
+- `service/grc_http_service.h` 中的 `OffSet` 对象通过 `shared_ptr + new` 管理，并伴随拷贝恢复逻辑。这类对象如果是配置类或双缓冲控制类，生命周期可能较长，不建议直接用请求级 PMR 替换；但其中如果包含大量 `std::vector` / `std::string` 成员，可以考虑将内部临时数据结构改为 `pmr` 容器，降低配置切换或请求构造阶段的内存碎片和分配次数。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议一：以 `feeda-mv-grc/service/grc_service.cpp` 作为 PMR 参考样例，先做局部扩展而非全库替换**
+  - `feeda-mv-grc` 已在 `service/grc_service.cpp` 中发现 PMR 使用，应优先将其作为内部参考实现。
+  - 建议先确认该文件中的资源类型：
+    - 如果使用的是 `std::pmr::monotonic_buffer_resource`，适合推广到请求级临时对象场景。
+    - 如果使用的是 `std::pmr::unsynchronized_pool_resource`，适合推广到单线程内重复分配、释放相似大小对象的场景。
+    - 如果使用的是 `std::pmr::synchronized_pool_resource`，需要重点评估锁竞争和线程共享成本。
+  - 不建议一开始将全量 `std::vector` / `std::string` 改为 `std::pmr::vector` / `std::pmr::string`，而应优先选择高 QPS、短生命周期、分配密集的热点函数做试点。
+
+- **建议二：在 `feeda-mv-grc/service/grc_http_service.h` 中评估 `OffSet` 内部容器是否可迁移到 PMR**
+  - 当前代码中存在多处 `new OffSet`：
+
+    ```cpp
+    _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+    std::shared_ptr<OffSet> new_off_set(new OffSet);
+    ```
+
+  - 如果 `OffSet` 内部包含大量 `std::vector`、`std::string`、`std::unordered_map` 等容器，并且在配置恢复、热更新、双缓冲切换时会频繁拷贝或重建，那么可以考虑：
+    - 将 `OffSet` 中的临时容器改为 `std::pmr::vector` / `std::pmr::string`
+    - 为配置构造过程绑定一个局部 `std::pmr::monotonic_buffer_resource`
+    - 在构造完成后，如果数据需要长期保存，则谨慎处理 PMR resource 生命周期，避免容器引用已销毁的资源
+  - 如果 `OffSet` 是长期驻留对象，不建议简单使用栈上 `monotonic_buffer_resource`，否则容易出现悬垂 `memory_resource*`。
+
+- **建议三：`feeda-mv-grg/plugin/predictor.cpp` 中的插件和 Stub 构造不宜作为 PMR 首批迁移点**
+  - `plugin/predictor.cpp` 中的动态分配主要是：
+
+    ```cpp
+    new ::baidu::feed::mlarch::PredictorService_Stub(...)
+    new PredictorPlugin(...)
+    ```
+
+  - 这些对象一般属于服务启动期或组件注册期的长生命周期对象，分配频率低，PMR 对这类场景收益有限。
+  - 对这类代码更合适的优化方向是：
+    - 将显式 `new` 改为 `std::make_unique` / `std::make_shared`
+    - 明确所有权语义，减少裸 `new`
+    - 保持对象生命周期和注册框架兼容
+  - PMR 更应优先用于请求处理过程中的临时容器，而不是服务初始化阶段的组件对象。
+
+- **建议四：优先针对 `std::vector` / `std::string` 高频路径做请求级 Arena 试点**
+  - 两个代码库中 `std::vector` 和 `std::string` 使用规模都很大，尤其是 `feeda-mv-grc`：
+    - `std::vector`：8402 次
+    - `std::string`：7115 次
+  - 建议下一步按调用链筛选以下类型文件或函数：
+    - 请求解析函数
+    - 召回结果聚合函数
+    - 特征拼接函数
+    - response 构造函数
+    - 临时排序、过滤、去重逻辑
+  - 对这些局部场景可以采用如下模式：
+
+    ```cpp
+    std::byte buffer[64 * 1024];
+    std::pmr::monotonic_buffer_resource arena(buffer, sizeof(buffer));
+
+    std::pmr::vector<Item> items{&arena};
+    std::pmr::string tmp{&arena};
+    ```
+
+  - 这类模式适合“请求结束后整体释放”的内存模型，可以显著减少频繁 `new/delete` 和容器扩容带来的 allocator 开销。
+
+- **建议五：对于小对象重复分配场景，可评估 `unsynchronized_pool_resource`**
+  - 如果在召回汇聚或序列生成过程中存在大量尺寸相近的小对象，例如节点、候选项、特征单元、临时状态对象，可以考虑：
+  
+    ```cpp
+    std::pmr::unsynchronized_pool_resource pool;
+    std::pmr::vector<Node> nodes{&pool};
+    ```
+
+  - 单线程请求上下文内优先使用 `unsynchronized_pool_resource`，避免 `synchronized_pool_resource` 的锁开销。
+  - 跨线程共享 resource 时才考虑 `synchronized_pool_resource`，但需要压测锁竞争。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险一：`memory_resource` 生命周期必须长于所有 PMR 容器**
+  - `std::pmr::vector`、`std::pmr::string` 内部只保存 `memory_resource*`，不拥有资源。
+  - 如果将栈上的 `monotonic_buffer_resource` 传给一个会逃逸出函数的容器，会造成悬垂指针。
+  - 尤其需要注意 `service/grc_http_service.h` 中类似 `OffSet` 这种可能长期保存的对象，不能盲目绑定请求级或函数级 arena。
+
+- **风险二：`monotonic_buffer_resource` 默认不逐个释放对象内存**
+  - `monotonic_buffer_resource` 的特点是单调增长，单次 `deallocate` 通常不回收，直到整个 resource 析构或调用 `release()`。
+  - 它适合“批量构造、批量释放”的请求级临时内存，不适合长生命周期且频繁增删的容器。
+  - 如果错误使用在长期对象上，可能导致内存持续增长。
+
+- **风险三：PMR 容器与普通 STL 容器类型不同，接口改造可能产生传参扩散**
+  - `std::pmr::vector<T>` 本质上是：
+
+    ```cpp
+    std::vector<T, std::pmr::polymorphic_allocator<T>>
+    ```
+
+  - 它和 `std::vector<T>` 不是同一个类型。
+  - 如果函数签名大量使用 `std::vector<T>&`、`const std::vector<T>&`，直接替换会引发接口连锁修改。
+  - 建议优先在函数内部临时容器使用 PMR，避免一开始改公共头文件和跨模块接口。
+
+- **风险四：跨线程和异步场景需要谨慎选择 resource 类型**
+  - `unsynchronized_pool_resource` 不保证线程安全，不能被多个线程并发访问。
+  - 如果请求对象或 PMR 容器会进入异步回调、RPC continuation、线程池任务，需要确认 resource 的线程归属和生命周期。
+  - 对召回汇聚服务这类高并发代码，建议迁移前先梳理容器是否会跨线程传递，再决定使用：
+    - 请求内单线程：`monotonic_buffer_resource` / `unsynchronized_pool_resource`
+    - 多线程共享：`synchronized_pool_resource`
+    - 长生命周期对象：谨慎使用 PMR，或使用自定义全局 resource。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
