@@ -1195,3 +1195,191 @@ jemalloc 在多线程 C++ 服务中的价值可以总结为：
 - [Facebook Engineering Blog: jemalloc 大规模应用实践](https://engineering.fb.com/2011/01/03/core-infra/scalable-memory-allocation-using-jemalloc/)
 - [Andrei Alexandrescu: std::allocator is to Allocation what std::vector is to Vexation](https://www.youtube.com/watch?v=LIb3L4vKZ7U)
 - [jemalloc GitHub: 源码注释](https://github.com/jemalloc/jemalloc/tree/dev/src)
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-09T19:02:50.514082
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 本次扫描显示，`feeda-mv-grc` 已经在 `main.cpp` 中发现 jemalloc 相关使用，可作为后续接入、编译链接方式和运行参数配置的参考；`feeda-mv-grg` 暂未发现 jemalloc 直接使用。两个代码库都存在大量 C++ 标准容器与动态分配行为，其中 `std::vector`、`std::string`、`new` 的使用规模较大，说明业务运行时很可能存在较高频的小对象、中等对象分配压力。
+
+- 从迁移潜力看，jemalloc 更适合作为**进程级默认内存分配器**引入，而不是逐处替换业务代码。对于 `feeda-mv-grc` 这类召回汇聚服务，扫描到 `new_operator` 450 次、`std::vector` 8412 次、`std::string` 7129 次，内存分配密度明显更高，优先级高于 `feeda-mv-grg`。建议先在 `feeda-mv-grc` 基于现有 `main.cpp` 接入点做灰度验证，再推广到 `feeda-mv-grg`。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 当前状态：
+  - 暂未发现 jemalloc 直接使用。
+  - 说明该代码库目前大概率仍依赖系统默认分配器，例如 glibc malloc，或通过运行环境间接指定分配器。
+
+- 动态内存相关使用规模：
+  - `new_operator`：65 次，分布在 34 个文件。
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+
+- 典型代码位置：
+  - `plugin/predictor.cpp:18`
+    - 使用 `new ::baidu::feed::mlarch::PredictorService_Stub(...)` 构造 RPC stub，并交由 `std::unique_ptr` 管理。
+    - 该场景更偏初始化期对象分配，通常不是 jemalloc 的主要收益点。
+  - `plugin/predictor.cpp:73`
+    - 通过 `BABYLON_REGISTER_CUSTOM_COMPONENT_WITH_NAME` 注册组件，lambda 中 `new PredictorPlugin(...)`。
+    - 该类分配也可能集中在组件注册或初始化阶段，收益取决于插件创建频率。
+  - `plugin/predictor.cpp:76`
+    - 同样为插件注册场景中的 `new PredictorPlugin(...)`。
+
+- 初步判断：
+  - `feeda-mv-grg` 的容器使用量不低，尤其 `std::string` 与 `std::vector` 广泛分布，但当前样例中直接 `new` 多为初始化/注册逻辑。
+  - 建议作为第二阶段接入对象，先通过压测确认请求处理链路中是否存在高频 vector/string 构造、扩容、拷贝，再决定是否全局启用 jemalloc。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 当前状态：
+  - 已发现 jemalloc 使用：1 个文件。
+  - 位置：`main.cpp`。
+  - 该文件可作为后续分析 jemalloc 链接方式、初始化方式、环境变量配置、运行参数的参考入口。
+
+- 动态内存相关使用规模：
+  - `new_operator`：450 次，分布在 312 个文件。
+  - `malloc_call`：3 次，分布在 1 个文件。
+  - `std::vector`：8412 次，分布在 1270 个文件。
+  - `std::string`：7129 次，分布在 1225 个文件。
+
+- 典型代码位置：
+  - `service/grc_http_service.h:65`
+    ```cpp
+    HttpCntlData() {
+        _thread_mutex_vec.reserve(64);
+        _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+        _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+    }
+    ```
+    - 存在 `std::vector::reserve` 和 `std::shared_ptr<OffSet>(new OffSet)`。
+    - 如果 `HttpCntlData` 是请求级、连接级或线程级频繁构造对象，jemalloc 对小对象分配和 shared_ptr 控制块相关分配可能有收益。
+  - `service/grc_http_service.h:66`
+    ```cpp
+    _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+    ```
+    - 重复构造 `shared_ptr` 管理的堆对象。
+    - 可考虑代码层面用 `std::make_shared<OffSet>()` 减少一次独立分配，同时配合 jemalloc 降低剩余分配成本。
+  - `service/grc_http_service.h:102`
+    ```cpp
+    std::shared_ptr<OffSet> new_off_set(new OffSet);
+
+    //恢复当前配置
+    *new_off_set = *fore_set;
+    ```
+    - 配置切换或双缓冲更新时新建 `OffSet` 并复制旧配置。
+    - 如果该逻辑运行频繁，既可以受益于 jemalloc，也可以进一步从对象复用、make_shared、减少深拷贝等方向优化。
+
+- 初步判断：
+  - `feeda-mv-grc` 的内存分配热点潜力显著高于 `feeda-mv-grg`。
+  - 该服务有大量 `std::vector`、`std::string`、`new` 使用，且已在 `main.cpp` 出现 jemalloc 接入痕迹，适合作为 jemalloc 适配与调优的首个落地代码库。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **优先在 `feeda-mv-grc/main.cpp` 梳理现有 jemalloc 接入方式，并作为统一参考模板**
+  - 扫描已发现 `feeda-mv-grc` 的 `main.cpp` 存在 jemalloc 使用，建议先确认其具体方式：
+    - 是否通过链接 `-ljemalloc` 替换默认 malloc。
+    - 是否通过 `LD_PRELOAD=libjemalloc.so` 注入。
+    - 是否使用了 `mallctl`、`malloc_stats_print` 或 profiling 配置。
+  - 如果当前只是零散接入，建议沉淀成统一启动配置，例如：
+    - 线上默认启用 jemalloc。
+    - 压测环境打开 `stats_print` 或 heap profiling。
+    - 通过环境变量统一配置 `MALLOC_CONF`。
+  - 该文件可作为 `feeda-mv-grg` 后续接入 jemalloc 的参考代码。
+
+- **针对 `feeda-mv-grc/service/grc_http_service.h` 中 `shared_ptr(new OffSet)` 场景，建议先做代码级优化，再配合 jemalloc**
+  - 当前代码：
+    ```cpp
+    _off_set_buf.emplace_back(std::shared_ptr<OffSet>(new OffSet));
+    std::shared_ptr<OffSet> new_off_set(new OffSet);
+    ```
+  - 建议改为：
+    ```cpp
+    _off_set_buf.emplace_back(std::make_shared<OffSet>());
+    auto new_off_set = std::make_shared<OffSet>();
+    ```
+  - 原因：
+    - `std::shared_ptr<T>(new T)` 通常会产生至少两次分配：一次对象分配，一次控制块分配。
+    - `std::make_shared<T>()` 可将对象和控制块合并为一次分配。
+    - jemalloc 能降低分配器成本，但无法消除不必要的分配次数；两者结合收益更稳定。
+
+- **对 `feeda-mv-grc` 中大量 `std::vector` 与 `std::string` 使用，建议以进程级替换分配器为主，不建议逐处改 allocator**
+  - `feeda-mv-grc` 中：
+    - `std::vector`：8412 次。
+    - `std::string`：7129 次。
+  - 这些容器广泛分布在 1000+ 文件中，如果逐个替换为自定义 allocator，改造成本高、侵入性强、风险大。
+  - 更推荐：
+    - 通过 jemalloc 替换全局 `malloc/free/new/delete` 后端。
+    - 保持业务代码中的 `std::vector`、`std::string` 写法不变。
+    - 重点观测 P99 延迟、RSS、active/allocated 比值、内存碎片率和线程锁竞争。
+
+- **在 `feeda-mv-grg/plugin/predictor.cpp` 的插件注册和 PredictorStub 初始化场景，不建议作为首要优化点**
+  - 该文件中的典型分配包括：
+    - `new ::baidu::feed::mlarch::PredictorService_Stub(...)`
+    - `new PredictorPlugin(...)`
+  - 这些对象看起来更偏进程初始化或组件注册阶段，而非请求热路径。
+  - jemalloc 对这类长生命周期对象的收益通常有限。
+  - 建议仅在全局启用 jemalloc 后自然覆盖，不单独为该文件做局部改造。
+
+- **建议建立压测对照组，优先验证 `feeda-mv-grc` 的收益，再推广到 `feeda-mv-grg`**
+  - 推荐对照方式：
+    - A 组：系统默认 malloc。
+    - B 组：jemalloc 默认配置。
+    - C 组：jemalloc + 业务调优参数，例如 decay、tcache、background_thread。
+  - 建议观测指标：
+    - 请求平均延迟、P95、P99、P999。
+    - CPU 使用率。
+    - RSS 峰值和稳定值。
+    - jemalloc `allocated`、`active`、`resident`、`mapped`。
+    - 线程数较多时的 malloc lock contention。
+  - 如果 `feeda-mv-grc` 验证收益明显，再将 `main.cpp` 的接入方式迁移到 `feeda-mv-grg`。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **jemalloc 是进程级行为，可能影响所有第三方库的内存分配路径**
+  - 一旦通过链接或 `LD_PRELOAD` 替换默认分配器，业务代码、RPC 框架、日志库、protobuf、brpc/bvar 等依赖库都会受到影响。
+  - 需要重点验证：
+    - 是否存在库内部假设 glibc malloc 行为。
+    - 是否混用不同分配器分配和释放内存。
+    - 插件或动态库是否有独立链接分配器的问题。
+
+- **内存占用可能阶段性上升，需要区分“泄漏”和“缓存”**
+  - jemalloc 的 tcache、arena、dirty/muzzy extent decay 会保留部分内存以换取性能。
+  - 线上看到 RSS 上升不一定是内存泄漏，可能是 jemalloc 缓存导致。
+  - 建议接入后同时启用统计观测，关注：
+    - `allocated`：业务实际分配。
+    - `active`：jemalloc 活跃页。
+    - `resident`：常驻内存。
+    - `mapped`：映射虚拟内存。
+  - 判断问题时不要只看进程 RSS。
+
+- **多 arena 和 tcache 对高并发友好，但对内存紧张服务可能增加碎片**
+  - jemalloc 默认 arena 数通常与 CPU 核数相关，高线程服务收益明显。
+  - 但如果服务实例内存配额较紧，过多 arena 可能带来更高驻留内存。
+  - 建议灰度时根据服务特征评估 `narenas`、`dirty_decay_ms`、`muzzy_decay_ms`、`background_thread` 等参数。
+
+- **代码层面不必要的分配仍需单独治理，jemalloc 不能替代对象生命周期优化**
+  - 例如 `feeda-mv-grc/service/grc_http_service.h` 中的 `std::shared_ptr<OffSet>(new OffSet)`，即使启用 jemalloc，仍然存在分配次数偏多的问题。
+  - 对请求热路径中的 `std::vector` 扩容、`std::string` 拼接、临时对象构造，仍建议结合：
+    - `reserve()`。
+    - `emplace_back()`。
+    - `std::move()`。
+    - 对象池或复用缓冲区。
+    - `std::make_shared()`。
+  - jemalloc 适合作为底层加速手段，而不是替代业务层内存模型优化。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
