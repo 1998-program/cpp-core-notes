@@ -926,3 +926,294 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops) {
 3. **io_uring 迁移**：Linux 5.10+ 环境下，io_uring 的 Proactor 原生支持可以显著降低 syscall 开销
 4. **Coroutine 改造**：老旧的回调地狱代码逐步迁移到 C++20 coroutine，可维护性提升明显
 5. **Buffer 生命周期管理**：推荐服务中大量使用 `shared_ptr<buff
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-15T19:01:54.005079
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从本次扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库中**尚未发现 `boost::asio` 的直接使用**，说明当前网络 I/O、异步调度、RPC 通信等能力大概率仍主要依赖现有框架，例如 brpc、bthread、HTTP/RPC 服务框架或业务自研封装。因此，短期内不建议将 `boost::asio` 作为全局替换方案直接引入，而更适合作为**局部异步 I/O 优化工具**或用于新模块建设。
+
+- 从标准库容器使用规模看，两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用非常广泛，尤其是 `feeda-mv-grc` 中 `std::vector` 达到 8419 次、`std::string` 达到 7134 次。这说明业务代码中存在大量请求上下文、候选集、特征、依赖图、HTTP 参数与响应字符串处理逻辑。如果未来在这些路径中引入 `boost::asio` 异步读写，需要重点关注 **buffer 生命周期管理**、**异步回调线程安全** 和 **与现有 RPC/HTTP 框架的线程模型兼容性**。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 feeda-mv-grg：序列生成服务
+
+- 当前扫描结果：
+  - 未发现 `boost::asio` 直接使用。
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+
+- 典型代码位置：
+  - `model/model.h`
+    ```cpp
+    class Model {
+    public:
+        virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    };
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+
+- 分析结论：
+  - `feeda-mv-grg` 更偏模型预测与序列生成逻辑，当前扫描样例集中在 `model/` 目录，说明核心热点可能是候选集处理、模型输入构造、模型推理调用。
+  - 这类代码通常不是 `boost::asio` 的直接替换目标。`boost::asio` 更适合用于：
+    - 异步访问远端模型服务；
+    - 异步拉取外部特征；
+    - 后台异步日志/样本上报；
+    - 新建轻量 TCP/HTTP 客户端连接池。
+  - 对 `model/model.h`、`model/paddle_model.h` 这类接口，不建议直接引入 ASIO 回调式接口，否则会污染模型预测抽象，增加调用链复杂度。更推荐在模型服务访问层或外部依赖访问层封装异步 I/O。
+
+#### 2.2 feeda-mv-grc：召回汇聚服务
+
+- 当前扫描结果：
+  - 未发现 `boost::asio` 直接使用。
+  - `std::vector`：8419 次，分布在 1272 个文件。
+  - `std::string`：7134 次，分布在 1227 个文件。
+  - `std::unordered_map`：2837 次，分布在 637 个文件。
+
+- 典型代码位置：
+  - `service/grc_http_service.cpp:62`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+  - `service/grc_http_service.cpp:81`
+    ```cpp
+    std::set<std::pair<int, int>, decltype(comp_pair)> p_set(comp_pair);
+    static std::vector<std::string> colors{"#FFB6C1", "#DC143C", "#DB7093", "#FF1493", "#FF00FF", "#800080",
+                                           "#4B0082", "#7B68EE", "#0000FF", "#4169E1", "#778899", "#4682B4",
+    ```
+  - `service/grc_http_service.cpp:152`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+    ```
+
+- 分析结论：
+  - `feeda-mv-grc` 的容器使用规模明显更大，且扫描样例已经涉及 `service/grc_http_service.cpp` 中的 HTTP 服务、图依赖关系、字符串响应构造等逻辑。
+  - 该服务作为召回汇聚层，天然存在大量下游访问、依赖编排、结果聚合和 HTTP/RPC 响应构造场景，比 `feeda-mv-grg` 更适合评估局部引入异步 I/O 能力。
+  - 不过当前代码已出现 `cntl->http_request()` 等接口，说明业务侧可能已经依赖 brpc 或类似服务框架。若引入 `boost::asio`，应优先作为**内部异步客户端/后台异步任务执行器**，而不是替换现有 HTTP 服务入口。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：不要将 `boost::asio` 作为 `std::vector` / `std::string` / `std::unordered_map` 的替代品**
+  - 适用代码：
+    - `model/model.h`
+    - `model/paddle_model.h`
+    - `service/grc_http_service.cpp`
+  - 原因：
+    - `boost::asio` 是异步 I/O 与事件循环库，不是容器库。
+    - 当前扫描到的大量 `std::vector`、`std::string`、`std::unordered_map` 使用，主要反映业务中存在大量候选集、依赖图、参数解析、响应构造逻辑。
+    - 这些容器不应被直接替换为 ASIO 类型。
+  - 建议：
+    - 继续保留现有标准库容器。
+    - 仅在网络 I/O、定时器、连接池、异步日志、异步下游访问等场景中评估引入 `boost::asio`。
+    - 如果后续使用 ASIO 的 `boost::asio::buffer(std::string)` 或 `boost::asio::buffer(std::vector<char>)`，需要额外保证容器生命周期覆盖整个异步操作。
+
+- **建议 2：优先在 `service/grc_http_service.cpp` 的下游依赖访问或图依赖查询场景中试点异步化**
+  - 适用代码：
+    - `service/grc_http_service.cpp:62`
+  - 当前代码场景：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    ```
+  - 分析：
+    - 该文件涉及 HTTP 服务和图依赖关系处理，属于召回汇聚服务的控制面或管理面逻辑。
+    - 如果 `graph_engine->get_vertexs_message(graph_name)` 背后存在远程访问、磁盘读取、配置中心查询或跨线程阻塞等待，可以考虑将其封装为异步任务。
+  - 建议：
+    - 不建议直接在业务 handler 中暴露 ASIO 回调。
+    - 可以新增一个异步访问层，例如：
+      - `GraphAsyncClient`
+      - `AsyncGraphEngineAdapter`
+      - `GrcIoExecutor`
+    - 内部使用 `boost::asio::io_context` 和线程池管理异步任务，对外仍提供同步接口或 Future/Callback 接口，避免大规模侵入现有业务代码。
+  - 预期收益：
+    - 降低 HTTP 请求线程被下游慢操作阻塞的概率。
+    - 为后续召回多路并发、超时控制、请求取消提供基础能力。
+
+- **建议 3：在 `service/grc_http_service.cpp:152` 响应字符串构造场景中谨慎使用 ASIO buffer**
+  - 适用代码：
+    - `service/grc_http_service.cpp:152`
+  - 当前代码场景：
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+    ```
+  - 分析：
+    - 该场景中 `resp_str` 很可能用于 HTTP 响应构造。
+    - 如果未来将响应写出改为 `boost::asio::async_write`，需要特别注意：`boost::asio::buffer(resp_str)` 不持有 `resp_str` 的所有权。
+  - 风险示例：
+    ```cpp
+    std::string resp_str = build_response();
+    socket.async_write_some(
+        boost::asio::buffer(resp_str),
+        [](auto ec, std::size_t n) {}
+    );
+    // resp_str 离开作用域后，异步写仍可能未完成，存在悬垂引用风险。
+    ```
+  - 建议写法：
+    ```cpp
+    auto resp = std::make_shared<std::string>(build_response());
+    boost::asio::async_write(
+        socket,
+        boost::asio::buffer(*resp),
+        [resp](const boost::system::error_code& ec, std::size_t bytes) {
+            // resp 被 lambda 捕获，保证异步写完成前存活。
+        }
+    );
+    ```
+  - 结论：
+    - 该文件可以作为未来 ASIO buffer 生命周期规范的重点检查对象。
+    - 所有从 `std::string`、`std::vector<char>` 构造的 ASIO buffer，都必须明确所有权策略。
+
+- **建议 4：`model/model.h` 和 `model/paddle_model.h` 不建议直接改造成 ASIO 回调模型**
+  - 适用代码：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 当前代码场景：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+  - 分析：
+    - 这里的接口是模型预测抽象，核心关注点是候选集输入、模型依赖输入和预测结果。
+    - 如果将接口改成：
+      ```cpp
+      async_predict(..., handler)
+      ```
+      会导致所有模型实现、调用方、错误处理链路被迫迁移到异步回调风格，改造成本高。
+  - 建议：
+    - 保持模型接口同步语义。
+    - 如果模型预测内部需要访问远程特征服务或模型服务，可以在更底层新增 ASIO 客户端。
+    - 对上层暴露统一封装，例如：
+      ```cpp
+      int predict(...);                  // 保持现有同步接口
+      Future<PredictResult> async_predict(...); // 新增可选异步接口
+      ```
+    - 优先选择“旁路新增异步能力”，不要破坏现有虚函数接口。
+
+- **建议 5：在 `feeda-mv-grc` 中优先建设统一 `io_context` 执行器，而不是各模块自行创建事件循环**
+  - 适用代码库：
+    - `feeda-mv-grc`
+  - 原因：
+    - `feeda-mv-grc` 文件规模和容器使用规模较大，业务模块多。
+    - 如果多个模块各自创建 `boost::asio::io_context` 和线程池，容易导致线程数膨胀、资源不可控、关闭流程复杂。
+  - 建议：
+    - 新增统一异步 I/O 基础设施，例如：
+      - `GrcAsioRuntime`
+      - `GrcIoContextPool`
+      - `AsyncClientManager`
+    - 统一管理：
+      - `boost::asio::io_context`
+      - `executor_work_guard`
+      - I/O 线程池
+      - 定时器
+      - 异步连接池
+      - shutdown 流程
+    - 对业务模块只暴露受控接口：
+      ```cpp
+      post_task(...)
+      async_call_with_timeout(...)
+      async_write_log(...)
+      ```
+  - 预期收益：
+    - 降低模块间重复建设成本。
+    - 便于统一限流、超时、背压和监控。
+    - 避免 ASIO 引入后造成线程模型失控。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：ASIO buffer 是非所有权视图，容易引入悬垂引用**
+  - 影响代码：
+    - `service/grc_http_service.cpp`
+    - 所有未来使用 `std::string` / `std::vector<char>` 构造网络发送 buffer 的位置。
+  - 说明：
+    - `boost::asio::buffer(x)` 不会拷贝 `x`。
+    - 如果 `x` 是局部变量，异步操作完成前就析构，会产生 undefined behavior。
+  - 规避方式：
+    - 使用 `std::shared_ptr<std::string>`、`std::shared_ptr<std::vector<char>>` 延长生命周期。
+    - 或者封装专门的 `Session` / `RequestContext` 对象持有 buffer。
+    - 禁止在异步写中直接捕获局部字符串引用。
+
+- **风险 2：与现有 brpc / bthread / HTTP 框架线程模型可能冲突**
+  - 影响代码：
+    - `service/grc_http_service.cpp`
+  - 说明：
+    - 当前代码中出现 `cntl->http_request()`，说明服务入口可能已经运行在现有 RPC/HTTP 框架之上。
+    - `boost::asio::io_context.run()` 需要独立事件循环线程，如果直接在业务请求线程中运行，可能阻塞请求处理。
+  - 规避方式：
+    - 不在 HTTP handler 中调用 `io_context.run()`。
+    - 使用全局或服务级 `io_context` 线程池。
+    - 明确 brpc/bthread 与 ASIO 线程之间的数据交互边界。
+    - 回调中访问共享状态时使用 strand、队列投递或业务上下文隔离。
+
+- **风险 3：回调式异步模型会增加业务代码复杂度**
+  - 影响代码：
+    - `model/model.h`
+    - `model/paddle_model.h`
+    - 召回汇聚链路中的多阶段处理逻辑。
+  - 说明：
+    - 推荐系统链路通常包含召回、粗排、精排、后处理、响应组装等多个阶段。
+    - 如果每一层都直接暴露 ASIO callback，容易形成 callback hell，并增加错误处理和超时管理复杂度。
+  - 规避方式：
+    - 不直接在核心业务接口上暴露 ASIO handler。
+    - 优先封装为 Future、协程或统一异步任务接口。
+    - 若编译环境支持 C++20，可评估 `boost::asio::awaitable`，但需要统一协程异常和取消语义。
+
+- **风险 4：不适合做全量迁移，收益主要来自局部 I/O 热点**
+  - 说明：
+    - 本次扫描没有发现已有 `boost::asio` 使用，团队在该库上的工程经验可能不足。
+    - 当前大量命中的是标准容器，而不是可直接替换的网络 I/O 代码。
+  - 建议：
+    - 不做全代码库级别迁移。
+    - 优先选择低风险模块试点：
+      - 后台异步日志上报；
+      - 下游依赖异步客户端；
+      - 配置/图信息异步刷新；
+      - 管理面 HTTP 工具接口。
+    - 在试点完成前，不建议替换主请求链路的核心 RPC 框架。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
