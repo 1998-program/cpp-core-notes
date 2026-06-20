@@ -240,3 +240,219 @@ data
 ## 9. 需人工补充
 
 - DynamicTimeOutPlugin 的配置文件、scene 策略与预算学习算法未在当前服务仓库中展开；今日计划也未提供 KU URL/doc-id。若需要解释“为什么某 scene 的预算是某个值”，需要补充插件实现仓库或内部文档。
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:32:16.501456
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`DynamicTimeOutPlugin` 已经在两个业务代码库中落地使用：`feeda-mv-grg` 发现 3 个相关文件，`feeda-mv-grc` 发现 4 个相关文件。两侧都已经在服务入口层接入动态超时能力，核心路径集中在 `service/grg_service.cpp`、`service/grc_service.cpp` 及对应头文件中，说明该技术并非全新引入，而是已有线上业务实践基础。
+
+- 迁移和优化的主要潜力不在于“是否接入插件”，而在于**接入一致性、scene 映射精度、timeout fallback 策略、controller 生命周期管理以及耗时上报准确性**。其中，`feeda-mv-grg` 已经具备更细粒度的 scene 映射能力，可作为多场景动态超时配置的参考；`feeda-mv-grc` 当前 scene 固定为 `default`，在多 graph / 多 UA 场景下存在进一步拆分和优化空间。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现 `DynamicTimeOutPlugin` 相关使用文件：
+  - `init/global.h`
+  - `service/grg_service.h`
+  - `service/grg_service.cpp`
+
+- 当前接入形态：
+  - `service/grg_service.cpp` 是核心接入点。
+  - 服务构造阶段通过 `ApplicationContext::instance().get<DynamicTimeOutPlugin>()` 获取插件实例。
+  - 请求进入后，在 `query()` 阶段根据 UA 选择 `graph_name`。
+  - 之后从 `DynamicTimeOutPlugin` 获取请求级 `DTController`。
+  - 在 `fill_basic_data_for_graph()` 中完成：
+    - timeout 来源选择；
+    - scene 映射；
+    - `set_request_timeout()`；
+    - `MutableFrameworkContext::timeout_cntl` 注入。
+
+- 当前行为特征：
+  - timeout 优先级为：
+    - `brpc Controller::timeout_ms()`
+    - `request.common_info().dynamic_timeout()`
+    - fallback `800ms`
+  - scene 默认使用 `graph_name`。
+  - `news_updates_dibar` 会被映射为 `short_micro_video`。
+  - `graph->run()` 结束后调用 `report_request_time()` 上报图运行耗时。
+
+- 可作为参考的已有代码：
+  - `service/grg_service.cpp`
+    - 可作为“按 graph_name 选择 scene”的参考实现。
+    - 可作为“在 graph 基础数据填充阶段注入 timeout controller”的参考实现。
+  - `service/grg_service.h`
+    - 可作为服务类持有 `DynamicTimeOutPlugin` 指针和相关 controller 生命周期管理的参考。
+  - `init/global.h`
+    - 可作为全局插件注册 / 初始化依赖的排查入口。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现 `DynamicTimeOutPlugin` 相关使用文件：
+  - `util/util.cpp`
+  - `util/util.hpp`
+  - `service/grc_service.h`
+  - `service/grc_service.cpp`
+
+- 当前接入形态：
+  - `service/grc_service.cpp` 是核心接入点。
+  - 构造阶段从 `ApplicationContext` 获取 `DynamicTimeOutPlugin`。
+  - 请求进入后先初始化 `GRCSessionContext`，再根据 UA / 请求类型选择 graph。
+  - timeout 注入集中在 `GenericGRCService::run()` 中完成。
+  - 注入后通过 `MutableFrameworkContext::timeout_cntl` 传递给图内 processor。
+
+- 当前行为特征：
+  - timeout 优先级为：
+    - `brpc Controller::timeout_ms()`
+    - `request.common_info().dynamic_timeout()`
+    - fallback `700ms`
+  - scene 当前固定为 `default`。
+  - 图执行完成后调用 `report_request_time()`，使用请求级耗时进行上报。
+  - 相比 GRG，GRC 的 graph_name 选择更复杂，但 scene 维度没有跟随 graph 拆分。
+
+- 可作为参考的已有代码：
+  - `service/grc_service.cpp`
+    - 可作为“在 run 阶段统一注入 timeout controller”的参考。
+    - 可作为“服务入口兜底 timeout 策略”的参考。
+  - `service/grc_service.h`
+    - 可作为 GRC 服务类保存插件指针、请求上下文和图执行接口的参考。
+  - `util/util.cpp` / `util/util.hpp`
+    - 可作为 GRC 侧公共工具逻辑中与请求上下文、UA、graph 选择相关逻辑的排查入口。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先统一 GRC / GRG 的 timeout 注入模板，减少入口逻辑分叉**
+  - 适用文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - 当前两个代码库都已经接入 `DynamicTimeOutPlugin`，但注入位置不同：
+    - GRC 在 `GenericGRCService::run()` 中注入；
+    - GRG 在 `fill_basic_data_for_graph()` 中注入。
+  - 建议抽象出统一的入口函数，例如：
+    - `get_request_timeout_ms(cntl, request, default_timeout)`
+    - `setup_dynamic_timeout(graph, dt_controller, scene, timeout_ms)`
+    - `report_dynamic_timeout_cost(dt_controller, cost_ms)`
+  - 这样可以降低后续维护成本，避免一侧修复 scene、fallback 或上报逻辑时另一侧遗漏。
+
+- **建议 2：GRC 可参考 GRG，将 scene 从固定 `default` 升级为基于 graph_name 的细分 scene**
+  - 适用文件：
+    - `service/grc_service.cpp`
+  - 当前 GRC 的 graph 选择已经有多个分支，例如：
+    - `default`
+    - `video_immersion`
+    - `searchc_related`
+    - 其他按 UA 或请求类型选择的图
+  - 但动态超时 scene 固定为 `default`，这会导致不同图的耗时数据混在一起，影响动态超时学习效果。
+  - 建议参考 `service/grg_service.cpp` 的实现方式：
+    - 默认 `scene = graph_name`
+    - 对业务上应复用预算的图做显式映射
+  - 示例策略：
+    - `default` → `default`
+    - `video_immersion` → `video_immersion`
+    - `searchc_related` → `searchc_related`
+    - 如果某些小流量 graph 统计不稳定，可先映射到主 graph scene。
+
+- **建议 3：GRG 侧保留 `news_updates_dibar` 到 `short_micro_video` 的映射，但建议增加注释或集中配置**
+  - 适用文件：
+    - `service/grg_service.cpp`
+  - 当前 GRG 有特殊逻辑：
+    - `graph_name == news_updates_dibar` 时，scene 改写为 `short_micro_video`。
+  - 该逻辑具有明显业务语义：两个 graph 可能共享预算模型或流量特征相近。
+  - 建议：
+    - 在 `service/grg_service.cpp` 中补充注释，说明为什么复用 `short_micro_video` scene；
+    - 或将映射关系抽到独立函数，例如 `map_graph_name_to_timeout_scene()`；
+    - 后续如果新增 graph，可以集中维护 scene 映射，避免散落在请求处理流程中。
+
+- **建议 4：对 `DTController` 获取失败路径做统一降级策略**
+  - 适用文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+    - `service/grc_service.h`
+    - `service/grg_service.h`
+  - 当前两个服务都会从插件池获取 `DTController`，如果返回空指针，请求会进入错误处理路径。
+  - 建议明确失败策略：
+    - 如果动态超时是强依赖，可以保持失败返回；
+    - 如果希望增强可用性，可以在 controller 获取失败时降级为无动态超时执行，但需要打错误日志和监控。
+  - 对高可用服务而言，更推荐：
+    - `DynamicTimeOutPlugin` 缺失或 controller 获取失败时记录 `ERROR`；
+    - graph 仍按 brpc timeout / request timeout 继续执行；
+    - 通过监控告警推动插件池问题修复。
+
+- **建议 5：GRC / GRG 的耗时上报口径建议对齐**
+  - 适用文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - 当前 GRC 和 GRG 的 `report_request_time()` 上报口径存在差异：
+    - GRC 更偏请求整体耗时；
+    - GRG 更偏 `graph->run()` 的执行耗时。
+  - 如果动态超时策略的目标是控制图内 processor 执行预算，建议优先使用 graph run 耗时；
+  - 如果目标是端到端 SLA 控制，则应统一纳入请求解析、GraphData 注入、图执行和响应构造。
+  - 建议至少在代码注释或监控指标中明确：
+    - 当前上报的是请求总耗时；
+    - 还是 graph 执行耗时；
+    - 否则后续调参时容易出现预算偏差。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：scene 映射错误会污染动态超时学习数据**
+  - 影响文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - `scene` 不是普通日志字段，而是动态超时策略的一部分。
+  - 如果将耗时差异明显的 graph 映射到同一个 scene，可能导致：
+    - 慢图预算被压缩；
+    - 快图预算被放大；
+    - 后续动态超时决策失真。
+  - 因此新增 graph 时必须同步评估 scene 映射。
+
+- **风险 2：`DTController` 生命周期必须受 graph 执行边界约束**
+  - 影响文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - `MutableFrameworkContext::timeout_cntl` 持有的是 controller 指针。
+  - 需要保证：
+    - graph 执行期间 controller 有效；
+    - `graph->reset()` 后不再有 processor 或异步回调访问该 controller；
+    - 不要将 `DTController*` 存入跨请求对象或全局缓存。
+  - 这是池化 controller 场景下最容易引入的悬垂指针风险。
+
+- **风险 3：fallback timeout 变更会直接影响线上 SLA 和召回量**
+  - 影响文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - 当前默认值为：
+    - GRC：`700ms`
+    - GRG：`800ms`
+  - 这两个值可能已经经过业务验证。
+  - 不建议在统一代码时顺手改成同一个值。
+  - 如果需要调整，建议：
+    - 先增加监控；
+    - 灰度按 graph / UA 放量；
+    - 对比超时率、召回量、响应耗时和下游成功率。
+
+- **风险 4：仅修改 request 中的 `dynamic_timeout` 不等价于图内生效**
+  - 影响文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - 图内 processor 真正读取的是 `MutableFrameworkContext::timeout_cntl`。
+  - 如果只设置了 `request.common_info().dynamic_timeout()`，但没有执行：
+    - `get_dt_controller()`
+    - `set_request_timeout()`
+    - `MutableFrameworkContext::timeout_cntl = controller`
+  - 那么图内节点可能无法感知动态超时。
+  - 排查线上超时问题时，应优先确认 controller 是否成功注入，而不是只检查 request 字段。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
