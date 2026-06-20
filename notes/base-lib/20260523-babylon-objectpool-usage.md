@@ -324,3 +324,237 @@ rg "AdjustEngineObject|FilterEngineObject|GraphPool" src/
 1. **babylon ObjectPool 源码未直接命中**：本文的 PooledObject RAII 语义和 thread-safety 分析基于代码中的使用模式推断，未在本地代码库命中 `pool.h` 源码。下一步应搜索 `baidu/feed/mlarch/babylon/pool.h` 并对比验证具体实现（如是否真的有 mutex 保护、是否支持 resize）。
 2. **`GcmsData::set_pool()` 调用链未完整追踪**：全局初始化中应有调用点，通过 `gcms_data_pool_size` gflags 设置 pool 大小，但调用位置未在本地命中。下一步搜索全局 initializer 文件或 `gcms_component.cpp`。
 3. **`multi_graph.conf` 中 `graph.pool_size` 配置未展开**：配置从 `conf/plugins/graph/multi_graph.conf` 加载，但该文件未在本地命中，预期由 SUPERPAGE 配置管理。下一步可搜索 noahdes 目录。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:25:52.265475
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 1. 分析摘要
+
+- `babylon::ObjectPool` 在 `feeda-mv-grc` 中已经有较成熟的落地使用，覆盖了 **连接池复用、正排数据对象池化、计算引擎复用** 等典型高频场景。当前已扫描到 `feeda-mv-grc` 中至少 10 个相关文件使用该技术，例如 `data/video_info.h`、`processor/video_launch/filter_pipeline.cpp`、`initializer/global.h`、`processor/filter.cpp` 等，说明该代码库已经具备较好的 ObjectPool 使用基础。
+
+- `feeda-mv-grg` 中也已发现 6 个文件使用目标库，涉及 `plugin/graph_parser.h`、`common_dict/parsers/xgb_handle_parser.h`、`service/grg_service.cpp`、`process/new_diversity_merge.cpp` 等。整体来看，两个业务代码库都存在高频对象构造、图处理、解析器、计算引擎等适合池化的场景，具备进一步统一对象生命周期管理、降低堆分配开销、减少尾延迟抖动的迁移潜力。
+
+---
+
+## 2. 代码库详情
+
+### 2.1 feeda-mv-grg：序列生成服务
+
+- 已扫描到 `babylon::ObjectPool` 或相关目标库使用，共涉及 6 个文件：
+  - `plugin/graph_parser.h`
+  - `common_dict/parsers/xgb_handle_parser.h`
+  - `common_dict/parsers/xgb_handle_parser.cpp`
+  - `service/grg_service.cpp`
+  - `process/new_diversity_merge.cpp`
+
+- 从文件分布看，`feeda-mv-grg` 的对象池使用主要集中在：
+  - **Graph / Parser 类对象复用**
+    - 例如 `plugin/graph_parser.h`
+    - 适合将图解析器、特征解析器等构造成本较高的对象池化。
+  - **XGB 相关解析器复用**
+    - 例如 `common_dict/parsers/xgb_handle_parser.h`
+    - 这类对象通常包含模型结构、规则配置或临时 buffer，适合通过池化减少频繁构造。
+  - **服务入口请求级对象复用**
+    - 例如 `service/grg_service.cpp`
+    - 可作为全局或服务级 ObjectPool 接入点。
+  - **多样性合并处理链路**
+    - 例如 `process/new_diversity_merge.cpp`
+    - 若每次请求都会创建 merge engine、临时队列、候选集容器，可进一步评估池化收益。
+
+- 该代码库已经具备一定 ObjectPool 使用经验，后续适配建议应优先参考现有写法，而不是重新引入一套新的对象池封装。
+
+### 2.2 feeda-mv-grc：召回汇聚服务
+
+- 已扫描到目标库使用，共涉及 10 个文件，典型文件包括：
+  - `data/video_info.h`
+  - `processor/video_launch/filter_pipeline.cpp`
+  - `initializer/global.h`
+  - `processor/video_launch/function_queue_adjust.cpp`
+  - `processor/filter.cpp`
+
+- `feeda-mv-grc` 中的 ObjectPool 使用场景更丰富，已覆盖：
+  - **连接池复用**
+    - 典型参考：`src/plugin/dup_service.cpp`
+    - `ObjectPool<::feed::dup::DupClient>` 用于复用 `DupClient`，避免每次请求重复创建 brpc 相关客户端对象。
+  - **正排数据对象池化**
+    - 典型参考：`src/plugin/gcms.h`
+    - `GcmsData` 通过 `MicroVideoInfoPool` 复用 `MicroVideoInfo`，适合处理高并发、大量 nid 正排数据。
+  - **计算引擎池化**
+    - 典型参考：
+      - `src/service/grc_service.cpp`
+      - `src/processor/video_launch/filter_pipeline.cpp`
+      - `src/processor/adjust.cpp`
+      - `src/processor/video_launch/diversity_merge.cpp`
+    - 这些文件中已经存在对 `Graph`、`FilterEngine`、`AdjustEngine`、`MultiStreamEngine` 等重型对象的池化复用。
+
+- 同时，扫描结果显示 `feeda-mv-grc` 中仍存在一定数量的标准库并发组件：
+  - `std::thread`：5 次，分布在 5 个文件
+  - `std::mutex`：4 次，分布在 2 个文件
+
+- 典型示例：
+  - `plugin/dibar_intervention_rpc.cpp`
+    ```cpp
+    _close_thread = false;
+
+    _run_thread = std::thread(_func);
+    auto pid = _run_thread.get_id();
+
+    LOG(NOTICE) << "dibar get intervention data thread pid=" << pid;
+    ```
+  - `plugin/dibar_intervention_rpc.h`
+    ```cpp
+    std::atomic<int64_t> _index{0};
+    std::atomic<bool> _close_thread{false};
+    std::thread _run_thread;
+
+    int32_t _sleep_time;
+    std::string _content_path;
+    ```
+  - `plugin/dibar_tasksystem_rpc.h`
+    ```cpp
+    std::atomic<int64_t> _index{0};
+    std::atomic<bool> _close_thread{false};
+    std::thread _run_thread;
+
+    int32_t _sleep_time;
+    ```
+
+- 这些 `std::thread` / `std::mutex` 并不一定直接适合替换为 `ObjectPool`，但说明代码中仍存在自管理生命周期的后台线程、共享状态和同步逻辑。对于线程内反复创建的临时对象、RPC client、解析器、buffer 等，可以结合 ObjectPool 做进一步优化。
+
+---
+
+## 3. 💡 适用性评估与建议
+
+- **建议 1：在 `feeda-mv-grc` 中继续以 `DupServicePlugin` 作为连接池复用模板，推广到其他 RPC Client**
+  - 参考文件：
+    - `src/plugin/dup_service.cpp`
+    - `src/plugin/dup_service.h`
+    - `src/processor/vfs.cpp`
+  - 当前 `DupServicePlugin` 已经通过：
+    ```cpp
+    ObjectPool<::feed::dup::DupClient>
+    ```
+    复用 `DupClient`，并通过 `PooledObject` 的 RAII 语义自动归还对象。
+  - 建议排查其他 RPC 插件，例如：
+    - `plugin/dibar_intervention_rpc.cpp`
+    - `plugin/dibar_tasksystem_rpc.h`
+  - 如果这些模块中存在周期性拉取、后台刷新、RPC client 初始化成本较高的对象，可以考虑改造成：
+    - 插件初始化阶段创建 `ObjectPool<ClientType>`
+    - 请求或后台任务执行时通过 `pool->get()` 获取
+    - 执行结束依赖 `PooledObject` 自动归还
+  - 这样可以减少 client 重复构造、连接初始化和内部 buffer 分配带来的额外开销。
+
+- **建议 2：在 `feeda-mv-grc` 的过滤、调整、合并链路中统一计算引擎池化规范**
+  - 参考文件：
+    - `processor/video_launch/filter_pipeline.cpp`
+    - `processor/filter.cpp`
+    - `processor/video_launch/function_queue_adjust.cpp`
+    - `src/processor/adjust.cpp`
+    - `src/processor/video_launch/diversity_merge.cpp`
+  - 当前已经能看到 `FilterEngine`、`AdjustEngine`、`MultiStreamEngine` 等对象池化使用。
+  - 建议进一步统一以下规范：
+    - 每类 Engine 提供明确的 `reset()` 或 `clear()` 方法；
+    - `PooledObject` 获取后必须在使用前清理上次请求状态；
+    - 禁止将 `PooledObject.get()` 返回的裸指针保存到请求生命周期之外；
+    - 在 pipeline 结束处不要手动 delete，由 RAII 自动归还。
+  - 对 `processor/video_launch/function_queue_adjust.cpp` 这类可能存在队列式、批处理式执行的模块，建议重点检查是否有每批次重复构造的临时 Engine 或上下文对象，可对齐 `filter_pipeline.cpp` 的池化方式。
+
+- **建议 3：在 `feeda-mv-grg` 中优先评估 Parser / Graph 类对象的池化收益**
+  - 参考文件：
+    - `plugin/graph_parser.h`
+    - `common_dict/parsers/xgb_handle_parser.h`
+    - `common_dict/parsers/xgb_handle_parser.cpp`
+    - `service/grg_service.cpp`
+  - `feeda-mv-grg` 已经有目标库使用经验，可以直接参考 `feeda-mv-grc` 中：
+    - `src/service/grc_service.cpp` 的 `GraphPool`
+    - `src/plugin/gcms.h` 的静态池初始化方式
+    - `src/plugin/dup_service.cpp` 的带 factory 的 pool 初始化方式
+  - 如果 `GraphParser`、`XgbHandleParser` 这类对象在请求路径上频繁创建，建议迁移为：
+    ```cpp
+    using GraphParserPool = babylon::ObjectPool<GraphParser>;
+    auto parser_obj = graph_parser_pool->get();
+    auto* parser = parser_obj.get();
+    parser->reset();
+    ```
+  - 适配重点不是简单替换 `new/delete`，而是确认 parser 内部状态是否可复用、是否需要清理缓存、是否依赖请求级上下文。
+
+- **建议 4：对 `process/new_diversity_merge.cpp` 和 `processor/video_launch/diversity_merge.cpp` 做候选集临时对象池化评估**
+  - 参考文件：
+    - `feeda-mv-grg/process/new_diversity_merge.cpp`
+    - `feeda-mv-grc/src/processor/video_launch/diversity_merge.cpp`
+  - 多样性合并通常涉及大量候选 item、score、tag、bucket、临时 vector/map 等结构。
+  - 如果当前代码中存在请求内大量创建的对象，例如：
+    - merge item wrapper
+    - 临时排序节点
+    - 多路归并上下文
+    - strategy context
+  - 可以考虑：
+    - 将重型 merge engine 放入 `ObjectPool`
+    - 将单请求内高频 item wrapper 放入轻量对象池或复用容器
+    - 对 vector 类成员使用 `clear()` 保留容量，避免反复释放和扩容
+  - 对于 `feeda-mv-grc`，可参考已有 `MultiStreamEngine` 的池化实践；对于 `feeda-mv-grg`，可先做压测对比，再决定是否迁移。
+
+- **建议 5：对后台线程模块不要直接用 ObjectPool 替代线程，但可池化线程内部高频对象**
+  - 相关文件：
+    - `plugin/dibar_intervention_rpc.cpp`
+    - `plugin/dibar_intervention_rpc.h`
+    - `plugin/dibar_tasksystem_rpc.h`
+  - 当前这些文件中出现了 `std::thread`、`std::atomic` 等后台任务控制逻辑。
+  - `ObjectPool` 并不是 `std::thread` 的直接替代品，不建议为了统一技术栈而将线程对象池化。
+  - 更合适的优化方向是：
+    - 保留后台线程模型；
+    - 检查线程循环内是否频繁创建 RPC request/response、解析对象、临时 buffer；
+    - 对这些可复用对象引入 `ObjectPool`；
+    - 将对象池初始化放在插件 initialize 阶段，而不是循环内懒加载。
+  - 这样可以降低后台刷新任务在长时间运行中的堆分配和内存碎片风险。
+
+---
+
+## 4. ⚠️ 引入风险与限制
+
+- **风险 1：对象归还后仍被外部持有，容易造成悬挂指针或串请求污染**
+  - `PooledObject.get()` 返回的是裸指针，业务代码很容易将其保存到异步回调、全局结构、lambda 或请求上下文之外。
+  - 一旦 `PooledObject` 析构，对象会被归还到池中，下一个请求可能复用同一个实例。
+  - 迁移时必须保证：
+    - 不跨越 `PooledObject` 生命周期保存裸指针；
+    - 不把池化对象引用放入异步任务中延迟使用；
+    - 如果确实需要异步使用，应延长 `PooledObject` 生命周期，而不是只保存 `T*`。
+
+- **风险 2：池化对象必须显式清理状态，否则会出现请求间数据泄漏**
+  - `ObjectPool` 复用对象，不等于重新构造对象。
+  - 类似 `FilterEngine`、`AdjustEngine`、`GraphParser`、`XgbHandleParser` 这类对象如果内部保存了：
+    - 上一次请求的 uid/cuid；
+    - 候选集；
+    - feature map；
+    - debug info；
+    - RPC response；
+    - 临时排序结果；
+  - 在下次复用前必须执行 `reset()` / `clear()`。
+  - 建议在 `processor/video_launch/filter_pipeline.cpp`、`processor/filter.cpp`、`process/new_diversity_merge.cpp` 等请求处理链路中重点检查对象复用前后的状态清理。
+
+- **风险 3：池大小配置不当会导致性能收益不稳定**
+  - 例如 `DupServicePlugin` 中通过配置项 `graph.pool_size` 控制连接池大小，默认值为 10。
+  - 如果池过小，高峰期可能导致竞争、等待或临时扩容；
+  - 如果池过大，则会增加常驻内存，尤其是 `MicroVideoInfo`、Graph、Engine 等重型对象。
+  - 建议按模块建立配置项和监控：
+    - 当前池大小；
+    - 已创建对象数；
+    - get/return 次数；
+    - 获取失败或等待次数；
+    - 高峰并发下的池耗尽情况。
+  - `src/plugin/gcms.h` 中已有 `_s_pool->expose("gcms")` 监控暴露实践，可作为参考。
+
+- **风险 4：ObjectPool 适合复用重型对象，不适合无差别替换所有局部对象**
+  - 对于普通小对象、简单 POD、生命周期很短且构造便宜的对象，盲目引入对象池可能增加复杂度，并带来锁竞争或状态清理成本。
+  - 优先迁移对象应满足至少一个条件：
+    - 构造 / 析构成本高；
+    - 内部包含大 buffer、vector、map；
+    - 绑定 RPC Channel、模型、规则、Graph 等重资源；
+    - 位于 QPS 高、请求路径短、尾延迟敏感的链路。
+  - 不建议将 `std::thread`、`std::mutex` 本身作为 ObjectPool 迁移目标；应关注它们保护或执行的业务对象是否适合池化。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
