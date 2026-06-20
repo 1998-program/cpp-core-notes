@@ -200,3 +200,179 @@ rg "mutable_.*\(|Swap\(|set_allocated_" src/processor src/operator
 1. 未在 `feeda-mv-grc` 本地直接命中 `bthread_async`，可能封装在依赖库或 generated/output 之外；本次用 `feeda-mv-grg` 的同类图引擎代码作为 bthread 使用实证对照。
 2. 未验证机器上 libbthread 源码版本，调度细节以 brpc/bthread 常见语义描述为准。
 3. 若后续要做性能归因，应补充 bvar/bthread worker 队列、CPU profile、RPC latency 分位数。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:27:07.206442
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：bthread 并行消费与后台任务
+
+### 1. 分析摘要
+
+- 从当前扫描结果看，`bthread` / `bthread_async` 在两个业务代码库中的使用程度并不相同：`feeda-mv-grg` 已经存在较明确的 bthread 使用经验，典型场景包括 `common_dict/param_sndb_dict.cpp` 中的后台轮询任务，以及图引擎 Pipeline 模板中的 `bthread_async + Future` 并行消费模型；而 `feeda-mv-grc` 在当前检索范围内没有直接命中大量 `bthread_async` 代码，更多是通过图引擎、PipelineFunction、processor DAG 间接体现并行执行模型。
+
+- 迁移潜力主要集中在两类场景：一是 batch/channel 级别的并行消费，例如召回结果、正排填充、rank 前处理等；二是轻量后台轮询任务，例如配置、词典、SNDB 数据定期刷新。考虑到 `feeda-mv-grc` 中 `std::vector`、`std::string`、`std::unordered_map` 使用规模较大，说明业务数据批处理和内存对象操作非常频繁，但并不意味着应大规模替换 STL 容器；更适合的优化方向是：在明确存在 I/O 等待、RPC 等待、batch 可拆分处理的路径上引入受控的 `bthread_async` 并行，而不是盲目将普通串行逻辑改成异步。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 feeda-mv-grg：已有 bthread 使用经验，可作为参考样板
+
+- 扫描结果显示，`feeda-mv-grg` 已发现目标库使用约 10 个文件，代表性文件包括：
+  - `common_dict/param_sndb_dict.cpp`
+  - `process/vids_gcf_embedding_function.cpp`
+  - `process/user_predict.cpp`
+  - `operator/diversity/pk_generate_v5_soft_rule.cpp`
+  - `operator/diversity/scatter_context.cpp`
+
+- 其中最清晰的参考样板是：
+
+  - `src/common_dict/param_sndb_dict.cpp`
+    - 使用 `bthread_async([this] { this->run(); })` 启动后台刷新任务。
+    - 析构函数中通过 `_run_loop = false` 通知退出，并对 future 执行 `get()` 等待任务结束。
+    - 内部通过双 buffer 和原子 index 切换数据，避免读写冲突。
+    - 该文件可以作为业务后台任务改造时的参考模板。
+
+  - `src/process/base/pipeline_function.h`
+    - 引入 `Future<int32_t, ::bthread::Mutex>` 和 `bthread_async`。
+    - 在 `parallel_consume` 中按并发数创建多个 queue context。
+    - 每个 queue context 通过 `bthread_async` 异步执行 `process(queue_context)`。
+    - 最后统一对 future 调用 `get()`，形成明确 join 边界。
+    - 这是图引擎 batch 并行消费的核心参考实现。
+
+- 现有 STL 使用规模较大：
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+
+- 这些统计说明 `feeda-mv-grg` 里批量对象处理、候选集遍历、map 查询较多，但不建议以“替换 STL”为目标进行迁移。更合理的做法是保留现有数据结构，只在适合并行拆分的计算阶段引入 `bthread_async`，例如候选集分段处理、多个 channel 并行召回、多个特征源并发请求等。
+
+#### 2.2 feeda-mv-grc：直接 bthread 命中较少，但图引擎场景具备适配潜力
+
+- 扫描结果显示，`feeda-mv-grc` 已发现目标库相关文件约 10 个，代表性文件包括：
+  - `processor/sa_info_map_function.cpp`
+  - `processor/multi_rank.cpp`
+  - `processor/video_launch/ds_to_ridinfo_pipeline.cpp`
+  - `processor/video_launch/ctr_rank_function.cpp`
+  - `plugin/gcms_sndb.cpp`
+
+- 当前技术笔记中已经确认：
+  - `src/main.cpp` 中注册 brpc `Server`，业务请求进入 `GenericGRCService` 后由图引擎执行 DAG。
+  - `conf/plugins/graph/global.conf` include 了大量 graph 配置，说明服务主体是图引擎 DAG，而非简单手写线程池。
+  - `conf/plugins/graph/queue_vertex.conf` 中声明了 `FillMetaPipelineFunction` 相关消费与产出。
+  - `src/processor/video_launch/fill_meta_pipeline.cpp` 中存在将 `_queue_recall_result` 移入 `mutable_input`、设置 batch 并调用 `parallel_consume(mutable_input)` 的逻辑。
+
+- 现有 STL 使用规模更大：
+  - `std::vector`：8426 次，分布在 1273 个文件。
+  - `std::string`：7150 次，分布在 1228 个文件。
+  - `std::unordered_map`：2833 次，分布在 638 个文件。
+
+- 这说明 `feeda-mv-grc` 的 processor、service、plugin 中存在大量批量数据组织和查询逻辑。由于 `feeda-mv-grc` 当前没有直接大量命中 `bthread_async`，建议优先复用图引擎已有的 `PipelineGraphFunction` / `parallel_consume` 抽象，而不是在各 processor 内部散落手写 bthread。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 `feeda-mv-grg/src/process/base/pipeline_function.h` 作为 `bthread_async + Future` 的标准参考模板**
+  - 适用场景：
+    - batch 输入可以拆成多个 range。
+    - 每个 range 之间没有共享写依赖。
+    - 最终只需要汇总错误码、统计指标或结果列表。
+  - 可参考做法：
+    - 使用 `std::vector<Future<int32_t, ::bthread::Mutex>>` 保存异步任务。
+    - 每个任务只处理独立的 `queue_context`。
+    - 函数返回前必须遍历 `future.get()`。
+  - 建议在 `feeda-mv-grc` 的 Pipeline 类场景中优先对齐该模式，例如：
+    - `processor/video_launch/fill_meta_pipeline.cpp`
+    - `processor/video_launch/ds_to_ridinfo_pipeline.cpp`
+  - 不建议在这些文件中随意新增裸 `bthread_start_background`，优先走已有 Babylon Future 封装，保证生命周期和错误码汇总可控。
+
+- **建议 2：`feeda-mv-grc/src/processor/video_launch/fill_meta_pipeline.cpp` 可重点评估 batch 并行消费收益**
+  - 该文件中已经存在将 `_queue_recall_result` 移入 `mutable_input`、设置 batch、调用 `parallel_consume(mutable_input)` 的结构，天然适合验证 bthread 并行消费收益。
+  - 建议检查：
+    - 每个 batch item 是否可以独立处理。
+    - 是否存在多个 bthread 写同一个 protobuf message 的行为。
+    - `publisher->publish()` 或结果写回是否有明确线程隔离。
+  - 如果当前 `parallel_consume` 在 grc 侧已经由依赖库实现，则建议只调优：
+    - batch size；
+    - concurrents 并发度；
+    - processor 内部共享状态；
+    - vertex 级耗时指标。
+  - 如果 grc 侧实现仍偏串行，可参考 `feeda-mv-grg/src/process/base/pipeline_function.h` 的方式引入 `bthread_async`。
+
+- **建议 3：`feeda-mv-grg/src/common_dict/param_sndb_dict.cpp` 可作为后台轮询任务模板，但建议替换普通 `sleep`**
+  - 当前模式优点：
+    - `init()` 中启动后台任务。
+    - 析构时设置 `_run_loop=false` 并等待 future 结束。
+    - 通过双 buffer 切换降低读写冲突。
+  - 建议优化点：
+    - 将 `run()` 中的 `sleep(FLAGS_param_dict_check_data_time_s)` 评估替换为 `bthread_usleep()` 或业务封装的 bthread 友好 sleep。
+    - 原因是普通 `sleep()` 语义上会阻塞当前 worker pthread，虽然低频后台任务影响可能有限，但在高密度 bthread 环境中不如 bthread-aware sleep 稳妥。
+  - 适合迁移到类似文件：
+    - `feeda-mv-grc/plugin/gcms_sndb.cpp`
+    - 其他 SNDB / 配置 / 词典类定期刷新模块。
+  - 迁移时应保持 `ParamSndbDict` 的三段式结构：启动、循环、析构 join。
+
+- **建议 4：`feeda-mv-grc/processor/multi_rank.cpp` 与 `processor/video_launch/ctr_rank_function.cpp` 不建议直接无限拆 bthread，应先区分 CPU 与 I/O**
+  - rank、CTR、multi-rank 类文件通常包含较重的排序、打分、特征拼接或模型调用。
+  - 如果内部主要是 CPU 计算，例如排序、规则打分、向量遍历，则不建议简单按 item 创建大量 bthread。
+  - 更合适的方式是：
+    - 只在多个外部特征源、多个 RPC、多个独立模型请求之间并行。
+    - 对纯 CPU 部分控制并发度，例如按 channel、按队列、按较大 batch 分片，而不是按单个 rid 分片。
+    - 通过 gflag 或配置限制最大并发数，避免抢占 brpc worker 和图引擎调度资源。
+  - 建议先在这些文件周边增加耗时拆分指标，再决定是否引入 `bthread_async`。
+
+- **建议 5：对 protobuf 写操作密集文件先做线程安全审计，再考虑 bthread 化**
+  - 在图引擎 processor 中，常见风险是多个 worker 同时操作同一个 response、result 或 context 中的 protobuf 对象。
+  - 建议优先审计以下文件：
+    - `feeda-mv-grc/processor/sa_info_map_function.cpp`
+    - `feeda-mv-grc/processor/video_launch/ds_to_ridinfo_pipeline.cpp`
+    - `feeda-mv-grc/processor/video_launch/fill_meta_pipeline.cpp`
+    - `feeda-mv-grg/operator/diversity/scatter_context.cpp`
+  - 重点 grep：
+    ```bash
+    rg "mutable_.*\\(|Swap\\(|set_allocated_|CopyFrom\\(|MergeFrom\\(" src/processor src/operator
+    ```
+  - 如果这些操作发生在 bthread worker 内，应确保每个 worker 写的是私有对象，最后由单线程 merge，或者使用明确的锁保护共享写。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：lambda 引用捕获导致生命周期问题**
+  - `bthread_async` 常见写法会捕获 `this`、局部变量引用、publisher 引用或 queue context 引用。
+  - 只有当 future 在函数返回前全部 `get()`，并且被捕获对象在所有 bthread 结束前都不析构时才安全。
+  - 参考 `feeda-mv-grg/src/process/base/pipeline_function.h` 的模式：创建 futures 后必须统一 `get()`，不要把 future 泄漏到函数外，也不要捕获临时对象引用。
+
+- **风险 2：protobuf 共享对象并发写容易产生 sporadic core**
+  - protobuf 的 `mutable_xxx()`、`Swap()`、`set_allocated_xxx()`、`CopyFrom()`、`MergeFrom()` 等操作不是天然线程安全。
+  - 在 `feeda-mv-grc` 的 processor 和 pipeline 场景中，如果多个 bthread 写同一个 response 或 context message，可能出现偶发 core。
+  - 建议采用：
+    - worker 内只读共享 protobuf；
+    - worker 写线程本地 protobuf；
+    - 最后单线程 merge；
+    - 或者使用明确锁保护，但要评估锁竞争。
+
+- **风险 3：bthread 不等于无限 CPU 并行**
+  - `bthread` 适合大量轻量任务、RPC 等待、I/O 等待和中等粒度 batch。
+  - 对 `processor/multi_rank.cpp`、`processor/video_launch/ctr_rank_function.cpp` 这类可能偏 CPU 的路径，如果拆分过细，可能导致：
+    - bthread worker 被 CPU 任务占满；
+    - brpc 请求延迟上升；
+    - 图引擎其他 vertex 调度被影响；
+    - P99 抖动加剧。
+  - 引入前应通过指标确认瓶颈是等待型而非纯 CPU 型。
+
+- **风险 4：后台任务必须有退出和 join 边界**
+  - 后台轮询类任务不能只启动不回收。
+  - 建议统一参考 `feeda-mv-grg/src/common_dict/param_sndb_dict.cpp`：
+    - `init()` 启动；
+    - `_run_loop` 控制退出；
+    - 析构中设置退出标志；
+    - `future.get()` 等待结束。
+  - 对 `feeda-mv-grc/plugin/gcms_sndb.cpp` 这类配置或字典刷新模块，如果未来引入 bthread 后台任务，必须按同样方式处理生命周期。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
