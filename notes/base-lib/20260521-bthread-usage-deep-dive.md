@@ -381,3 +381,235 @@ Redis 也采用类似模型：`src/plugin/redis.cpp:45-55` 在请求数大于 1 
 
 ---
 *本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:23:45.286379
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`bthread` / `babylon::bthread_async` / `Future<..., bthread::Mutex>` 在两个业务代码库中都已经存在一定规模的使用，并非全新技术引入。  
+  - `feeda-mv-grc` 中已在 `plugin/redis.cpp`、`processor/base/pipeline_function.h`、`service/grc_http_service.cpp`、`plugin/gcms.h` 等文件出现相关使用，且技术笔记中进一步确认 `plugin/parallel_predictor.cpp`、`processor/multi_rank.cpp`、`processor/sketchy_score_init.cpp` 等路径也采用了 `bthread_async + Future` 的并发模式。
+  - `feeda-mv-grg` 中也已发现 10 个相关文件，包括 `process/base/pipeline_function.h`、`plugin/model_service.h`、`process/diversity_merge.cpp`、`operator/diversity/paddle_model_soft_rule.h` 等，说明两个代码库都具备一定的 bthread 使用经验。
+
+- 该技术在业务中的适配潜力主要集中在三类场景：
+  - **多路 RPC / 多插件调用并发化**：例如 predictor、Redis、模型服务等外部 I/O 等待型任务。
+  - **图引擎 batch / pipeline 并发处理**：例如 `PipelineGraphFunction::parallel_consume()` 中对多个 `QueueContext` 的并行消费。
+  - **短生命周期 CPU/内存任务切片并发**：例如多字段排序、特征统计、候选集批处理等，但需要严格控制并发度，避免把 bthread 当成 CPU 扩容手段。
+
+整体判断：`feeda-mv-grc` 已经形成较清晰的 bthread 使用范式，可作为 `feeda-mv-grg` 后续迁移和规范化改造的参考；但迁移收益不应从 `std::vector`、`std::string`、`std::unordered_map` 等容器使用规模直接推导，而应重点关注 **同步串行 RPC、串行 batch 处理、请求内多任务 fan-out/fan-in** 等路径。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grc：召回汇聚服务
+
+- **已发现目标技术使用规模**
+  - 扫描发现相关使用文件：10 个。
+  - 代表文件包括：
+    - `plugin/redis.cpp`
+    - `processor/base/pipeline_function.h`
+    - `processor/gen_meta_map_to_vec.h`
+    - `service/grc_http_service.cpp`
+    - `plugin/gcms.h`
+  - 技术笔记中进一步确认的重点文件：
+    - `src/plugin/parallel_predictor.cpp`
+    - `src/plugin/redis.cpp`
+    - `src/processor/base/pipeline_function.h`
+    - `src/processor/multi_rank.cpp`
+    - `src/processor/sketchy_score_init.cpp`
+    - `src/service/grc_http_service.h`
+
+- **现有使用模式**
+  - `plugin/parallel_predictor.cpp`
+    - 已使用 `babylon::bthread_async` 派发多个 predictor RPC。
+    - 使用 `std::vector<Future<int, bthread::Mutex>>` 保存任务结果。
+    - 通过 `future.valid()` + `future.get()` 汇合结果。
+    - 这是当前代码库内最典型、最值得复用的参考实现。
+  - `plugin/redis.cpp`
+    - 对多个 Redis request 使用 bthread 并发派发。
+    - 单请求时走同步路径，避免不必要的 bthread 调度开销。
+    - 这是比较合理的性能权衡：**多请求并发，单请求直调**。
+  - `processor/base/pipeline_function.h`
+    - 在 `PipelineGraphFunction::parallel_consume()` 中按 `context.concurrents()` 创建多个并发任务。
+    - 每个任务处理独立的 `QueueContext`，降低共享状态竞争风险。
+    - 可作为图节点 batch 并发的标准模板。
+  - `processor/multi_rank.cpp`
+    - 按排序字段启动多个 bthread。
+    - 属于偏 CPU / 内存访问型并发，需要关注并发度和输入规模。
+  - `service/grc_http_service.h` / `service/grc_http_service.cpp`
+    - 使用 `bthread::Mutex` 保护 HTTP 控制面相关共享数据。
+    - 该场景说明代码库已经有 bthread 友好锁的实践基础。
+
+- **std 等价物使用规模**
+  - `std::vector`：8426 次，分布在 1273 个文件。
+  - `std::string`：7150 次，分布在 1228 个文件。
+  - `std::unordered_map`：2833 次，分布在 638 个文件。
+  - 这些容器使用规模很大，但不应简单理解为 bthread 的直接替换对象。更有价值的是结合这些容器是否在 bthread 任务中被共享读写，排查潜在并发风险，例如共享 `std::vector`、共享 `std::unordered_map`、共享 protobuf response 的并发写问题。
+
+---
+
+#### feeda-mv-grg：序列生成服务
+
+- **已发现目标技术使用规模**
+  - 扫描发现相关使用文件：10 个。
+  - 代表文件包括：
+    - `operator/diversity/paddle_model_soft_rule.h`
+    - `process/diversity_merge.cpp`
+    - `common_dict/param_sndb_dict.h`
+    - `plugin/model_service.h`
+    - `process/base/pipeline_function.h`
+
+- **现有使用模式推断**
+  - `process/base/pipeline_function.h`
+    - 与 `feeda-mv-grc` 中的 `processor/base/pipeline_function.h` 类似，很可能承担图节点或 pipeline batch 并行处理职责。
+    - 可对照 `feeda-mv-grc/src/processor/base/pipeline_function.h` 中的 `parallel_consume()` 实现，统一 bthread 并发模型。
+  - `plugin/model_service.h`
+    - 从文件名看，可能涉及模型服务调用或模型预测 RPC。
+    - 如果当前存在多个模型请求串行调用，可以参考 `feeda-mv-grc/src/plugin/parallel_predictor.cpp` 的 `bthread_async + Future` 模式进行 fan-out/fan-in 改造。
+  - `process/diversity_merge.cpp`
+    - 多样性合并通常涉及候选集遍历、规则打散、分桶合并等 CPU / 内存访问任务。
+    - 可以评估是否存在天然可切分的 batch，但需要避免盲目并发化导致 CPU 争抢。
+  - `operator/diversity/paddle_model_soft_rule.h`
+    - 如果该路径内存在多个候选、多个特征组或多个模型规则的独立计算，可以考虑做有限并发。
+    - 若主要是 CPU 密集型推理前后处理，则更适合按 batch size 控制，而不是每个 item 一个 bthread。
+  - `common_dict/param_sndb_dict.h`
+    - 字典类通常涉及后台更新、读多写少、双 buffer 或 copy-on-write。
+    - 如果已有后台 bthread 更新逻辑，需要重点检查锁粒度、对象生命周期和读写切换安全性。
+
+- **std 等价物使用规模**
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+  - 相比 `feeda-mv-grc`，`feeda-mv-grg` 的代码规模和容器使用量更小，但仍存在大量候选集、模型输入、字典、特征 map 等共享数据结构。引入 bthread 时，应优先检查这些结构是否在并发任务中只读，避免并发写。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议一：将 `feeda-mv-grc/src/plugin/parallel_predictor.cpp` 作为多路 RPC 并发模板**
+  - 适用场景：
+    - 多个 predictor request。
+    - 多个模型服务 request。
+    - 多个下游插件 request。
+  - 推荐参考实现：
+    - `src/plugin/parallel_predictor.cpp`
+    - `src/plugin/redis.cpp`
+  - 建议迁移方向：
+    - 在 `feeda-mv-grg/plugin/model_service.h` 中排查是否存在多个模型服务调用串行执行的逻辑。
+    - 如果多个模型请求之间没有强依赖，可改造成：
+      - 为每个有效 request 创建一个 `bthread_async`。
+      - 使用 `std::vector<Future<int, bthread::Mutex>>` 保存返回值。
+      - 在请求结束前统一 `valid()` + `get()` 汇合。
+    - 对单个 request 保持同步调用，参考 `feeda-mv-grc/src/plugin/redis.cpp` 的做法，避免无意义调度开销。
+
+- **建议二：统一两个代码库的 pipeline 并发处理范式**
+  - 适用文件：
+    - `feeda-mv-grc/src/processor/base/pipeline_function.h`
+    - `feeda-mv-grg/process/base/pipeline_function.h`
+  - 当前 `feeda-mv-grc` 中的 `PipelineGraphFunction::parallel_consume()` 已经体现了较好的实践：
+    - 按 `context.concurrents()` 控制并发度。
+    - 每个 bthread 处理独立 `QueueContext`。
+    - futures 在函数返回前全部 `get()`。
+  - 建议：
+    - 对比两个代码库的 `pipeline_function.h` 实现。
+    - 如果 `feeda-mv-grg/process/base/pipeline_function.h` 中仍有串行 batch 消费逻辑，可以迁移 `feeda-mv-grc` 的并发消费模型。
+    - 保持并发粒度为 batch / queue context 级别，不建议细化到单 item 级别。
+
+- **建议三：对 Redis、GCMS、模型服务等 I/O 等待型插件优先并发化**
+  - 适用文件：
+    - `feeda-mv-grc/plugin/redis.cpp`
+    - `feeda-mv-grc/plugin/gcms.h`
+    - `feeda-mv-grg/plugin/model_service.h`
+  - 适用条件：
+    - 多个下游请求相互独立。
+    - 总耗时主要由 RPC timeout / 网络等待构成。
+    - 请求上下文生命周期覆盖所有异步任务。
+  - 优化收益：
+    - 将多个远程调用的串行等待改为并行等待。
+    - 对 P50/P90 延迟通常有直接收益。
+  - 注意：
+    - RPC 数量必须有上限。
+    - 超时配置应与业务降级策略一致。
+    - bthread 任务中不要持锁跨 RPC 调用。
+
+- **建议四：CPU 密集型路径只做受控并发，不建议无脑 bthread 化**
+  - 适用文件：
+    - `feeda-mv-grc/src/processor/multi_rank.cpp`
+    - `feeda-mv-grc/src/processor/sketchy_score_init.cpp`
+    - `feeda-mv-grg/process/diversity_merge.cpp`
+    - `feeda-mv-grg/operator/diversity/paddle_model_soft_rule.h`
+  - 当前参考：
+    - `src/processor/multi_rank.cpp` 按排序字段并发。
+    - `src/processor/sketchy_score_init.cpp` 按 `_batch_size` 切片并发。
+  - 建议：
+    - 对候选集打分、排序、多样性合并等逻辑，优先按 batch 切片。
+    - 并发数应由配置控制，例如 batch size、字段数、pipeline concurrents。
+    - 不建议为每个候选 item 创建一个 bthread。
+    - 如果线上 P99 升高，应优先检查任务数量、单任务数据量、排序输入规模和大容器拷贝。
+
+- **建议五：控制面和后台更新优先使用 `bthread::Mutex`，但要缩小锁粒度**
+  - 适用文件：
+    - `feeda-mv-grc/src/service/grc_http_service.h`
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+    - `feeda-mv-grg/common_dict/param_sndb_dict.h`
+  - 现有参考：
+    - `feeda-mv-grc/src/service/grc_http_service.h` 已使用 `bthread::Mutex` 保护 HTTP 控制面共享数据。
+  - 建议：
+    - bthread 任务路径中优先使用 `bthread::Mutex`，避免长时间阻塞 bthread worker。
+    - 字典更新类逻辑建议采用双 buffer、版本切换或 copy-on-write。
+    - 锁内只做指针切换、状态更新，不要在锁内执行 RPC、磁盘 I/O、大循环遍历或大对象拷贝。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险一：lambda 捕获和请求上下文生命周期问题**
+  - 高风险写法：
+    - `[&]` 捕获所有局部变量。
+    - 捕获循环变量引用。
+    - bthread 未 `get()` 就让请求上下文析构。
+  - 参考安全写法：
+    - `feeda-mv-grc/src/processor/base/pipeline_function.h` 中每个任务绑定独立 `QueueContext`。
+    - `feeda-mv-grc/src/processor/multi_rank.cpp` 中将循环下标按值传入任务。
+  - 迁移要求：
+    - 所有 `bthread_async` 创建的 future 必须在请求结束前汇合。
+    - 避免在任务未完成前 resize / move 保存任务上下文的容器。
+
+- **风险二：共享 protobuf 或共享容器并发写**
+  - 两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模都较大：
+    - `feeda-mv-grc`：`std::vector` 8426 次，`std::unordered_map` 2833 次。
+    - `feeda-mv-grg`：`std::vector` 1969 次，`std::unordered_map` 734 次。
+  - 引入 bthread 后，重点不是替换这些容器，而是检查它们是否被多个任务共享写。
+  - 特别需要避免：
+    - 多个 bthread 同时对同一个 protobuf 调用 `mutable_xxx()`。
+    - 多个 bthread 同时 `Swap()` / `MergeFrom()` / `CopyFrom()` 同一个 response。
+    - 多个 bthread 同时写同一个 `std::vector` 或 `std::unordered_map`。
+  - 建议每个任务写独立局部结果，最后在主线程汇总。
+
+- **风险三：bthread 不等于 CPU 资源扩容**
+  - bthread 适合 I/O 等待多、任务粒度小的场景。
+  - 对 `multi_rank.cpp`、`sketchy_score_init.cpp`、`diversity_merge.cpp` 这类 CPU / 内存密集型逻辑，并发过高会导致：
+    - worker 争抢 CPU。
+    - cache miss 增加。
+    - P99 延迟上升。
+    - 下游 RPC callback 或其他 bthread 饥饿。
+  - 建议所有 CPU 型 bthread 并发都必须有配置上限。
+
+- **风险四：锁粒度和锁类型混用问题**
+  - 在 bthread 执行路径中不建议长时间持有 `std::mutex`。
+  - 如果已有 `bthread::Mutex`，应保持同一共享资源的锁类型一致，避免 `std::mutex`、`bthread::Mutex` 混用造成排查复杂度上升。
+  - 锁内禁止执行：
+    - 远程 RPC。
+    - 磁盘 I/O。
+    - 大对象序列化。
+    - 大 vector / map 遍历或拷贝。
+  - 可参考 `feeda-mv-grc/src/service/grc_http_service.h` 中控制面互斥逻辑，但迁移时仍需检查锁保护范围是否过大。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
