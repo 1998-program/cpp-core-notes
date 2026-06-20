@@ -128,3 +128,213 @@ RPC Request
 1. `multi_stream_engine_plugin` 的实现未在当前 GRG 仓库中直接找到；已确认调用点为 `src/process/diversity_merge.cpp:86-90`，配置入口为 `vertex.conf:930-932`，下一步应在外部依赖 `baidu/feed/general/common-processor/plugin/exec_engine.h` 或 `baidu/feed/gr/exec_engine` 库中继续追踪 `bind_graph_dependency()`。
 2. `ExecType` 数值（如 `exec_type: 1/3`）的枚举定义未在当前代码库中直接找到；已确认配置使用位置为 `multi_stream_diversity.conf:70-75` 与 `multi_stream_diversity.conf:388-393`，下一步应搜索 exec_engine 基础库枚举。
 3. `DiversityRuleOperator`、`RuleSelectOperator`、`DiversityScorePkOperatorV2` 的具体算法实现位于外部 exec_engine/operator 依赖或本仓库其他目录，本文仅基于绑定链路与配置语义分析。
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:31:13.835372
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`ExecEngine MultiStreamEngine + GraphDependency 绑定` 这套模式在 **feeda-mv-grg** 中已经有较完整的落地链路：`DiversityMergeFunction` 通过 Graph `[@engine_vertex]` 暴露 GraphData / Channel 依赖，再在 `src/process/diversity_merge.cpp` 中调用 `bind_graph_dependency(this->vertex(), _diversity_engine)`，将外层 Graph 依赖绑定到内层 `MultiStreamEngine`。这说明 feeda-mv-grg 已具备将复杂业务规则、队列选择、多流合并逻辑配置化到 ExecEngine 的实践经验。
+
+- **feeda-mv-grc** 也发现了相关目标库使用，尤其是 `processor/video_launch/diversity_merge.cpp`，说明召回汇聚服务中已经存在与多样性合并、队列调度相关的业务场景。但从扫描规模看，GRC 仍有大量逻辑分散在普通 C++ processor 中，`std::vector`、`std::string`、`std::unordered_map` 使用非常广泛，具备一定的迁移和抽象潜力。建议优先选择“多队列选择 / 多样性合并 / 规则可配置化”场景做局部适配，而不是进行全库级别迁移。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 feeda-mv-grg
+
+- **当前使用现状**
+  - 已发现目标库使用：**10 个文件**。
+  - 代表性文件集中在多样性规则与软规则 operator：
+    - `operator/diversity/deep_changjing_satisfy.cpp`
+    - `operator/diversity/instant_interest_high_satisfied_trigger_soft_rule.cpp`
+    - `operator/diversity/tieba_adjust_soft_rule.cpp`
+    - `operator/diversity/searchc_related_soft_rule.cpp`
+    - `operator/diversity/author_dur_model_soft_rule.cpp`
+  - 这些文件可作为后续新增 ExecEngine operator、soft rule operator 的参考实现。
+
+- **与技术笔记中的核心链路对应关系**
+  - Graph 入口：
+    - `src/service/grg_service.cpp`
+    - 负责 `GraphEngine::try_get(graph_name)`、全局 GraphData 注入、`graph->run()` 与 `pooled_graph->reset()`。
+  - Graph vertex 配置：
+    - `conf/plugins/graph/short_micro_video/vertex.conf`
+    - `DiversityMergeFunction` 通过 `[@engine_vertex]` 声明 GraphData / Channel 依赖，并通过：
+      - `plugin: multi_stream_engine_plugin`
+      - `conf: multi_stream_diversity.conf`
+      接入 ExecEngine。
+  - ExecEngine 配置：
+    - `conf/plugins/exec_engine/exec_engine.conf`
+    - `conf/plugins/exec_engine/multi_stream_diversity.conf`
+    - 定义 `loads_select`、`rule_select`、`function_select`、`final_select`、`effect_pk`、`merge_pk` 等 stream / executor / operator。
+  - 绑定实现：
+    - `src/process/diversity_merge.cpp`
+    - 通过 `EngineMgr::get_multi_stream_engine_pool(conf)` 获取 engine，再调用 `bind_graph_dependency(this->vertex(), _diversity_engine)` 绑定 GraphDependency。
+
+- **std 等价物使用规模**
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+  - 说明 feeda-mv-grg 内仍有大量手写容器组织、候选队列拼装、map 分组逻辑。对于排序、合并、多流选择类逻辑，可以评估是否沉淀为 ExecEngine input container / stream executor，减少业务代码中重复控制流。
+
+- **可参考代码**
+  - `src/process/diversity_merge.cpp`
+    - 可作为“Graph vertex 绑定 ExecEngine”的主参考。
+  - `operator/diversity/searchc_related_soft_rule.cpp`
+  - `operator/diversity/tieba_adjust_soft_rule.cpp`
+  - `operator/diversity/author_dur_model_soft_rule.cpp`
+    - 可作为 soft rule operator 的实现参考。
+  - `conf/plugins/exec_engine/multi_stream_diversity.conf`
+    - 可作为配置化多流选择、规则开关、condition 控制的参考。
+
+#### 2.2 feeda-mv-grc
+
+- **当前使用现状**
+  - 已发现目标库使用：**7 个文件**。
+  - 代表性文件包括：
+    - `processor/news_filter.cpp`
+    - `processor/video_launch/diversity_merge.cpp`
+    - `processor/adjust.cpp`
+    - `processor/video_launch/function_queue_adjust.cpp`
+    - `processor/adjust.h`
+  - 这些文件说明 GRC 中已经存在多样性、过滤、队列调整、功能队列调整等与 ExecEngine 多流选择模式相近的业务场景。
+
+- **std 等价物使用规模**
+  - `std::vector`：8426 次，分布在 1273 个文件。
+  - `std::string`：7150 次，分布在 1228 个文件。
+  - `std::unordered_map`：2833 次，分布在 638 个文件。
+  - 相比 feeda-mv-grg，GRC 的 C++ 业务逻辑规模更大，容器使用更分散。如果大量 processor 中存在“取多个队列 → 过滤 → 打分 → 合并 → 截断”的重复模式，迁移到 ExecEngine 配置化 stream/executor/operator 后，潜在收益会更明显。
+
+- **典型代码场景**
+  - `service/grc_http_service.cpp`
+    - 存在 `std::unordered_map<std::string, std::vector<int>> depend_map`，用于 Graph vertex 依赖关系展示或调试。
+    - 该类代码偏服务治理 / 可视化，不建议迁移到 ExecEngine。
+  - `processor/video_launch/diversity_merge.cpp`
+    - 与 feeda-mv-grg 的 `src/process/diversity_merge.cpp` 场景最接近，是 GRC 中最适合评估 MultiStreamEngine 化的入口。
+  - `processor/news_filter.cpp`
+    - 如果内部包含多条件过滤、规则开关、实验条件判断，可考虑拆分为可配置 operator。
+  - `processor/adjust.cpp`、`processor/video_launch/function_queue_adjust.cpp`
+    - 如果当前逻辑包含多队列调权、插入、截断、重排，可作为后续 stream executor 迁移候选。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 feeda-mv-grg 的 `src/process/diversity_merge.cpp` 作为标准参考实现，沉淀一套“Graph vertex 接入 MultiStreamEngine”的模板**
+  - 适用文件：
+    - `src/process/diversity_merge.cpp`
+    - `conf/plugins/graph/short_micro_video/vertex.conf`
+    - `conf/plugins/exec_engine/multi_stream_diversity.conf`
+  - 建议内容：
+    - 将以下步骤整理为可复用接入模板：
+      - 从 vertex option 读取 `plugin` / `conf`。
+      - 通过 `EngineMgr::instance().get_multi_stream_engine_pool(conf)` 获取 engine pool。
+      - 通过 `exec_context->custom_context.ref(...)` 注入业务上下文。
+      - 调用 `bind_graph_dependency(this->vertex(), _diversity_engine)` 绑定 GraphDependency。
+      - 在 `process()` 中执行 `run_prepare()` 与 `run()`。
+    - 后续新增多流合并场景时，不建议重新手写一套 processor 调度逻辑，而应优先复用这套接入方式。
+
+- **建议 2：GRC 优先评估 `processor/video_launch/diversity_merge.cpp` 的配置化改造**
+  - 适用文件：
+    - `processor/video_launch/diversity_merge.cpp`
+    - `processor/video_launch/function_queue_adjust.cpp`
+  - 建议内容：
+    - 如果当前 GRC 的 video launch 多样性合并逻辑仍以手写 C++ 分支为主，可以参考 GRG 的 `multi_stream_diversity.conf`，将队列划分为类似：
+      - loads stream
+      - rule stream
+      - function stream
+      - effect / score stream
+      - merge / pk stream
+    - 将硬规则、软规则、实验开关从 C++ if/else 中迁移到 ExecEngine operator condition。
+    - 这样可以降低 `diversity_merge.cpp` 中条件分支复杂度，也方便后续通过配置调整策略。
+
+- **建议 3：将 feeda-mv-grg 中已有的 diversity soft rule operator 作为新增规则的参考，不要直接在 `DiversityMergeFunction::process()` 中继续堆逻辑**
+  - 适用文件：
+    - `operator/diversity/deep_changjing_satisfy.cpp`
+    - `operator/diversity/instant_interest_high_satisfied_trigger_soft_rule.cpp`
+    - `operator/diversity/tieba_adjust_soft_rule.cpp`
+    - `operator/diversity/searchc_related_soft_rule.cpp`
+    - `operator/diversity/author_dur_model_soft_rule.cpp`
+  - 建议内容：
+    - 新增软规则时，优先实现为 ExecEngine operator，并在 `multi_stream_diversity.conf` 中通过 condition 控制启用。
+    - 不建议继续在 `src/process/diversity_merge.cpp` 的 `process()` 中增加大量业务判断，否则会削弱 ExecEngine 配置化收益。
+    - 对已经存在的 general adjust 预处理逻辑，可以继续保留，但需要明确其和 `EffectSoftRuleOperator` 的边界，避免同一类 soft rule 在 engine 前后重复执行。
+
+- **建议 4：对 `processor/news_filter.cpp`、`processor/adjust.cpp` 做规则型逻辑拆分评估**
+  - 适用文件：
+    - `processor/news_filter.cpp`
+    - `processor/adjust.cpp`
+    - `processor/adjust.h`
+  - 建议内容：
+    - 如果这些文件中存在大量基于 UA、实验参数、请求类型、内容类型的过滤和调权逻辑，可以考虑拆分为：
+      - filter operator
+      - adjust operator
+      - score operator
+      - pk operator
+    - 条件判断迁移到 ExecEngine 配置中的 `condition`，例如类似：
+      - `ua = 85`
+      - `is_open_xxx = 1`
+      - `is_searchc_immersive_request != 1`
+    - 这样可以减少 C++ 重新编译发布的频率，提高实验策略调整效率。
+
+- **建议 5：不要把 `std::vector` / `std::unordered_map` 的高频使用简单理解为都需要替换**
+  - 适用文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+    - `service/grc_http_service.cpp`
+  - 建议内容：
+    - `model/model.h`、`model/paddle_model.h` 中的 `std::vector<RidTmpInfoPtr>& candidate_vec` 属于模型接口数据结构，迁移收益有限，且改动面较大，不建议优先调整。
+    - `service/grc_http_service.cpp` 中的 `depend_map`、`colors`、query 参数解析等属于服务辅助逻辑，也不适合引入 ExecEngine。
+    - 真正适合迁移的是“候选队列多路输入、规则选择、打分、PK、合并输出”这一类流程型代码。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：Graph condition 与 ExecEngine condition 是两层条件，迁移后排查复杂度会上升**
+  - 在 GRG 中，Graph vertex 依赖本身可能带有 condition，例如 `is_open_set2set`。
+  - ExecEngine operator 也有自己的 condition，例如 `is_open_dnn_soft_rule = 1`、`ua != 87`、`enable_general_adjust = 0`。
+  - 迁移 GRC 的 `processor/video_launch/diversity_merge.cpp` 或 `processor/news_filter.cpp` 时，需要明确哪些条件放在 Graph 层，哪些条件放在 ExecEngine 层，否则容易出现“输入 channel 有数据但 operator 未执行”的问题。
+
+- **风险 2：`bind_graph_dependency()` 失败会导致内层 operator 依赖不可用**
+  - `src/process/diversity_merge.cpp` 中绑定失败会直接 `LOG(FATAL)`。
+  - 新增 engine vertex 时必须保证：
+    - `vertex.conf` 中声明的 GraphData / Channel 名称正确。
+    - `multi_stream_diversity.conf` 或新 engine conf 中的 depend 名称能够被插件映射。
+    - `dependency_schema` / `mutable_context_schema` 与实际上下文一致。
+  - 否则 ExecEngine operator 中访问 `Request`、`SidInfo`、`ShowItemListWithMeta` 等依赖时可能失败。
+
+- **风险 3：Channel drain 语义和普通 data 依赖不同**
+  - GRG 的 `read_queue()` 会按 `context.batch_size()` 循环消费 `MutableChannelConsumer<RidTmpInfoPtr>`，直到 channel 为空。
+  - 如果从普通 processor 迁移到 Graph channel + ExecEngine，需要确认：
+    - channel 是否允许被多个下游消费。
+    - 是否存在消费顺序依赖。
+    - 是否会因为提前 drain 导致其他 vertex 无数据。
+  - 对 `processor/video_launch/function_queue_adjust.cpp` 这类队列调整逻辑，迁移前尤其需要确认 channel 所有权和消费语义。
+
+- **风险 4：输入数据转换和 `merge_pos` 约束可能造成静默丢候选**
+  - GRG 的 `data_prepare_for_engine()` 会将 `RidTmpInfoPtr` 转为 `DynamicStruct`，并按 `merge_pos` 放入 input slot。
+  - 如果 `merge_pos` 越界，候选会被跳过。
+  - 在 GRC 迁移 `processor/video_launch/diversity_merge.cpp` 时，需要先梳理候选 item 是否都有稳定、合法的 merge slot，否则迁移后可能出现召回量下降或某类队列输出异常。
+
+---
+
+### 5. 结论
+
+- **feeda-mv-grg** 已经具备成熟的 `Graph vertex + MultiStreamEngine` 绑定实践，推荐继续沿用当前 `DiversityMergeFunction` 的模式，将新增多样性规则、软规则、PK 逻辑优先沉淀到 ExecEngine operator 和配置中。
+
+- **feeda-mv-grc** 具备迁移潜力，但不建议全量改造。优先级最高的候选是：
+  - `processor/video_launch/diversity_merge.cpp`
+  - `processor/video_launch/function_queue_adjust.cpp`
+  - `processor/news_filter.cpp`
+  - `processor/adjust.cpp`
+
+- 总体策略建议是：**先选择多队列合并和规则选择场景做局部试点，复用 feeda-mv-grg 的配置与绑定模式；模型接口、服务辅助逻辑、简单容器代码暂不迁移。**
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
