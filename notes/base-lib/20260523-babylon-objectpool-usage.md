@@ -558,3 +558,272 @@ rg "AdjustEngineObject|FilterEngineObject|GraphPool" src/
 
 ---
 *本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:25:58.061078
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：`babylon::ObjectPool`
+
+### 1. 分析摘要
+
+`babylon::ObjectPool` 在 `feeda-mv-grc` 中已经有较成熟的落地使用，主要用于 **连接池复用、正排数据对象池化、计算引擎对象复用** 等场景。现有代码中已覆盖 `DupClient`、`GcmsData / MicroVideoInfo`、`Graph`、`FilterEngine`、`AdjustEngine`、`MultiStreamEngine` 等多类高成本对象，说明该技术与当前业务框架、Babylon 组件体系、bthread/brpc 并发模型具备较好的兼容性。
+
+从扫描结果看，`feeda-mv-grc` 已发现至少 10 个文件直接使用目标库，`feeda-mv-grg` 也已有 6 个文件使用相关能力。两套代码库中同时存在大量 `std::vector`、`std::string`、`std::unordered_map` 使用，其中多数不适合直接替换为 `ObjectPool`，但对于 **请求级反复构造的大对象、RPC Client、解析器、Graph/Engine、正排/特征临时对象**，存在较明确的池化优化空间。整体迁移策略建议以“局部高频热点对象池化”为主，而不是对 STL 容器做大规模替换。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grg`：序列生成服务
+
+- 已发现目标库相关使用：6 个文件，说明 `feeda-mv-grg` 已具备一定 `babylon::ObjectPool` 或 Babylon 组件使用基础。
+- 典型文件包括：
+  - `common_dict/parsers/xgb_handle_parser.cpp`
+  - `common_dict/parsers/xgb_handle_parser.h`
+  - `plugin/graph_parser.h`
+  - `service/grg_service.cpp`
+  - `process/new_diversity_merge.cpp`
+- 现有 STL 使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+- 典型代码场景：
+  - `model/model.h`
+    ```cpp
+    class Model {
+    public:
+        virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    };
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+- 适配判断：
+  - `feeda-mv-grg` 中模型预测、parser、diversity merge 等链路大概率存在请求级高频临时对象构造。
+  - 当前大量 `std::vector<RidTmpInfoPtr>` 主要是候选集容器，不建议直接替换为 `ObjectPool`。
+  - 更适合池化的是 parser、graph、engine、predict context、特征临时结构等生命周期清晰、构造成本较高的对象。
+
+#### 2.2 `feeda-mv-grc`：召回汇聚服务
+
+- 已发现目标库相关使用：10 个文件，且已有较清晰的池化模式。
+- 典型文件包括：
+  - `processor/filter_context.h`
+  - `processor/video_launch/diversity_merge.cpp`
+  - `processor/video_launch/news_filter_pipeline.cpp`
+  - `data/video_info.h`
+  - `plugin/gcms_sndb.h`
+- 已确认的成熟参考实现：
+  - `src/plugin/dup_service.cpp`
+    - 使用 `ObjectPool<::feed::dup::DupClient>` 池化 RPC Client。
+    - 通过 `DupServicePlugin::get()` 返回 `PooledObject`。
+  - `src/plugin/gcms.h`
+    - 使用 `ObjectPool<MicroVideoInfo>` 池化正排数据对象。
+    - `GcmsData` 内部通过 `PooledObject` 持有 `MicroVideoInfo`。
+  - `src/service/grc_service.cpp`
+    - 使用 `GraphPool::PooledObject pooled_graph = graph_pool->get();` 复用 Graph。
+  - `src/processor/video_launch/filter_pipeline.cpp`
+    - 使用 `ObjectPool<FilterEngine>` 复用过滤引擎。
+  - `src/processor/adjust.cpp`
+    - 使用 `ObjectPool<AdjustEngine>::PooledObject` 复用调权引擎。
+  - `src/processor/video_launch/diversity_merge.cpp`
+    - 使用 `ObjectPool<MultiStreamEngine>::PooledObject` 复用多流融合引擎。
+- 现有 STL 使用规模：
+  - `std::vector`：8426 次，分布在 1273 个文件
+  - `std::string`：7150 次，分布在 1228 个文件
+  - `std::unordered_map`：2833 次，分布在 638 个文件
+- 典型代码场景：
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    static std::vector<std::string> colors{"#FFB6C1", "#DC143C", ...};
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+- 适配判断：
+  - `feeda-mv-grc` 已经是 `ObjectPool` 的主要落地点，可继续沿用现有模式做增量治理。
+  - 对于 `Graph`、`FilterEngine`、`AdjustEngine`、`MultiStreamEngine` 这类重对象，现有实现可作为其他模块迁移模板。
+  - 对于 `std::vector`、`std::string`、`std::unordered_map`，应优先通过 `reserve()`、复用上下文对象、请求级 arena 或对象池包装的 context 来优化，而不是简单替换容器类型。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 `src/plugin/dup_service.cpp` 作为 RPC Client 池化模板，推广到其他重型 Client 场景**
+  - 适用代码库：`feeda-mv-grc`、`feeda-mv-grg`
+  - 参考文件：
+    - `src/plugin/dup_service.cpp`
+    - `src/plugin/dup_service.h`
+  - 当前模式：
+    ```cpp
+    ObjectPool<::feed::dup::DupClient>::PooledObject DupServicePlugin::get() {
+        return _pool->get();
+    }
+    ```
+  - 建议：
+    - 对业务中类似 RedisClient、DaltonClient、SNDB Client、IFCS Client、模型服务 Client 等 brpc/RPC 客户端做扫描。
+    - 如果存在“每请求构造、每请求 init、内部持有 Channel 或 Stub”的对象，应迁移为 `ObjectPool<Client>`。
+    - pool 初始化建议放在 Babylon Plugin 的 `initialize()` 中，使用配置项控制 `pool_size`。
+  - 可参考实现：
+    - `src/plugin/dup_service.cpp` 中的 factory lambda、`_real_pool_size` 统计、`BABYLON_REGISTER_COMPONENT(DupServicePlugin)`。
+
+- **建议 2：在 `feeda-mv-grc` 中继续沿用 `GcmsData / MicroVideoInfo` 模式，扩展到正排、特征、召回中间结果对象**
+  - 适用代码库：`feeda-mv-grc`
+  - 参考文件：
+    - `src/plugin/gcms.h`
+    - `data/video_info.h`
+    - `plugin/gcms_sndb.h`
+  - 当前模式：
+    ```cpp
+    inline GcmsData() noexcept 
+        : _pooled_video_info(_s_pool->get()), 
+          _video_info(*_pooled_video_info), 
+          _video_info_ptr(&_video_info) {}
+    ```
+  - 建议：
+    - 对 `data/video_info.h`、`plugin/gcms_sndb.h` 中的正排结构、特征结构、中间结果结构进行对象生命周期梳理。
+    - 若对象满足以下条件，可考虑池化：
+      - 单对象较大；
+      - 每个请求创建数量大；
+      - 析构/构造成本高；
+      - 请求结束后可整体归还；
+      - 不跨请求持有裸指针。
+    - 对 `MVGcmsItem`、`Vec256f` 这类已池化对象，应补充统一的 reset/clear 规范，避免上一次请求残留字段影响下一次请求。
+
+- **建议 3：`feeda-mv-grg` 中 parser / graph / diversity merge 场景可优先评估池化**
+  - 适用代码库：`feeda-mv-grg`
+  - 候选文件：
+    - `common_dict/parsers/xgb_handle_parser.cpp`
+    - `common_dict/parsers/xgb_handle_parser.h`
+    - `plugin/graph_parser.h`
+    - `service/grg_service.cpp`
+    - `process/new_diversity_merge.cpp`
+  - 建议：
+    - `xgb_handle_parser` 如果在请求链路中反复构造解析上下文、临时 buffer、特征 map，可将 parser context 或 handle 对象改造为 `ObjectPool<XgbHandleParserContext>`。
+    - `plugin/graph_parser.h` 和 `service/grg_service.cpp` 如果存在 Graph/Parser 每请求构造，可参考 `feeda-mv-grc` 的 `src/service/grc_service.cpp` 中 `GraphPool::PooledObject` 模式。
+    - `process/new_diversity_merge.cpp` 可参考 `feeda-mv-grc` 的 `src/processor/video_launch/diversity_merge.cpp`，对 merge engine、stream engine、策略上下文对象进行池化。
+  - 不建议：
+    - 不建议直接将 `std::vector<RidTmpInfoPtr>` 替换成 `ObjectPool`。
+    - 更合理的方式是池化持有多个 vector/map 的“请求上下文对象”，在对象归还前统一 `clear()` 或 `reset()`。
+
+- **建议 4：对 `service/grc_http_service.cpp` 的临时容器优先做容量复用和静态数据治理，不宜直接引入 ObjectPool**
+  - 适用代码库：`feeda-mv-grc`
+  - 涉及文件：
+    - `service/grc_http_service.cpp`
+  - 现有场景：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    std::string resp_str;
+    ```
+  - 建议：
+    - 对 `resp_str` 可根据典型响应大小调用 `reserve()`，减少扩容。
+    - 对 `sub_access_off_vec`、`sub_access_on_vec` 可根据 query 参数数量预估 `reserve()`。
+    - 对 `depend_map` 如果每次 HTTP 请求都构建且 graph 结构变化不频繁，可考虑缓存 graph dependency 结果，而不是使用对象池。
+    - `static std::vector<std::string> colors` 已是静态对象，不需要池化。
+  - 结论：
+    - 此类 HTTP 辅助逻辑不是 `ObjectPool` 的首要收益点。
+    - 优先使用 `reserve()`、静态缓存、只读结构预计算。
+
+- **建议 5：在预测链路中池化“模型执行上下文”，而不是池化候选集 vector**
+  - 适用代码库：`feeda-mv-grg`
+  - 涉及文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 当前场景：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const;
+    ```
+  - 建议：
+    - `candidate_vec` 是调用方传入的数据集合，不建议由 ObjectPool 管理。
+    - 如果 `predict()` 内部构造 tensor、feature buffer、临时 map、sample list，可抽象为 `PredictContext` 或 `ModelInferContext`。
+    - 使用：
+      ```cpp
+      using PredictContextPool = ObjectPool<PredictContext>;
+      auto ctx = predict_context_pool.get();
+      ctx->reset();
+      ```
+    - 这样可以减少模型预测链路中高频临时对象的分配，同时保持现有接口兼容。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：对象归还前必须清理状态，否则会产生跨请求污染**
+  - `ObjectPool` 复用对象，不会自动帮业务清空所有字段。
+  - 对 `DupClient`、`FilterEngine`、`AdjustEngine`、`PredictContext`、`GcmsData` 等对象，必须明确 `init()` / `reset()` / `clear()` 语义。
+  - 特别是 `std::vector`、`std::unordered_map` 成员，建议在归还前或下次取出后统一清理。
+  - 可参考 `src/processor/vfs.cpp` 中 `DupClient` 取出后重新 `init(cuid, uid, baiduid, logid)` 的模式。
+
+- **风险 2：不要长期持有 `PooledObject` 内部裸指针**
+  - `PooledObject` 析构后对象会归还 pool。
+  - 如果业务将 `pooled.get()` 得到的裸指针保存到异步回调、全局对象、跨线程任务中，可能出现 use-after-return。
+  - 对 brpc 异步回调、bthread 异步任务、lambda capture 场景要重点检查。
+  - 正确做法是：
+    - 延长 `PooledObject` 生命周期；
+    - 或者不要在异步任务中持有 pool 对象裸指针；
+    - 或者将异步任务改成同步使用后再归还。
+
+- **风险 3：pool size 配置过小会导致排队或动态扩容，过大则浪费内存**
+  - `src/plugin/dup_service.cpp` 中 `graph.pool_size` 默认值为 10。
+  - `src/initializer/global.h` 中 `gcms_data_pool_size` 默认值为 1000000。
+  - 不同对象的内存占用差异很大，不能简单复制配置。
+  - 建议为每类 pool 增加：
+    - 当前容量；
+    - 实际创建数量；
+    - get 失败次数；
+    - 等待耗时；
+    - 高水位使用量。
+  - `src/plugin/gcms.h` 中已有 `_s_pool->expose("gcms")`，可作为监控暴露参考。
+
+- **风险 4：`ObjectPool` 不适合作为 STL 容器的通用替代品**
+  - 扫描结果中 `std::vector`、`std::string`、`std::unordered_map` 使用量很大，但大部分属于普通值语义容器。
+  - 直接把容器替换成对象池可能带来：
+    - 代码复杂度上升；
+    - 生命周期更难管理；
+    - 内存长期占用变高；
+    - 线程安全边界变复杂。
+  - 推荐迁移对象应满足：
+    - 构造/析构成本高；
+    - 请求间可复用；
+    - 生命周期清晰；
+    - 对象内部有明确 reset 逻辑；
+    - 不依赖自动析构释放外部资源。
+
+---
+
+### 5. 结论
+
+- `feeda-mv-grc` 已经具备较成熟的 `babylon::ObjectPool` 使用经验，可将 `src/plugin/dup_service.cpp`、`src/plugin/gcms.h`、`src/service/grc_service.cpp`、`src/processor/video_launch/filter_pipeline.cpp` 作为迁移参考模板。
+- `feeda-mv-grg` 虽然目标库使用规模较小，但在 parser、graph、diversity merge、模型预测上下文等场景具备明确优化潜力。
+- 建议后续迁移优先聚焦：
+  - RPC Client；
+  - Graph / Engine；
+  - 正排与特征大对象；
+  - 模型预测临时上下文；
+  - 多流融合和过滤链路上下文。
+- 不建议对 `std::vector`、`std::string`、`std::unordered_map` 做机械式替换，应结合热点 profiling、对象生命周期和 reset 语义逐步推进。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
