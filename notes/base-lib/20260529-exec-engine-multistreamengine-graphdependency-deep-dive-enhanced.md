@@ -454,3 +454,235 @@ data
 1. `multi_stream_engine_plugin` 的实现未在当前 GRG 仓库中直接找到；已确认调用点为 `src/process/diversity_merge.cpp:86-90`，配置入口为 `vertex.conf:930-932`，下一步应在外部依赖 `baidu/feed/general/common-processor/plugin/exec_engine.h` 或 `baidu/feed/gr/exec_engine` 库中继续追踪 `bind_graph_dependency()`。
 2. `ExecType` 数值（如 `exec_type: 1/3`）的枚举定义未在当前代码库中直接找到；已确认配置使用位置为 `multi_stream_diversity.conf:70-75` 与 `multi_stream_diversity.conf:388-393`，下一步应搜索 exec_engine 基础库枚举。
 3. `DiversityRuleOperator`、`RuleSelectOperator`、`DiversityScorePkOperatorV2` 的具体算法实现位于外部 exec_engine/operator 依赖或本仓库其他目录，本文仅基于绑定链路与配置语义分析。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:29:29.417989
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`ExecEngine MultiStreamEngine + GraphDependency/Channel 绑定` 这一模式已经在 **feeda-mv-grg** 和 **feeda-mv-grc** 两个业务代码库中出现了明确落点，尤其集中在多样性合并、队列调整、图解析和视频分发链路中。  
+  - **feeda-mv-grg** 更偏向最终序列生成，已发现 10 个相关文件，典型场景包括 `operator/diversity/*` 下的软规则、资源潜力调整、Set2Set 规则等。
+  - **feeda-mv-grc** 更偏向召回汇聚和图处理，已发现 7 个相关文件，其中 `processor/video_launch/diversity_merge.cpp` 与技术笔记中的 `DiversityMergeFunction` 场景最接近，可作为迁移和复用参考。
+
+- 从标准容器使用规模看，两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用量非常大，说明业务逻辑仍大量依赖显式容器传递中间状态。若后续将更多排序、合并、PK、队列选择逻辑迁移到 `MultiStreamEngine`，并通过 Graph `MutableChannel` / `GraphData` 统一绑定依赖，可以减少手写流程编排代码，提高多流策略配置化能力。但该技术适合 **多队列、多阶段、强依赖、可配置选择策略** 的场景，不建议泛化替换所有普通容器或简单处理函数。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 feeda-mv-grg：序列生成服务
+
+- **扫描发现**
+  - 已发现目标技术相关使用：10 个文件。
+  - 重点文件集中在 `operator/diversity/` 目录，例如：
+    - `operator/diversity/set2set_short_soft_rule.cpp`
+    - `operator/diversity/hudong_q_adjust_soft_rule.cpp`
+    - `operator/diversity/grg_adjust_resource_potent_nid_operator.cpp`
+    - `operator/diversity/mv_text_soft_rule.cpp`
+    - `operator/diversity/icf_trigger_tq.cpp`
+  - 这些文件多数属于多样性规则、软规则调整、资源潜力调权等逻辑，与 `DiversityMergeFunction` 中的多流候选处理、规则队列选择、最终 merge/pk 有较高关联。
+
+- **标准容器使用规模**
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+  - 说明 feeda-mv-grg 中仍有大量业务代码通过容器手动维护候选集、特征、队列状态和中间映射关系。
+
+- **典型代码形态**
+  - `model/model.h`
+    ```cpp
+    class Model {
+    public:
+        virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    };
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+
+- **适配判断**
+  - `model/model.h`、`model/paddle_model.h` 这类预测接口当前以 `std::vector<RidTmpInfoPtr>&` 作为输入，适合继续保持轻量接口，不建议直接改造成 ExecEngine Stream。
+  - `operator/diversity/*` 下的多样性规则逻辑更适合抽象为 ExecEngine operator 或 stream executor，尤其是涉及候选插入、软规则过滤、队列调权、资源分桶的逻辑。
+
+---
+
+#### 2.2 feeda-mv-grc：召回汇聚服务
+
+- **扫描发现**
+  - 已发现目标技术相关使用：7 个文件。
+  - 重点文件包括：
+    - `processor/video_launch/diversity_merge.cpp`
+    - `processor/adjust.cpp`
+    - `plugin/graph_parser.cpp`
+    - `processor/video_launch/function_queue_adjust.cpp`
+    - `processor/video_launch/news_filter_pipeline.cpp`
+  - 其中 `processor/video_launch/diversity_merge.cpp` 与技术笔记中的 `src/process/diversity_merge.cpp` 高度相似，应作为引入 `MultiStreamEngine` 和 `bind_graph_dependency()` 的主要参考文件。
+
+- **标准容器使用规模**
+  - `std::vector`：8426 次，分布在 1273 个文件。
+  - `std::string`：7150 次，分布在 1228 个文件。
+  - `std::unordered_map`：2833 次，分布在 638 个文件。
+  - 相比 feeda-mv-grg，feeda-mv-grc 的容器使用规模更大，说明其召回、聚合、图处理、HTTP 调试、pipeline 组织中存在更多显式数据搬运逻辑，具备更高的配置化和引擎化改造潜力。
+
+- **典型代码形态**
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    static std::vector<std::string> colors{
+        "#FFB6C1", "#DC143C", "#DB7093", ...
+    };
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+
+- **适配判断**
+  - `service/grc_http_service.cpp` 中的图依赖展示、调试参数解析、颜色表等逻辑不适合迁移到 ExecEngine，继续使用 STL 即可。
+  - `processor/video_launch/diversity_merge.cpp`、`processor/video_launch/function_queue_adjust.cpp`、`processor/video_launch/news_filter_pipeline.cpp` 这类处理请求候选队列、规则过滤、合并输出的模块更适合引入 `MultiStreamEngine` 风格的多流配置化执行。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 `processor/video_launch/diversity_merge.cpp` 作为 feeda-mv-grc 的首个对齐参考点**
+  - 该文件与技术笔记中的 `DiversityMergeFunction` 场景最接近，建议优先检查是否已经具备以下结构：
+    - Graph vertex 级别的 `depend/emit` 声明。
+    - 对输入队列使用类似 `GRAPH_FUNCTION_DEPEND_MUTABLE_CHANNEL` 的 channel 依赖。
+    - 在初始化阶段通过 `EngineMgr::get_multi_stream_engine_pool(conf)` 获取 `MultiStreamEngine`。
+    - 在运行前调用类似 `bind_graph_dependency(vertex, engine)` 的绑定逻辑。
+  - 如果当前仍存在大量手写队列合并、去重、PK、插入逻辑，可优先拆成类似：
+    - `loads_select`
+    - `rule_select`
+    - `function_select`
+    - `final_select`
+    - `effect_pk`
+    - `merge_pk`
+  - 这样可以把策略组合从 C++ 分支逻辑迁移到 engine conf，降低后续实验和灰度成本。
+
+- **建议 2：feeda-mv-grg 的 `operator/diversity/*` 适合逐步沉淀为 ExecEngine operator**
+  - 重点关注以下文件：
+    - `operator/diversity/set2set_short_soft_rule.cpp`
+    - `operator/diversity/hudong_q_adjust_soft_rule.cpp`
+    - `operator/diversity/grg_adjust_resource_potent_nid_operator.cpp`
+    - `operator/diversity/mv_text_soft_rule.cpp`
+    - `operator/diversity/icf_trigger_tq.cpp`
+  - 这些文件更像是多样性合并过程中的“规则算子”或“软约束算子”，建议不要一次性改造为完整 Graph vertex，而是先抽象为 ExecEngine 内部 operator：
+    - 输入：候选 item、当前 slot、上下文特征、队列类型。
+    - 输出：是否保留、调整分、插入位置、原因码。
+  - 可参考技术笔记中的 `exec_context->custom_context.ref(...)` 模式，将业务上下文，例如 `DiversityScatterContext`、实验参数、请求维度信息，以 custom context 形式暴露给算子，避免在多个 operator 中重复解析全局依赖。
+
+- **建议 3：`model/model.h` 与 `model/paddle_model.h` 暂不建议直接迁移，但应规范与多流引擎的边界**
+  - 当前接口：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 主要形态是：
+    ```cpp
+    std::vector<RidTmpInfoPtr>& candidate_vec
+    ```
+  - 这类模型预测接口属于批量候选打分，不建议直接替换成 Graph Channel 或 ExecEngine Stream，否则会增加模型层对图引擎的耦合。
+  - 更推荐的做法是：
+    - 模型层继续使用 `std::vector<RidTmpInfoPtr>&`。
+    - 在 `DiversityMergeFunction` 或类似处理节点中完成 Graph Channel 到 `std::vector` 的一次性转换。
+    - 预测完成后再把结果写回候选结构，供 `MultiStreamEngine` 的下游 stream 使用。
+  - 这样可以避免模型代码感知 Graph/ExecEngine，同时保留多流合并阶段的配置化能力。
+
+- **建议 4：`plugin/graph_parser.cpp` 可用于增强图依赖可观测性，而不是迁移业务策略**
+  - feeda-mv-grc 中的 `plugin/graph_parser.cpp` 与图配置解析相关，可作为验证 Graph vertex 依赖绑定是否正确的工具侧入口。
+  - 建议增加对以下信息的解析或调试输出：
+    - engine vertex 使用的 plugin 名称，例如 `multi_stream_engine_plugin`。
+    - engine conf 文件名，例如 `multi_stream_diversity.conf`。
+    - vertex 的 `depend/emit` 数据。
+    - mutable channel 类型依赖。
+    - 绑定到 ExecEngine 的 stream 名称。
+  - 这类增强可以辅助排查：
+    - Graph 配置中声明了依赖，但 ExecEngine 未绑定成功。
+    - Channel 名称不一致导致 stream 输入为空。
+    - 多个 engine conf 之间复用 vertex 名称引起误判。
+
+- **建议 5：`process/response_function.cpp`、`data/base.h` 等公共边界文件应保持轻量，避免直接引入 ExecEngine 细节**
+  - 如果业务代码中存在类似 `process/response_function.cpp` 的响应组装模块，建议只消费最终的 `DiversityMergeResult`，不要直接依赖 `MultiStreamEngine` 的中间 stream 输出。
+  - 如果存在类似 `data/base.h` 的基础数据结构定义文件，建议只定义稳定的数据结构，例如候选 item、队列类型、结果原因码、上下文 key，不要在其中包含 engine pool、executor、plugin conf 等执行层概念。
+  - 推荐边界分层：
+    - `data/base.h`：定义稳定数据结构。
+    - `processor/video_launch/diversity_merge.cpp` 或 `process/diversity_merge.cpp`：负责 Graph dependency 与 ExecEngine 绑定。
+    - `operator/diversity/*.cpp`：实现具体规则算子。
+    - `process/response_function.cpp`：只处理最终结果到 response 的转换。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：Graph dependency 与 ExecEngine stream 依赖容易出现名称和生命周期不一致**
+  - `bind_graph_dependency()` 的核心价值是把外层 Graph vertex 的 `GraphData/Channel` 绑定给内层 `MultiStreamEngine`。
+  - 迁移时要重点检查：
+    - Graph `vertex.conf` 中的 depend 名称。
+    - C++ 宏中声明的依赖名称。
+    - engine conf 中 stream input 名称。
+    - mutable channel 的生命周期。
+  - 任一名称不一致，都可能导致 stream 输入为空，但错误不一定在编译期暴露。
+
+- **风险 2：不要把所有 `std::vector` / `std::unordered_map` 使用都视为迁移对象**
+  - 两个代码库中 STL 使用量很高，但并不代表都适合迁移到 ExecEngine。
+  - 不建议迁移的场景包括：
+    - HTTP 参数解析，例如 `service/grc_http_service.cpp` 中的 query 参数处理。
+    - 静态配置表，例如颜色数组、调试展示数据。
+    - 模型预测接口内部的 batch 容器，例如 `model/model.h`。
+    - 局部临时变量和简单映射关系。
+  - 适合迁移的是多阶段、多队列、多策略组合，并且需要通过配置快速实验的流程型逻辑。
+
+- **风险 3：引入 MultiStreamEngine 后调试链路会变长**
+  - 原来 C++ 中一段顺序逻辑可能直接通过断点定位。
+  - 迁移后问题可能分散在：
+    - Graph vertex 配置。
+    - engine conf。
+    - executor/operator 实现。
+    - custom context 注入。
+    - mutable channel 输入输出。
+  - 建议在 `processor/video_launch/diversity_merge.cpp` 或对应 `DiversityMergeFunction` 中增加统一 trace：
+    - 每个 stream 输入数量。
+    - 每个 stream 输出数量。
+    - merge 前后去重数量。
+    - 每个队列类型的命中数量。
+    - fallback 或空队列原因。
+
+- **风险 4：业务上下文通过 `custom_context` 传递时要避免悬垂引用**
+  - 技术笔记中提到：
+    ```cpp
+    exec_context->custom_context.ref(...)
+    ```
+  - 这种方式适合避免大对象拷贝，但要求被引用对象生命周期覆盖整个 engine 执行过程。
+  - 迁移时需要确认：
+    - context 是否属于当前请求。
+    - 是否会被异步 executor 延后访问。
+    - Graph reset 前是否仍有 stream 在访问 context。
+    - 是否存在复用 pooled graph 后残留旧请求数据的问题。
+  - 对池化图实例尤其要注意 `pooled_graph->reset()` 后的状态清理，避免跨请求污染。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
