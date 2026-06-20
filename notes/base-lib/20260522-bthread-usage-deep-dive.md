@@ -298,3 +298,256 @@ rg "bthread_async|mutable_|CopyFrom|MergeFrom|Swap\(|set_allocated_" src
 1. 未在当前本地代码库中直接命中 `bthread_start_background` / `bthread_join` / `bthread_usleep` 的业务例子；本次检索关键词包括这些 API，结果为空。下一步可在 brpc/bthread 源码或其他服务库中局部查找。
 2. `context.concurrents()` 的配置来源未在本次文档中完全追到 graph option / gflags 赋值链路；下一步应继续追 `BaseGraphFunction::setup()` 如何读取 `is_queue`、`batch_size`、`concurrents`。
 3. `GcmsComponent` / IFCS SDK 内部是否也使用 bthread 或异步 closure，本次只看到 `src/plugin/gcms.h:113-131` 的 `MyClosure`，未展开外部 SDK 源码。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:24:35.646203
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：bthread 在 Feed 图引擎服务中的落地现状与迁移建议
+
+### 1. 分析摘要
+
+- 从扫描结果看，`bthread` / `babylon::bthread_async` 在 `feeda-mv-grc` 中已经有较明确的业务落点，主要集中在 **RPC 扇出、Pipeline 分片并行、bthread-aware 轻量同步** 三类场景。典型参考代码包括 `src/plugin/redis.cpp`、`src/processor/base/pipeline_function.h`、`src/service/grc_http_service.h` / `.cpp`。这些代码说明该仓库已经具备一定的 bthread 使用经验，后续适配应以“复用现有抽象、规范并发边界、控制任务粒度”为主，而不是大规模引入原生 `bthread_start_background`。
+
+- `feeda-mv-grg` 本次扫描发现多个疑似可适配位置，例如 `process/base/pipeline_function.h`、`plugin/model_service.h`、`operator/diversity/scatter_context.cpp` 等，但未在局部检索中直接命中 bthread 相关实现。考虑到该仓库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模较大，说明业务中存在大量候选集、特征、上下文容器处理逻辑；是否适合引入 bthread，关键不在于容器替换，而在于这些容器处理是否包含 **独立分片、下游 RPC、批量模型调用、可并发的 item 级计算**。整体来看，`feeda-mv-grg` 具备中等迁移潜力，建议优先从 Pipeline / model service / diversity operator 等局部并发场景试点。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grc`：召回汇聚服务
+
+- **已有 bthread 使用经验，适合作为标准参考实现。**
+
+- 已发现目标库使用：10 个文件，代表文件包括：
+  - `service/grc_http_service.cpp`
+  - `processor/video_launch/response_for_grg.cpp`
+  - `processor/get_vid_clk_from_redis_rpc.cpp`
+  - `processor/compute_item_graphrag_weight.cpp`
+  - `processor/multi_rank.cpp`
+
+- 现有 std 等价物使用统计：
+  - `std::vector`：8426 次，分布在 1273 个文件
+  - `std::string`：7150 次，分布在 1228 个文件
+  - `std::unordered_map`：2833 次，分布在 638 个文件
+
+- 已确认的 bthread 典型模式：
+
+  - `src/plugin/redis.cpp`
+    - 使用 `baidu::feed::mlarch::babylon::bthread_async` 并发发起多个 Redis RPC。
+    - 多请求时：
+      - 构造 `std::vector<Future<int, bthread::Mutex>>`
+      - 每个请求一个 `bthread_async`
+      - 最后逐个 `future.get()` 聚合结果。
+    - 单请求时直接同步调用 `task()`，避免创建 bthread 的额外开销。
+    - 这是一个较好的业务实践：**多路 RPC 扇出并发，单路请求走同步快路径**。
+
+  - `src/processor/base/pipeline_function.h`
+    - 定义 `PipelineGraphFunction::parallel_consume()`。
+    - 将输入队列按 batch 拆分，前 `concurrents` 个分片通过 `bthread_async` 并发执行，后续本地串行处理。
+    - 这是图引擎中最值得复用的并发抽象，适合候选 item 分片、正排填充、特征补全、召回结果后处理等场景。
+
+  - `src/processor/video_launch/fill_meta_pipeline.cpp`
+    - 在 `FillMetaPipelineFunction::processor()` 中调用 `parallel_consume(mutable_input)`。
+    - 每个分片中收集 rid，并向 GCMS 查询正排。
+    - 该场景同时包含批量数据处理和下游查询，是 bthread 并发收益较明显的业务链路。
+
+  - `src/service/grc_http_service.h` / `src/service/grc_http_service.cpp`
+    - `HttpCntlData` 使用 `bthread::Mutex` 实现双 buffer access-control set 的读写切换。
+    - `thread_local std::shared_ptr<bthread::Mutex>` 用于读侧轻量同步。
+    - 这是同步原语层面的参考：在 brpc / bthread 环境中优先使用 bthread-aware mutex，避免使用不协同的阻塞锁。
+
+- 代码库特征判断：
+  - `feeda-mv-grc` 中 `std::vector` 和 `std::unordered_map` 使用量很高，说明存在大量候选集、依赖图、召回结果、特征表等批处理逻辑。
+  - 但 bthread 不应被理解为替代 `std::vector` / `std::unordered_map` 的容器优化手段，而应作为 **并发执行与同步模型** 引入。
+  - 适合优化的路径包括：
+    - 多个下游 RPC 并发；
+    - 多个召回源并发；
+    - 多个候选 batch 并发；
+    - 图引擎中互不依赖 vertex 的分片执行；
+    - 轻量读写切换中的锁替换。
+
+#### 2.2 `feeda-mv-grg`：序列生成服务
+
+- **本次局部检索未直接命中 bthread，但存在可迁移候选场景。**
+
+- 已发现目标库使用：10 个文件，代表文件包括：
+  - `common_dict/param_sndb_dict.cpp`
+  - `operator/diversity/scatter_context.cpp`
+  - `plugin/model_service.h`
+  - `process/base/pipeline_function.h`
+  - `operator/diversity/pk_generate_v5_soft_rule.cpp`
+
+- 现有 std 等价物使用统计：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 典型代码片段显示，`feeda-mv-grg` 中模型预测、候选集处理、策略算子存在大量 `std::vector<RidTmpInfoPtr>& candidate_vec` 形式的批量处理入口，例如：
+  - `model/model.h`
+  - `model/paddle_model.h`
+
+- 迁移潜力判断：
+  - `model/model.h` / `model/paddle_model.h` 中的 `predict()`、`predict_with_tensor_input()` 接口以候选集为主要输入，理论上可能按 candidate batch 拆分并发。
+  - `plugin/model_service.h` 可能涉及模型服务调用，如果内部存在多个模型、多路 request 或多个 feature group 的远端调用，则适合参考 `feeda-mv-grc/src/plugin/redis.cpp` 的 `bthread_async + Future<int, bthread::Mutex>` 模式。
+  - `process/base/pipeline_function.h` 与 `feeda-mv-grc/src/processor/base/pipeline_function.h` 名称和职责相近，建议重点比对两者差异。如果 grg 侧 Pipeline 当前仍是串行 batch 消费，可考虑迁移 grc 侧的 `parallel_consume()` 模式。
+  - `operator/diversity/scatter_context.cpp`、`operator/diversity/pk_generate_v5_soft_rule.cpp` 属于多候选、多规则处理场景，可能存在 item 级或 bucket 级并行机会，但需要确认是否存在共享上下文写入、排序稳定性、随机数状态等并发敏感逻辑。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：在 `feeda-mv-grc` 中沉淀 `src/plugin/redis.cpp` 的 RPC 扇出模式，作为下游调用并发模板。**
+  - 适用文件：
+    - `src/plugin/redis.cpp`
+    - `processor/get_vid_clk_from_redis_rpc.cpp`
+    - `processor/video_launch/fill_meta_pipeline.cpp`
+  - 当前 `src/plugin/redis.cpp` 已经实现了较合理的模式：
+    - 多请求：`bthread_async` 并发；
+    - 单请求：直接同步调用；
+    - 返回：`Future<int, bthread::Mutex>::get()` 聚合；
+    - 错误：记录 `bthread failed` 或 RPC error。
+  - 后续如果 `processor/get_vid_clk_from_redis_rpc.cpp` 中存在多 key、多 shard 或多 Redis cluster 请求，可以优先复用该模式。
+  - 建议抽象一个统一 helper，例如：
+    - `parallel_rpc_call(requests, task_fn, max_concurrency)`
+    - 内部统一处理 future vector、异常返回码、日志、耗时统计。
+  - 不建议每个 processor 都手写一份 `bthread_async` fan-out，避免并发数控制、生命周期捕获、错误处理风格不一致。
+
+- **建议 2：将 `feeda-mv-grc/src/processor/base/pipeline_function.h` 的 `parallel_consume()` 作为 Pipeline 并发基准实现，并用于审视 grg 的 `process/base/pipeline_function.h`。**
+  - 适用文件：
+    - `feeda-mv-grc/src/processor/base/pipeline_function.h`
+    - `feeda-mv-grc/src/processor/video_launch/fill_meta_pipeline.cpp`
+    - `feeda-mv-grg/process/base/pipeline_function.h`
+  - `feeda-mv-grc` 中 `parallel_consume()` 已经证明适合图引擎的 batch 分片处理。
+  - 建议对 `feeda-mv-grg/process/base/pipeline_function.h` 做一次接口级比对：
+    - 是否有类似 queue / batch / context 概念；
+    - 是否每个 batch 之间相互独立；
+    - 是否存在下游 RPC、模型服务调用或重计算；
+    - 是否可配置 `concurrents`。
+  - 如果 grg 侧 Pipeline 仍串行执行，可引入与 grc 类似的模式：
+    - 初始化固定大小 `queue_contexts`；
+    - 前 N 个 context 通过 `bthread_async` 并发；
+    - 本地线程处理剩余 batch；
+    - 最后统一 `future.get()`；
+    - 保持 processor 的返回码聚合语义不变。
+  - 引入时建议增加并发开关和并发度配置，避免默认打开导致线上资源突增。
+
+- **建议 3：在 `feeda-mv-grg/plugin/model_service.h` 和模型预测链路中评估“多模型 / 多 batch 并发”，不要直接对所有 candidate 无脑并发。**
+  - 适用文件：
+    - `plugin/model_service.h`
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 当前模型接口形态类似：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - 这类接口通常有两种可并发方向：
+    - 多模型并发：多个模型之间无依赖时，用 bthread 并发调用；
+    - 多 batch 并发：将 candidate_vec 拆成多个 batch 并发预测。
+  - 但模型预测往往包含 CPU 密集计算、GPU / Paddle runtime 调用、Tensor 构造、内存拷贝等，不一定适合无界 bthread 化。
+  - 建议优先评估：
+    - 是否实际阻塞在远端模型服务 RPC；
+    - 是否调用的是本地 CPU 推理；
+    - 是否有线程安全的 predictor / session；
+    - batch 拆分后是否影响模型吞吐。
+  - 如果是远端模型 RPC，可参考 `feeda-mv-grc/src/plugin/redis.cpp`。
+  - 如果是本地 CPU/GPU 推理，应谨慎使用 bthread，优先考虑模型 runtime 自身线程池或受控的计算线程池。
+
+- **建议 4：在 `operator/diversity/scatter_context.cpp` 和 `operator/diversity/pk_generate_v5_soft_rule.cpp` 中只对“只读输入 + 独立输出”的阶段做 bthread 化。**
+  - 适用文件：
+    - `operator/diversity/scatter_context.cpp`
+    - `operator/diversity/pk_generate_v5_soft_rule.cpp`
+  - 多样性、打散、规则生成通常涉及：
+    - 候选 item 遍历；
+    - bucket / category 分组；
+    - 分数修正；
+    - 去重；
+    - 顺序调整。
+  - 其中部分阶段可能适合并发，例如：
+    - 为每个 item 计算独立特征；
+    - 为每个 bucket 计算局部分数；
+    - 多个候选分组独立过滤。
+  - 但最终合并、排序、稳定打散通常对顺序敏感，不建议并发写共享 vector / map。
+  - 推荐模式：
+    - 并发阶段：每个 bthread 写自己的局部结果；
+    - 汇总阶段：主线程按固定顺序 merge；
+    - 保证线上结果可复现，避免排序抖动。
+
+- **建议 5：在 `feeda-mv-grc/src/service/grc_http_service.h` 的 `HttpCntlData` 模式基础上，统一 bthread 环境下的轻量锁选择。**
+  - 适用文件：
+    - `src/service/grc_http_service.h`
+    - `src/service/grc_http_service.cpp`
+    - 其他 brpc handler / graph processor 中存在共享状态读写的文件
+  - 当前 `HttpCntlData` 使用 `bthread::Mutex` 和 thread-local mutex 处理 access-control set 切换，适合作为 bthread-aware 同步参考。
+  - 如果其他请求路径中存在：
+    - `std::mutex` 长时间保护共享 map；
+    - `pthread_mutex` 包裹阻塞 RPC；
+    - 请求级 processor 中持锁访问全局配置；
+  - 建议评估替换为 `bthread::Mutex` 或者改造为 copy-on-write / double-buffer 模式。
+  - 注意：不是所有 `std::mutex` 都必须替换；只有在 bthread worker 上高频竞争、长时间等待、请求主链路中持锁时，替换收益才明显。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：lambda 引用捕获生命周期问题。**
+  - 典型参考：
+    - `feeda-mv-grc/src/processor/base/pipeline_function.h`
+  - 当前 `parallel_consume()` 中存在类似 `[this, &queue_context]` 的捕获方式。
+  - 当前代码因为 `context.queue_contexts` 已提前 `resize(concurrents)`，且 future 完成前 vector 不再扩容，生命周期基本可控。
+  - 但后续维护时如果改成 `push_back`、异步任务未完成前清理 context、或者把局部变量引用传入 bthread，容易产生悬垂引用。
+  - 建议规范：
+    - bthread lambda 优先捕获值；
+    - 对稳定容器元素使用指针，并保证 join/get 前对象不析构；
+    - 禁止捕获临时 protobuf、局部 request / response 引用后异步逃逸。
+
+- **风险 2：共享 protobuf / vector / unordered_map 并发写入会导致数据竞争。**
+  - 相关场景：
+    - `processor/video_launch/fill_meta_pipeline.cpp`
+    - `processor/video_launch/response_for_grg.cpp`
+    - `operator/diversity/scatter_context.cpp`
+    - `operator/diversity/pk_generate_v5_soft_rule.cpp`
+  - Feed 图引擎中大量对象是 protobuf message、候选 vector、上下文 map。
+  - bthread 并发时必须区分：
+    - 多线程只读：通常可以；
+    - 每个分片写独立结构：推荐；
+    - 多个 bthread 写同一个 protobuf repeated field / map：高风险；
+    - 多个 bthread 同时修改候选排序、去重状态：高风险。
+  - 推荐采用“分片局部结果 + 主线程顺序合并”的方式。
+
+- **风险 3：CPU 密集型任务不适合无界 bthread 扩散。**
+  - 相关场景：
+    - `model/paddle_model.h`
+    - `plugin/model_service.h`
+    - `processor/compute_item_graphrag_weight.cpp`
+    - `processor/multi_rank.cpp`
+  - bthread 适合 I/O 密集型 RPC 扇出，但如果任务主要是：
+    - 大量特征计算；
+    - 本地模型推理；
+    - 排序、重排、图计算；
+    - 大规模 vector 遍历和 map 构造；
+  - 则无界创建 bthread 可能导致底层 worker 被 CPU 占满，反而增加延迟。
+  - 建议：
+    - 为并发度设置上限；
+    - 区分 I/O 并发和 CPU 并发；
+    - CPU 重任务优先使用专用线程池、SIMD、批处理、减少拷贝等优化手段。
+
+- **风险 4：混用非 bthread-aware 阻塞调用会破坏调度收益。**
+  - 在 bthread 中调用 brpc 通常是协同的，但以下行为需要重点排查：
+    - 同步文件 I/O；
+    - 第三方 SDK 阻塞等待；
+    - 长时间持有 `std::mutex` / `pthread_mutex`；
+    - `sleep` / `usleep` 等非 bthread-aware 等待；
+    - 阻塞式队列或条件变量。
+  - 建议在新增 bthread 场景中统一检查：
+    - 是否调用 `bthread_usleep` 而不是 `::usleep`；
+    - 是否使用 `bthread::Mutex` / bthread-aware Future；
+    - 是否存在长时间持锁 RPC；
+    - 是否可为下游 RPC 设置 timeout，避免 `future.get()` 被长尾拖住。
+
+---
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
