@@ -203,3 +203,232 @@ data
 - `src/service/grg_service.cpp:326-355`：GRG NEWDAPPER/GraphMonitor/Dapper。
 - `src/service/grg_service.cpp:361-374`：GRG VIP dict 命中逻辑。
 - `src/util/util.cpp:125-158`（GRG）：DEBUG_TRACE 输出与 trace PB 清理。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:33:41.034361
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 都已经具备 Trace / VIP / HashLog 分层日志机制的基础。其中，VIP CUID 相关逻辑在两个代码库中均已有落点：`plugin/vip_cuid.cpp` 可作为现有白名单命中逻辑的参考实现；`feeda-mv-grc` 还在 `util/util.cpp`、`initializer/global.h` 中发现相关使用，说明 GRC 侧的链路更完整，已经覆盖了入口采样、GraphData 注入、Trace flush 等关键环节。
+
+- 从规模上看，两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用量都很大，尤其是 `feeda-mv-grc`：`std::vector` 达 8426 次、`std::string` 达 7150 次、`std::unordered_map` 达 2833 次。这说明日志、GraphData、上下文、processor 中存在大量可承载采样标记和 trace 数据的业务结构。迁移潜力主要不在于替换基础容器，而在于**统一采样标记的传播语义、降低重日志成本、修复 GRG HashLog 注入缺口、规范 trace PB 生命周期**。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标技术相关文件：
+  - `plugin/vip_cuid.cpp`
+    - 说明 GRG 侧已经有 VIP CUID 识别能力，可作为后续统一 VIP 采样逻辑的参考实现。
+    - 当前技术笔记中提到 GRG 的 VIP 命中主要在 `src/service/grg_service.cpp:153-154`、`src/service/grg_service.cpp:361-374`，通过 `d_target_cuid` common dict 分别检查 CUID / UID。
+
+- 现有标准库使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+
+- 典型业务场景：
+  - `model/model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+    - 该类接口面向候选集预测，属于高频路径，不建议直接在模型预测接口中加入重型日志。
+    - 如果要补充 trace，应通过上游 `GraphData` 或轻量上下文字段传递采样标记，在命中 debug / vip 时才记录关键因子。
+
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+    - 模型预测路径的 `candidate_vec` 可能很大，不适合在 HashLog 分支中输出完整候选集。
+    - 更适合输出候选数量、topN 关键字段、模型耗时、命中特征摘要等低成本 trace。
+
+- 当前适配判断：
+  - GRG 已具备 `is_vip_cuid` 与 `is_debug` 注入能力。
+  - `Context` 中虽然有 `is_hash_log` 字段接口，但技术笔记显示服务入口未看到显式填充，因此 GRG 的 HashLog 链路存在补齐空间。
+  - `Util::print_trace_data()` 已作为 DEBUG_TRACE 输出落点，应继续复用，避免各 processor 自行写散乱日志。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标技术相关文件：
+  - `util/util.cpp`
+    - 可作为 `DEBUG_TRACE` 输出与 `trace_data_pb.Clear()` 的参考实现。
+    - 技术笔记中 GRC 对应位置为 `src/util/util.cpp:147-186`，负责将 `trace_data_pb` 转 JSON 后写入 `DEBUG_TRACE`，随后清空 PB。
+  - `initializer/global.h`
+    - 可能包含全局配置、dict、flag 或初始化对象，适合作为 VIP dict、HashLog flag 等全局采样配置的维护入口。
+  - `plugin/vip_cuid.cpp`
+    - 可作为 VIP CUID / UID 白名单命中逻辑参考。
+
+- 现有标准库使用规模：
+  - `std::vector`：8426 次，分布在 1273 个文件。
+  - `std::string`：7150 次，分布在 1228 个文件。
+  - `std::unordered_map`：2833 次，分布在 638 个文件。
+
+- 典型业务场景：
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+    - 该文件涉及 graph vertex 依赖关系展示或调试，对 GraphMonitor / NEWDAPPER / DEBUG_TRACE 的可视化排查有天然适配价值。
+    - 可考虑在 HTTP debug 页面中展示 vertex cost、final_path、trace 命中原因，但需要避免直接暴露完整 request / response。
+
+  - `service/grc_http_service.cpp`
+    ```cpp
+    static std::vector<std::string> colors{"#FFB6C1", "#DC143C", "#DB7093", ...};
+    ```
+    - 属于调试展示辅助数据，不是核心性能路径。
+    - 可作为 Graph path 可视化增强点，但不应混入业务采样逻辑。
+
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+    ```
+    - 该场景说明 GRC HTTP 服务已有按 query 参数控制访问或开关的能力。
+    - 可考虑增加只读型 trace 查询能力，例如通过 logid 查询某次请求是否命中 debug / vip / hash，但不建议在 HTTP 参数中直接打开线上重日志。
+
+- 当前适配判断：
+  - GRC 是两套服务中链路最完整的一侧。
+  - `GRCSessionContext::init()` 已负责计算 `is_vip_cuid`、`is_hash_log`、`is_debug`、`is_new_user`。
+  - `emit_common_data()` 已将采样标记写入 GraphData。
+  - `Util::print_trace_data()` 已统一 DEBUG_TRACE 输出和清理。
+  - 后续优化重点应放在日志成本治理、trace 字段标准化、processor 写 trace 的边界控制上。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 `feeda-mv-grc/util/util.cpp` 作为 DEBUG_TRACE 统一模板，避免 processor 分散写日志**
+  - 适用文件：
+    - `feeda-mv-grc/util/util.cpp`
+    - `feeda-mv-grg/src/util/util.cpp` 或对应 `util/util.cpp`
+  - 建议：
+    - 两个代码库都应统一通过 `Util::print_trace_data()` flush `trace_data_pb`。
+    - processor 只负责写入结构化 `TraceInfo`，不要直接调用 `com_writelog("DEBUG_TRACE", ...)`。
+    - 保留打印后的 `trace_data_pb.Clear()`，这是 GraphPool / 对象池复用场景下防止串日志的关键。
+  - 参考：
+    - GRC 当前 `util/util.cpp` 已是较完整参考实现。
+    - GRG 侧已有类似逻辑，可对齐字段过滤、JSON 格式、日志前缀 `[FEED-TRACE]`。
+
+- **建议 2：补齐 `feeda-mv-grg` 的 HashLog 注入链路**
+  - 适用文件：
+    - `feeda-mv-grg/src/service/grg_service.cpp`
+    - `feeda-mv-grg/plugin/vip_cuid.cpp`
+    - GRG `Context` 定义文件，如 `context.h` / `session_context.h` / 业务上下文相关文件
+  - 建议：
+    - 当前 GRG 已有 `is_vip_cuid` 和 `is_debug` 注入，但 `Context` 虽有 `is_hash_log` 接口，入口未看到明确填充。
+    - 可参考 GRC 的 `GRCSessionContext::init()`，在 GRG 服务入口按 `logid % 100 < FLAGS_log_hash_flow` 计算 `is_hash_log`。
+    - 计算后写入 GraphData 或 Context，保证 downstream processor 能统一读取。
+  - 注意：
+    - HashLog 只应打开低成本 trace，例如候选量、耗时、命中策略名、topN 摘要。
+    - 不要把 VIP 的 request / response 明细直接迁移到 HashLog 分支。
+
+- **建议 3：在 `feeda-mv-grc/service/grc_http_service.cpp` 增强 Graph 调试可视化，但限制重日志入口**
+  - 适用文件：
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 建议：
+    - 该文件已经处理 graph vertex 依赖关系，例如：
+      ```cpp
+      std::unordered_map<std::string, std::vector<int>> depend_map;
+      auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+      ```
+    - 可扩展展示：
+      - vertex 名称；
+      - depends 关系；
+      - vertex cost；
+      - final_path；
+      - 是否命中 debug / vip / hash；
+      - trace 数据条数。
+    - 这类能力适合做“只读观测”，用于快速定位图执行路径和慢节点。
+  - 不建议：
+    - 不建议通过 HTTP query 参数直接打开线上 DEBUG_TRACE 或 VIP RESPONSE 全量日志。
+    - 如果确需临时打开，应加白名单、权限校验、过期时间和采样比例限制。
+
+- **建议 4：在模型预测路径只记录摘要型 trace，避免放大 `std::vector<RidTmpInfoPtr>` 成本**
+  - 适用文件：
+    - `feeda-mv-grg/model/model.h`
+    - `feeda-mv-grg/model/paddle_model.h`
+  - 建议：
+    - `predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)` 是高频调用路径，不应输出完整候选集合。
+    - 在 debug / vip 命中时，可记录：
+      - `candidate_vec.size()`；
+      - 当前 `pos`；
+      - 模型名称；
+      - 预测耗时；
+      - topN 候选的 rid / score 摘要；
+      - 是否走 cube / tensor input。
+    - 对 HashLog 命中，仅建议记录候选量、耗时、错误码等低成本字段。
+  - 目标：
+    - 保留排查能力，同时避免日志序列化和字符串拼接成为模型预测路径的新瓶颈。
+
+- **建议 5：统一 VIP CUID 逻辑，避免 GRC / GRG 白名单语义漂移**
+  - 适用文件：
+    - `feeda-mv-grg/plugin/vip_cuid.cpp`
+    - `feeda-mv-grc/plugin/vip_cuid.cpp`
+    - `feeda-mv-grc/initializer/global.h`
+  - 建议：
+    - 两个代码库都已经存在 `plugin/vip_cuid.cpp`，应将其作为 VIP 命中逻辑的统一参考。
+    - 明确 CUID、UID、BAIDUID 的优先级和匹配规则。
+    - 对外暴露统一函数，例如：
+      - `is_hit_vip(cuid, uid)`；
+      - `is_vip_cuid()`；
+      - `vip_hit_reason()`。
+    - 在 DEBUG_TRACE 中可以补充轻量 hit reason，例如 `hit_cuid`、`hit_uid`，但不要输出敏感用户信息全文。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：VIP 明细日志不能扩散到 HashLog**
+  - VIP 日志通常包含 request / response JSON、精排因子、候选明细，成本很高。
+  - HashLog 是低比例线上抽样，如果直接复用 VIP 明细逻辑，会导致日志量、序列化 CPU、磁盘 IO 被放大。
+  - 建议严格区分：
+    - `is_vip_cuid`：允许定向重日志；
+    - `is_hash_log`：只允许摘要型 trace；
+    - `is_debug`：按上游显式请求和服务开关控制。
+
+- **风险 2：GraphPool / 对象池复用下必须清理 trace PB**
+  - `Util::print_trace_data()` 中的 `trace_data_pb.Clear()` 不能删除。
+  - 如果迁移或重构时遗漏清理，下一次请求可能携带上一轮 trace，造成排查误判，甚至产生用户数据串扰风险。
+  - 建议为 `print_trace_data()` 增加单元测试或回归用例，覆盖连续两次请求 trace 不串包的场景。
+
+- **风险 3：GRG 当前 HashLog 语义可能不完整**
+  - 技术笔记显示 GRG `Context` 有 `is_hash_log` 字段接口，但服务入口未看到显式填充。
+  - 因此在 GRG processor 中直接判断 `is_hash_log` 可能得不到预期效果。
+  - 迁移前应先确认：
+    - `logid` 是否稳定可用；
+    - `FLAGS_log_hash_flow` 是否存在；
+    - `is_hash_log` 是否写入 GraphData；
+    - processor 读取的是 Context 还是 GraphData。
+
+- **风险 4：高频路径中字符串拼接和 JSON 序列化容易成为隐性性能问题**
+  - 两个代码库中 `std::string` 使用规模很大，GRC 达 7150 次，GRG 达 2443 次。
+  - 如果在 processor、model predict、候选遍历中频繁构造 JSON 字符串，会显著增加 CPU 和内存分配。
+  - 建议：
+    - 先判断采样标记，再构造 trace 内容；
+    - 优先记录结构化 PB，尾部统一转 JSON；
+    - 对大 vector 只记录 size 和 topN 摘要；
+    - 对普通 HashLog 禁止全量候选 dump。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
