@@ -211,3 +211,202 @@ for (auto& future : future_list) {
 
 1. **batch_size 上限**：第 41 行注释 `// batch_size 固定为150`，但第 437 行默认值是 50。需要验证运行时实际值来源（gflag 或 config）。
 2. **future_list 的 Mutex 类型**：代码使用 `Future<int32_t, ::bthread::Mutex>`，需确认 bthread::Mutex 在 bthread_async 中的具体语义（是否会影响并发度）。
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T18:28:13.417680
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- `bthread_async fan-out + Future join` 在目标业务代码库中已经具备一定落地基础，尤其是在 `feeda-mv-grc` 中，技术笔记里的 `src/processor/video_launch/user_intent_predict.cpp` 已经使用该模式完成了批量请求拆分、并发 RPC 调用、Future join 汇总结果的完整闭环，可作为后续迁移和规范化改造的参考实现。
+
+- 从扫描结果看，`feeda-mv-grg` 和 `feeda-mv-grc` 均存在可并发化的业务场景：包括多路召回、批量预测、Embedding 请求、字典加载、队列处理、callback 异步调用等。其中 `feeda-mv-grg` 发现 8 个相关文件，并存在 24 次 callback 使用；`feeda-mv-grc` 发现 10 个相关文件，并存在少量 `brpc_call` / callback 场景。整体看，`feeda-mv-grc` 更适合优先做标准化复用，`feeda-mv-grg` 则具备较大的迁移收益空间。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grg`：序列生成服务
+
+- 扫描发现该代码库中已有 8 个文件涉及目标并发/异步调用相关场景，典型文件包括：
+  - `process/diversity_merge.cpp`
+  - `process/base/pipeline_function.h`
+  - `operator/diversity/scatter_context.cpp`
+  - `process/vids_gcf_embedding_function.cpp`
+  - `process/user_predict.cpp`
+
+- 当前代码库中存在较多 callback 形式的异步逻辑：
+  - callback 使用次数：24 次
+  - 分布文件数：5 个
+
+- 从业务形态看，`feeda-mv-grg` 中比较适合引入 `bthread_async + Future` 的场景包括：
+  - 多路召回结果并行处理
+  - 多样性打散中的多队列并发计算
+  - 用户预测、Embedding 请求等外部服务调用
+  - pipeline 中多个相互独立 Function 的 fan-out 执行
+
+- 当前扫描样例中 `operator/diversity/searchc_related_rh_soft_rule.cpp` 展示的是规则计算逻辑，本身不是直接的异步调用点，但它所在的 diversity/operator 链路通常存在多队列、多规则、多策略组合，适合进一步检查是否存在可并行执行的子任务。
+
+#### 2.2 `feeda-mv-grc`：召回汇聚服务
+
+- 扫描发现该代码库中已有 10 个文件涉及目标技术或相近异步调用场景，典型文件包括：
+  - `dict/mv_tgi_adjust_sndb_dict.cpp`
+  - `dict/dict_manager.cpp`
+  - `processor/multi_rank.cpp`
+  - `processor/video_launch/user_intent_score.cpp`
+  - `processor/compute_item_graphrag_weight.cpp`
+
+- 技术笔记中的参考实现位于：
+  - `src/processor/video_launch/user_intent_predict.cpp`
+
+- 该文件已经具备较完整的 `bthread_async fan-out + Future join` 实践：
+  - 使用 `batch_results.resize(batch_num)` 预分配结果容器
+  - 使用 `future_list.reserve(batch_num)` 预分配 Future 容器
+  - 按 batch 拆分 `_effect_queue`
+  - 每个 batch 通过 `bthread_async` 并发调用 `process_single_batch`
+  - 最后逐个 `future.get()` join 并统计失败 batch 数
+
+- 当前 `feeda-mv-grc` 中还发现以下相近异步/回调调用：
+  - `processor/video_launch/vfs_rpc_function.cpp:149`
+    ```cpp
+    boost::function<void ()> empty;
+    client.call(empty);
+
+    int ret = client.get_resp_errno();
+    Util::report_timeout(context, "dup_rpc", dup_cntl->latency_us() / 1000, ret);
+    ```
+  - `data/diversity_list_generator.cpp:136`
+    ```cpp
+    GET_CALLBACK_FUNCTION_CHECK(rule_queues_conf, this->queue_pk_cb, queue_pk_cb, QueuePkCb);
+    ```
+
+- 相比 `feeda-mv-grg`，`feeda-mv-grc` 已经有直接可复用的 bthread_async 实现，因此更适合作为第一阶段规范沉淀的代码库。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 `src/processor/video_launch/user_intent_predict.cpp` 作为标准模板沉淀 fan-out 写法**
+  - 适用代码库：`feeda-mv-grc`
+  - 参考文件：`src/processor/video_launch/user_intent_predict.cpp`
+  - 建议将该文件中的模式整理为团队内部推荐模板：
+    - batch 任务预切分
+    - `batch_results.resize(batch_num)` 预分配结果容器
+    - `future_list.reserve(batch_num)` 预分配 Future 容器
+    - lambda 只捕获必要值
+    - join 阶段统一统计失败数
+  - 后续 `processor/video_launch/user_intent_score.cpp`、`processor/multi_rank.cpp` 等存在批量处理或多路打分的模块，可以优先对齐该模式。
+
+- **建议 2：评估 `processor/video_launch/vfs_rpc_function.cpp` 中 callback/brpc call 是否可改为 Future join 模式**
+  - 适用代码库：`feeda-mv-grc`
+  - 目标文件：`processor/video_launch/vfs_rpc_function.cpp`
+  - 当前代码中存在：
+    ```cpp
+    boost::function<void ()> empty;
+    client.call(empty);
+    ```
+  - 如果该 RPC 调用前后存在多个相互独立的远程请求，可以考虑改造为：
+    - 每个 RPC 子任务通过 `bthread_async` 启动
+    - 每个任务返回 `int32_t` 或封装后的状态对象
+    - 主流程使用 `Future::get()` 汇总结果
+  - 这样可以降低 callback 嵌套复杂度，并让错误处理、耗时统计、降级逻辑更集中。
+
+- **建议 3：对 `process/vids_gcf_embedding_function.cpp` 和 `process/user_predict.cpp` 做批量预测并发化评估**
+  - 适用代码库：`feeda-mv-grg`
+  - 目标文件：
+    - `process/vids_gcf_embedding_function.cpp`
+    - `process/user_predict.cpp`
+  - 这类文件通常涉及外部预测服务、Embedding 服务或用户特征服务调用，天然适合拆分为多个 batch 并发执行。
+  - 可参考 `feeda-mv-grc` 的 `src/processor/video_launch/user_intent_predict.cpp`：
+    - 按 item/doc/user 切 batch
+    - 每个 batch 独立构造请求对象
+    - 每个 batch 独立写入自己的局部结果容器
+    - join 后统一合并结果
+  - 如果当前是串行请求外部服务，迁移后预期可将整体延迟从 `sum(batch latency)` 降低到接近 `max(batch latency)`。
+
+- **建议 4：在 `process/base/pipeline_function.h` 层面评估封装通用 Future fan-out 工具**
+  - 适用代码库：`feeda-mv-grg`
+  - 目标文件：`process/base/pipeline_function.h`
+  - 该文件属于 pipeline 基类/公共能力层，如果多个 Function 都需要并发执行子任务，可以考虑封装通用工具函数，例如：
+    - `run_parallel_batches`
+    - `fanout_and_join`
+    - `parallel_for_each_batch`
+  - 封装时需要避免过度抽象，建议只沉淀以下共性能力：
+    - batch 数计算
+    - Future 容器预分配
+    - 统一 join
+    - 失败计数
+    - 可选超时/降级策略
+  - 业务侧仍保留请求构造和结果解析逻辑，避免把业务语义塞进公共模板。
+
+- **建议 5：对 `processor/compute_item_graphrag_weight.cpp` 和 `processor/multi_rank.cpp` 优先排查 CPU 密集型并行收益**
+  - 适用代码库：`feeda-mv-grc`
+  - 目标文件：
+    - `processor/compute_item_graphrag_weight.cpp`
+    - `processor/multi_rank.cpp`
+  - 如果这两个模块中存在对多个 item、多个 ranker、多个权重源的独立计算，可以使用 bthread 做轻量并行。
+  - 但需要注意：
+    - 如果逻辑主要是纯 CPU 密集计算，bthread 并不会突破 Worker 线程数上限
+    - 如果每个子任务非常小，fan-out 过细可能导致调度开销大于收益
+  - 建议以 batch 粒度并发，而不是 item 级别逐个启动 bthread。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：lambda 捕获 Graph 生命周期对象可能导致悬垂引用**
+  - 在 bthread 中不要直接捕获由 Graph/Context 管理、生命周期不明确的对象引用，例如：
+    - `_effect_queue`
+    - `_doc_sample`
+    - request/response context 内部临时指针
+  - 推荐做法是参考 `src/processor/video_launch/user_intent_predict.cpp`：
+    - 主线程中先完成 batch 切分
+    - lambda 捕获 `batch_start`、`batch_count` 等值类型
+    - 每个 bthread 写入预分配好的独立结果槽位
+
+- **风险 2：bthread 中不能调用阻塞系统调用或 pthread 互斥锁**
+  - 迁移 `process/user_predict.cpp`、`process/vids_gcf_embedding_function.cpp`、`processor/video_launch/vfs_rpc_function.cpp` 等 RPC/预测类代码时，需要检查内部是否使用：
+    - `pthread_mutex_lock`
+    - `std::mutex`
+    - 阻塞式 `connect`
+    - 本地文件同步 IO
+    - `fsync`
+  - 如果在 bthread 中执行这些阻塞操作，可能阻塞 brpc Worker 线程，影响整个服务的请求处理能力。
+  - 锁优先使用 `bthread::Mutex` 或已有的 brpc/bthread 兼容组件。
+
+- **风险 3：Future join 顺序不是 wait_all，错误处理需要显式设计**
+  - 当前模式中：
+    ```cpp
+    for (auto& future : future_list) {
+        int32_t ret = future.get();
+    }
+    ```
+  - 虽然 bthread 已经并发启动，但 join 是逐个 `get()`。
+  - 这通常不会破坏并发性，但需要注意：
+    - 某个 future 长时间阻塞会拖慢整体返回
+    - 如果业务需要最快失败、超时取消、部分结果提前返回，则需要额外设计超时和降级策略
+    - 不应误以为 `get()` 本身提供 wait_all 或超时控制
+
+- **风险 4：结果容器必须预分配，避免引用失效和并发写冲突**
+  - 如果将 `bthread_async` 引入 `processor/multi_rank.cpp`、`process/diversity_merge.cpp`、`operator/diversity/scatter_context.cpp` 等多结果合并场景，需要确保：
+    - 每个 bthread 写入独立槽位
+    - 不在多个 bthread 中同时 `push_back` 同一个 `std::vector`
+    - 不在多个 bthread 中同时修改同一个 `std::unordered_map`
+  - 推荐模式：
+    ```cpp
+    std::vector<ResultType> batch_results;
+    batch_results.resize(batch_num);
+
+    auto& one_result = batch_results[i];
+    future_list.emplace_back(bthread_async([&, i, &one_result]() {
+        // 只写 one_result
+        return process_one_batch(i, one_result);
+    }));
+    ```
+  - join 完成后再由主流程串行合并结果。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
