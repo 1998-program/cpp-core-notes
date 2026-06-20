@@ -159,3 +159,248 @@ data
 - `src/service/grc_service.cpp:292-315`：按 UA 选择终点 `GraphData`，调用 `graph->run()` 并 `Closure::get()`。
 - `src/service/grc_service.cpp:213-220`：trace flush 与 `graph->reset()` 的顺序。
 - `src/processor/fill_meta.cpp:691-699`：processor reset 清理自定义上下文中的 `gcms_common_pb_meta_map`，体现池化图对 processor reset 的要求。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-20T19:02:33.739690
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：GraphEngine GraphPool 复用与 `reset()` 生命周期
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库均已接入 GraphEngine / GraphPool 相关能力，目标使用点集中在服务入口与全局初始化文件中。其中，`feeda-mv-grc` 的使用路径与本技术笔记中的 GRC 服务入口高度一致，核心文件包括 `service/grc_service.cpp`、`service/grc_http_service.cpp`、`initializer/global.h`；`feeda-mv-grg` 也存在同类入口，主要分布在 `service/grg_service.cpp`、`service/grg_http_service.cpp`、`init/global.h`，适合按 GRC 模式做生命周期对齐检查。
+
+- 两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模较大，说明业务侧存在大量请求态容器、动态上下文、候选集和中间结果缓存。对于 GraphPool 场景，迁移/优化重点不在于简单替换 STL 容器，而在于确保这些请求态数据不会跨请求残留：即 `GraphData`、`VertexContext`、trace protobuf、自定义 map/vector 缓存必须在 `Closure::get()` 后、对象归还前被正确 flush 与 `reset()`。整体来看，`feeda-mv-grc` 的适配收益更高、风险也更集中；`feeda-mv-grg` 可复用同一套检查规则。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg
+
+- 已发现 GraphEngine / GraphPool 相关目标使用点共 3 个文件：
+  - `service/grg_http_service.cpp`
+  - `service/grg_service.cpp`
+  - `init/global.h`
+
+- 现有 STL 等价物使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 典型代码场景：
+  - `model/model.h`
+    - `predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)` 以引用方式传递候选集。
+    - 该类接口大概率处于请求处理链路中，需要确认 `candidate_vec` 的生命周期是否只在单次请求内有效。
+  - `model/paddle_model.h`
+    - `predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec, ...) const`
+    - 模型预测侧大量依赖候选集 vector，若这些数据来自 GraphData 或 VertexContext，需要避免在 `graph->reset()` 后继续访问。
+  - `service/grg_service.cpp`
+    - 作为 GRG 服务主入口，应重点检查是否存在与 GRC 一致的调用顺序：
+      - 获取 `GraphEngine`
+      - `try_get(graph_name)`
+      - 注入请求数据
+      - `graph->run(end)`
+      - `closure.get()`
+      - trace / monitor flush
+      - `graph->reset()`
+
+- 初步判断：
+  - `feeda-mv-grg` 已经具备接入 GraphPool 生命周期管理的基础。
+  - 适配重点是对服务入口、模型预测候选集、processor 自定义上下文进行 reset 边界审计，而不是大规模改造容器类型。
+
+#### feeda-mv-grc
+
+- 已发现 GraphEngine / GraphPool 相关目标使用点共 3 个文件：
+  - `service/grc_http_service.cpp`
+  - `service/grc_service.cpp`
+  - `initializer/global.h`
+
+- 现有 STL 等价物使用规模：
+  - `std::vector`：8426 次，分布在 1273 个文件
+  - `std::string`：7150 次，分布在 1228 个文件
+  - `std::unordered_map`：2833 次，分布在 638 个文件
+
+- 典型代码场景：
+  - `service/grc_service.cpp`
+    - 与技术笔记中的主流程直接对应，是 GraphPool 生命周期的核心适配文件。
+    - 已知关键流程包括：
+      - 通过 `ApplicationContext::get<GraphEngine>("graph_engine")` 获取图引擎。
+      - 按 UA 选择 `graph_name`，如 `default`、`video_immersion`、`searchc_related`、`interest_card` 等。
+      - 调用 `graph_engine->try_get(graph_name)` 获取池化 Graph。
+      - 注入 `REQ_INFO`、`ResultCount`、`ResponseForGrg`、`ResData` 等请求态数据。
+      - `graph->run(end)` 后通过 `Closure::get()` 等待依赖完成。
+      - 在 `graph->reset()` 前执行 trace flush。
+  - `service/grc_http_service.cpp`
+    - 存在对 GraphEngine 图结构的访问，例如：
+      ```cpp
+      std::unordered_map<std::string, std::vector<int>> depend_map;
+      auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+      ```
+    - 该场景偏图可视化、调试或 HTTP 查询接口，重点要确认 `get_vertexs_message(graph_name)` 返回引用的生命周期是否稳定，以及是否可能被运行态 reset 影响。
+  - `initializer/global.h`
+    - 通常负责全局对象注册或初始化，适合作为 GraphEngine 初始化配置、对象池容量、图配置加载路径的检查入口。
+  - `src/processor/fill_meta.cpp`
+    - 技术笔记中已有 `fill_meta.cpp:691-699` 的 processor reset 示例，可作为业务 processor reset 的参考模式：
+      - 清理自定义上下文中的 map/vector/pb 缓存。
+      - 避免池化 Graph 下一次复用时读到旧状态。
+
+- 初步判断：
+  - `feeda-mv-grc` 是本技术的主要落地点，已经具备较完整的 GraphPool 使用链路。
+  - 迁移潜力主要体现在：
+    - 补齐所有 processor 的 reset 清理。
+    - 统一 `try_get()` 空指针处理。
+    - 固化 trace flush 与 `graph->reset()` 顺序。
+    - 约束 `GraphData::emit()` 返回对象的逃逸行为。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：以 `service/grc_service.cpp` 作为标准实现，固化 GraphPool 请求生命周期模板**
+  - 适用文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - 建议内容：
+    - 将 GRC 中已经验证的顺序作为标准：
+      1. 初始化 session context。
+      2. 根据 UA / 场景选择 `graph_name`。
+      3. `ApplicationContext::get<GraphEngine>("graph_engine")`。
+      4. `graph_engine->try_get(graph_name)`。
+      5. 注入 `REQ_INFO`、response、动态超时对象等 GraphData。
+      6. `graph->run(end)`。
+      7. `Closure::get()`。
+      8. GraphMonitor / trace / NEWDAPPER flush。
+      9. `graph->reset()`。
+    - `service/grg_service.cpp` 可对照 `service/grc_service.cpp` 做一致性检查，尤其是 `Closure::get()` 与 `graph->reset()` 的相对顺序。
+  - 预期收益：
+    - 降低 GRG/GRC 两套入口生命周期不一致带来的偶现串包、trace 缺失、脏数据复用问题。
+
+- **建议 2：在 `service/grc_http_service.cpp` 中区分“图结构元信息”和“请求态 GraphData”**
+  - 适用文件：
+    - `service/grc_http_service.cpp`
+  - 已发现代码场景：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    ```
+  - 建议内容：
+    - `get_vertexs_message(graph_name)` 返回的 `all_vertex` 如果是图配置/拓扑元信息，可以长期引用，但要避免与单请求 Graph 实例上的 `GraphData`、`VertexContext` 混用。
+    - HTTP 调试接口中构造的 `depend_map`、`colors`、`sub_access_off_vec`、`sub_access_on_vec` 等容器应保持局部变量语义，不要挂到 Graph 或 processor context 上。
+    - 如果后续为了性能将这些结构缓存为静态变量或全局变量，需要确认其是否只包含只读配置，不包含请求态数据。
+  - 预期收益：
+    - 避免调试/可视化接口无意中持有 GraphPool 内部对象引用，降低 reset 后悬挂引用风险。
+
+- **建议 3：以 `src/processor/fill_meta.cpp` 的 reset 逻辑作为 processor 清理参考，批量审计自定义上下文**
+  - 适用文件：
+    - `src/processor/fill_meta.cpp`
+    - 其他 processor 目录下持有 `std::vector`、`std::unordered_map`、protobuf、候选集缓存的文件
+  - 参考代码：
+    - `src/processor/fill_meta.cpp:691-699`
+    - 该处已经体现了 processor reset 中清理 `gcms_common_pb_meta_map` 等自定义上下文的模式。
+  - 建议内容：
+    - 搜索 processor 中的以下成员或上下文缓存：
+      - `std::vector`
+      - `std::unordered_map`
+      - `std::map`
+      - `std::string`
+      - protobuf message
+      - `DynamicStruct`
+      - `GraphData*`
+      - `mutable_value<T>()` / `emit<T>()` 返回指针
+    - 对所有会跨 vertex 调用保存的请求态字段补齐 reset 清理。
+    - reset 中优先使用明确语义：
+      ```cpp
+      vec.clear();
+      map.clear();
+      pb.Clear();
+      ptr = nullptr;
+      ```
+    - 对大容量容器谨慎使用 `shrink_to_fit()`，避免每次请求释放内存导致性能抖动。
+  - 预期收益：
+    - 直接降低 GraphPool 复用带来的脏状态残留，是最核心的适配动作。
+
+- **建议 4：检查 `model/model.h`、`model/paddle_model.h` 中候选集引用是否会逃逸到 Graph reset 之后**
+  - 适用文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 已发现代码场景：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                                  general_predict::PredictSample* predict_sample = nullptr,
+                                  bool is_from_cube = true) const
+    ```
+  - 建议内容：
+    - 这些接口通过非 const 引用传递候选集，说明模型预测可能直接修改请求态数据。
+    - 需要确认：
+      - `candidate_vec` 是否来自 GraphData 或 VertexContext。
+      - `RidTmpInfoPtr` 指向对象是否由 Graph 生命周期管理。
+      - 模型内部是否异步保存了 `candidate_vec`、`RidTmpInfoPtr` 或 `PredictSample*`。
+    - 若存在异步预测或延迟回调，必须保证回调完成早于 `Closure::get()` 返回，且不得在 `graph->reset()` 后继续访问这些引用。
+  - 预期收益：
+    - 防止模型预测链路持有旧请求候选集，避免召回/排序结果串包。
+
+- **建议 5：在 `initializer/global.h` / `init/global.h` 中补充 GraphEngine 初始化与对象池容量的可观测配置**
+  - 适用文件：
+    - `initializer/global.h`
+    - `init/global.h`
+  - 建议内容：
+    - 检查 GraphEngine 注册名是否统一为 `"graph_engine"`，避免服务入口获取失败。
+    - 检查 graph_name 与配置文件中的图名是否一一对应，例如：
+      - `default`
+      - `video_immersion`
+      - `searchc_related`
+      - `searchc_immersive_related`
+      - `interest_card`
+    - 建议在初始化阶段输出：
+      - 图名列表
+      - 每张图 vertex 数量
+      - GraphPool 初始容量/最大容量
+      - 配置加载失败原因
+    - 对 `try_get()` 失败场景增加按 graph_name 维度的错误计数。
+  - 预期收益：
+    - 提升图配置错误、池耗尽、图名不匹配问题的排查效率。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：`graph->reset()` 顺序错误会导致 trace 丢失或并发访问已清理数据**
+  - 必须保证：
+    - `Closure::get()` 在 `graph->reset()` 前完成。
+    - `print_trace_data`、`print_trace_data_common_adjust`、GraphMonitor、NEWDAPPER 等观测逻辑在 `graph->reset()` 前执行。
+  - 如果先 reset 再打印 trace，会直接清空排障证据；如果异步 vertex 未完成就 reset，可能出现并发访问已清理 GraphData 的问题。
+
+- **风险 2：`GraphData::emit()`、`mutable_value<T>()` 返回对象不能逃逸到 reset 之后**
+  - 高风险场景包括：
+    - 将 `GraphData*` 存入全局变量或静态变量。
+    - 将 `DynamicStruct*`、protobuf 指针、候选集 vector 引用传入异步任务。
+    - processor context 中缓存上一次请求的指针。
+  - 对 `service/grc_service.cpp`、`service/grg_service.cpp`、`model/paddle_model.h` 这类跨模块传递请求态对象的路径要重点检查。
+
+- **风险 3：STL 容器清理策略不当可能引入性能抖动**
+  - 两个代码库中 STL 使用规模较大，尤其是 `feeda-mv-grc`：
+    - `std::vector` 8426 次
+    - `std::string` 7150 次
+    - `std::unordered_map` 2833 次
+  - reset 时不建议无脑释放容量：
+    - `clear()` 通常足够清理请求态元素，并保留容量供下一次请求复用。
+    - `shrink_to_fit()`、重新构造大 map/vector 可能导致频繁内存分配，影响 P99 延迟。
+  - 对超大临时容器可以单独设计阈值策略，例如容量超过历史均值数倍时再释放。
+
+- **风险 4：GRG 与 GRC 入口相似但终点数据和图名策略可能不同**
+  - `feeda-mv-grc` 已明确存在 UA 到 graph_name 的映射以及不同终点数据：
+    - `GrcResponse`
+    - `ClusterData`
+    - `InterestCardData`
+    - `IsWritePersonalisedCacheSucc`
+  - `feeda-mv-grg` 虽可参考 GRC 生命周期，但不能直接照搬终点数据和业务图名。
+  - 迁移时应只复用生命周期模板，不应复用 GRC 的具体 graph_name、GraphData 名称和 response preset 逻辑。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
