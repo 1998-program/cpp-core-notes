@@ -375,3 +375,264 @@ builder.CreateString("test");  // 内部分配由 mimalloc 处理
 **源码地址：** [google/flatbuffers](https://github.com/google/flatbuffers) ⭐ 24,000+
 **文档：** [flatbuffers.dev](https://flatbuffers.dev/)
 **C++ 头文件：** `#include "flatbuffers/flatbuffers.h"`
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-21T19:02:00.254238
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：FlatBuffers 零拷贝序列化引擎
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库中均已经发现 FlatBuffers 相关目标库使用，各自涉及约 10 个文件，说明团队并非完全从零引入，已有一定落地基础。现有使用主要分布在推荐生成、召回汇聚、策略调整、过滤算子、因子生成等链路中，可作为后续扩大使用范围的参考样例。
+
+- 两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模非常大，尤其是 `feeda-mv-grc` 中 `std::vector` 达到 8426 次、`std::string` 达到 7150 次，说明业务中存在大量列表、字符串字段、特征集合、候选集合和中间结果传递场景。FlatBuffers 不适合作为所有 STL 容器的直接替代，但非常适合用于**跨模块 / 跨服务传输的大型候选列表、特征响应、召回结果、调试信息**等只读数据结构，尤其是“只访问部分字段”的推荐链路场景，具备较高迁移收益。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现 FlatBuffers 相关目标库使用，共 10 个文件，代表性文件包括：
+
+  - `operator/diversity/author_vec_diversity_rule.cpp`
+  - `operator/diversity/diversity_rule_manual_tags.cpp`
+  - `operator/diversity/douyin_popular_soft_rule.cpp`
+  - `operator/diversity/first_refresh_cj_es_two.cpp`
+  - `process/gen_critic_last_result_v5.cpp`
+
+- STL 容器使用规模：
+
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 从典型代码看，`std::vector<RidTmpInfoPtr>& candidate_vec` 是模型预测和候选处理链路中的核心数据结构：
+
+  - `model/model.h`
+  - `model/paddle_model.h`
+
+- 这类代码通常在一次请求中会传递大量候选 item，并在多个算子、模型、规则之间流转。如果候选对象中包含大量字段，但部分阶段只读取少数字段，例如 `rid`、`author_id`、`score`、`tag`、`reason` 等，则适合评估使用 FlatBuffers 作为跨阶段只读候选快照格式，减少对象构造、字段拷贝和反序列化成本。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现 FlatBuffers 相关目标库使用，共 10 个文件，代表性文件包括：
+
+  - `strategy/reddot/reddot_author_info.cpp`
+  - `processor/multi_factor/adc_ltr_factor_gen.cpp`
+  - `operator/adjuster/function_queue/xyx_explore_queue_adjust.cpp`
+  - `processor/filter/new_hot_high_quality_filter_operator.cc`
+  - `operator/adjuster/precise/popular_content_explore_precise_adjuster.cpp`
+
+- STL 容器使用规模明显更大：
+
+  - `std::vector`：8426 次，分布在 1273 个文件
+  - `std::string`：7150 次，分布在 1228 个文件
+  - `std::unordered_map`：2833 次，分布在 638 个文件
+
+- 典型场景包括：
+
+  - `service/grc_http_service.cpp:62`
+
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    ```
+
+    该代码属于 HTTP 服务中的图依赖、配置或可视化逻辑，偏控制面数据，不一定是 FlatBuffers 的首要迁移对象。
+
+  - `service/grc_http_service.cpp:81`
+
+    ```cpp
+    static std::vector<std::string> colors{...};
+    ```
+
+    该类静态配置字符串列表不适合迁移 FlatBuffers，继续使用 STL 即可。
+
+  - `service/grc_http_service.cpp:152`
+
+    ```cpp
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+
+    该类 HTTP query 参数解析以字符串处理为主，也不是 FlatBuffers 的主要收益场景。
+
+- 因此，`feeda-mv-grc` 更适合从召回结果、候选列表、因子特征、过滤输入输出、adjuster 中间结果等高频大对象开始评估，而不是盲目替换所有 `std::vector` / `std::string`。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议一：优先在候选列表 / 召回结果传输链路引入 FlatBuffers，只读访问替代完整对象解析**
+
+  - 适用文件 / 场景：
+
+    - `feeda-mv-grg/model/model.h`
+    - `feeda-mv-grg/model/paddle_model.h`
+    - `feeda-mv-grg/process/gen_critic_last_result_v5.cpp`
+
+  - 当前 `predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)` 这类接口说明候选列表以 STL 容器和对象指针形式在模型链路中流转。如果 `RidTmpInfo` 内部字段较多，而模型预测阶段只需要其中一部分字段，可以考虑新增 FlatBuffers 只读视图，例如：
+
+    - `CandidateList`
+    - `Candidate`
+    - `FeatureVector`
+    - `ModelInput`
+
+  - 迁移方式建议：
+
+    - 不建议一次性改掉 `std::vector<RidTmpInfoPtr>` 接口。
+    - 可先增加旁路接口，例如：
+
+      ```cpp
+      virtual int predict_flatbuf(const uint8_t* buf, size_t size, uint32_t pos);
+      ```
+
+    - 在灰度期间同时保留原 STL 路径和 FlatBuffers 路径，对比 P99 延迟、CPU 使用率和内存分配次数。
+
+  - 预期收益：
+
+    - 减少候选对象构造和字段拷贝。
+    - 排序 / 预测阶段可只读取必要字段。
+    - 对大候选集合场景更明显，例如几百到上千候选 item。
+
+- **建议二：在 `feeda-mv-grc` 的多因子 / 特征生成链路中使用 FlatBuffers 承载数值特征**
+
+  - 适用文件 / 场景：
+
+    - `processor/multi_factor/adc_ltr_factor_gen.cpp`
+    - `processor/filter/new_hot_high_quality_filter_operator.cc`
+    - `operator/adjuster/precise/popular_content_explore_precise_adjuster.cpp`
+
+  - 这些文件名体现了典型推荐系统中的因子生成、过滤和精排调整场景。此类链路通常会产生大量 `float`、`double`、`int64`、`uint64` 类型特征，非常适合 FlatBuffers 的 vector 布局。
+
+  - 可以设计类似结构：
+
+    ```fbs
+    table FeatureValue {
+      key: ulong;
+      value: double;
+    }
+
+    table FeatureGroup {
+      item_id: ulong;
+      features: [FeatureValue];
+    }
+
+    table FeatureResponse {
+      groups: [FeatureGroup];
+      trace_id: string;
+    }
+    ```
+
+  - 如果模型或过滤算子只访问部分特征，FlatBuffers 可以避免将完整特征集合反序列化成 `std::unordered_map<std::string, double>` 或复杂对象结构。
+
+  - 对热点路径建议优先关注：
+
+    - 大量 `std::vector` 特征列表。
+    - 高频 `std::unordered_map` 特征查找。
+    - 跨 processor / operator 传递的候选上下文对象。
+
+- **建议三：复用现有 FlatBuffers 使用文件作为迁移模板，避免每个业务模块自行封装**
+
+  - `feeda-mv-grg` 中可参考：
+
+    - `operator/diversity/author_vec_diversity_rule.cpp`
+    - `operator/diversity/diversity_rule_manual_tags.cpp`
+    - `operator/diversity/douyin_popular_soft_rule.cpp`
+    - `operator/diversity/first_refresh_cj_es_two.cpp`
+
+  - `feeda-mv-grc` 中可参考：
+
+    - `strategy/reddot/reddot_author_info.cpp`
+    - `operator/adjuster/function_queue/xyx_explore_queue_adjust.cpp`
+    - `processor/multi_factor/adc_ltr_factor_gen.cpp`
+
+  - 建议统一沉淀以下基础能力：
+
+    - `.fbs` schema 管理目录。
+    - FlatBuffers Builder 封装。
+    - buffer 生命周期管理。
+    - schema 版本兼容规则。
+    - 校验工具，例如 `flatbuffers::Verifier`。
+    - 单测样例和性能 benchmark。
+
+  - 避免不同业务文件各自直接操作 `uint8_t*`、offset、builder，降低后续维护风险。
+
+- **建议四：不要把 `service/grc_http_service.cpp` 这类控制面字符串处理作为首批改造目标**
+
+  - 扫描结果中 `service/grc_http_service.cpp` 出现了：
+
+    - `std::unordered_map<std::string, std::vector<int>> depend_map`
+    - `static std::vector<std::string> colors`
+    - `std::vector<std::string> sub_access_off_vec`
+    - `std::vector<std::string> sub_access_on_vec`
+
+  - 这些场景主要是 HTTP 参数解析、页面展示、配置依赖关系处理，数据量一般较小，字符串解析和业务逻辑本身占比更高，FlatBuffers 的零拷贝优势不明显。
+
+  - 建议继续使用 STL，避免为了技术统一而引入额外 schema、构建器和版本管理成本。
+
+- **建议五：优先改造跨服务 RPC / 消息传输边界，而不是函数内部临时容器**
+
+  - FlatBuffers 最大收益来自：
+
+    - 服务间传输。
+    - 进程间共享。
+    - 大消息只读访问。
+    - 多阶段 pipeline 中的只读中间结果。
+    - 部分字段访问。
+
+  - 对函数内部短生命周期的 `std::vector`、`std::string`、`std::unordered_map`，例如临时聚合、排序、过滤、构图，FlatBuffers 不一定更快，甚至可能因为构建成本和访问间接性导致收益不明显。
+
+  - 因此建议迁移优先级为：
+
+    1. 召回结果响应。
+    2. 候选列表传递。
+    3. 特征服务响应。
+    4. debug_info / trace_info 等大字段按需访问。
+    5. 函数内部临时容器最后再评估。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **FlatBuffers 不是 STL 容器的通用替代品**
+
+  - 虽然两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用非常多，但不能简单等价替换。
+  - FlatBuffers 更适合作为序列化格式和只读内存布局，不适合频繁增删改的业务对象。
+  - 对需要大量修改、动态插入、排序、聚合的中间数据，继续使用 STL 通常更合适。
+
+- **schema 演进需要严格治理**
+
+  - FlatBuffers 支持字段缺省和向前 / 向后兼容，但前提是遵守 schema 演进规则：
+    - 不随意修改字段 id。
+    - 不复用已删除字段。
+    - 新增字段必须设置合理默认值。
+    - 枚举值只能追加，谨慎重排。
+  - 建议将 `.fbs` 文件纳入代码评审重点，否则跨服务升级时容易出现线上兼容问题。
+
+- **buffer 生命周期和内存所有权需要明确**
+
+  - FlatBuffers 访问对象本质上是指向原始 buffer 的指针偏移。
+  - 如果底层 `uint8_t*` buffer 被释放、复用或移动，所有读取对象都会悬空。
+  - 在 `predict`、`processor`、`operator` 多阶段调用中，需要明确：
+    - buffer 由谁创建。
+    - 生命周期覆盖哪些处理阶段。
+    - 是否允许异步线程持有。
+    - 是否可以跨请求缓存。
+
+- **构建阶段并非零成本，写多读少场景收益有限**
+
+  - FlatBuffers 的反序列化几乎为零成本，但构建 buffer 仍然需要时间和内存。
+  - 如果某条链路只是本地构造一次、立刻完整读取所有字段，FlatBuffers 不一定优于普通 C++ 对象。
+  - 建议上线前针对以下指标做 benchmark：
+    - 序列化耗时。
+    - 反序列化 / 访问耗时。
+    - P95 / P99 延迟。
+    - malloc 次数。
+    - 峰值 RSS。
+    - buffer 大小。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
