@@ -196,3 +196,251 @@ theme
 2. **确认 GRC 是否需要按 graph_name 选择 scene**：当前固定 default 会让 `spark`、`guanzhu` scene 难以通过入口命中。
 3. **统一监控口径**：GRC `report_request_time` 使用总请求耗时，GRG 使用 graph run 耗时；建议日志中明确字段含义，避免性能复盘时误读。
 4. **对 rpc_name 做静态校验**：扫描图内 `Util::get_dynamic_timeout(context, rpc_name)` / `DynamicChannel::on(... rpc_name)` 的 rpc_name 是否全部出现在动态超时配置中。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-22T19:02:09.579247
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`DynamicTimeOutPlugin` 已经在两个业务代码库中落地使用，但接入深度和场景映射策略存在明显差异：
+  - `feeda-mv-grc` 已在 `service/grc_service.cpp` / `service/grc_service.h` 以及 `util/util.cpp` / `util/util.hpp` 中接入动态超时能力，主要表现为服务入口注入 `DTController`，图内 RPC 通过工具函数消费动态预算。
+  - `feeda-mv-grg` 已在 `service/grg_service.cpp` / `service/grg_service.h` 和 `init/global.h` 中接入动态超时能力，入口侧根据 `graph_name` 选择 scene，但存在 `news_updates_dibar` 被强制映射到 `short_micro_video` 的特殊逻辑。
+
+- 迁移和优化潜力主要集中在 **scene 映射一致性、配置有效性校验、RPC 名称静态校验、反馈口径统一** 四个方面。两个代码库都已经具备可参考的现有接入代码，因此不属于从零引入；更适合做 **增量治理和配置收敛**。  
+  同时，扫描结果显示两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模很大，说明业务逻辑中存在大量图配置、请求上下文、RPC 参数和中间结果处理代码。虽然这些标准容器本身不是本次动态超时技术的直接替换对象，但在后续做 RPC 名称索引、scene 映射表、配置静态校验工具时，可以优先关注这些高频容器使用区域，避免引入额外性能开销。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grg`：序列生成服务
+
+- **已发现动态超时相关文件：**
+  - `service/grg_service.h`
+  - `service/grg_service.cpp`
+  - `init/global.h`
+
+- **当前接入现状：**
+  - `service/grg_service.cpp` 中已经在服务构造或初始化阶段获取 `DynamicTimeOutPlugin`。
+  - `query()` 入口中先根据 UA 或请求信息确定 `graph_name`，再申请 `DTController`。
+  - 在 `fill_basic_data_for_graph()` 中完成：
+    - 总预算选择：
+      - 优先使用 `cntl->timeout_ms()`
+      - 其次使用 `request.common_info().dynamic_timeout()`
+      - 最后使用兜底值 `800ms`
+    - scene 映射：
+      - 默认 `scene = graph_name`
+      - 但 `news_updates_dibar` 会被强制改为 `short_micro_video`
+    - 将 `DTController` 写入 `MutableFrameworkContext.timeout_cntl`
+  - 图执行结束后通过 `report_request_time()` 上报图运行耗时。
+
+- **配置与代码的匹配情况：**
+  - `conf/plugins/dynamic_timeout/global.conf` include 了：
+    - `short_micro_video.conf`
+    - `news_updates_dibar.conf`
+  - 但当前 `service/grg_service.cpp` 的映射逻辑会让 `news_updates_dibar` 实际走 `short_micro_video` scene。
+  - 因此，`news_updates_dibar.conf` 当前可能处于 **配置存在但入口不可达** 的状态。
+
+- **现有标准库使用规模：**
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- **典型业务代码位置：**
+  - `model/model.h`
+  - `model/paddle_model.h`
+
+- **适合作为动态超时接入参考的代码：**
+  - `service/grg_service.cpp`
+    - 可作为服务入口申请 `DTController`、选择 scene、注入 `FrameworkContext` 的参考。
+  - `src/plugin/grc.cpp`
+    - 可作为图内 RPC 通过 `DynamicChannel::on()` 消费动态超时预算，并通过 `feedback()` 反馈结果的参考。
+
+---
+
+#### 2.2 `feeda-mv-grc`：召回汇聚服务
+
+- **已发现动态超时相关文件：**
+  - `util/util.cpp`
+  - `util/util.hpp`
+  - `service/grc_service.h`
+  - `service/grc_service.cpp`
+
+- **当前接入现状：**
+  - `service/grc_service.cpp` 中已经在服务构造函数中从 `ApplicationContext` 获取 `DynamicTimeOutPlugin`。
+  - 动态超时控制器在 `run()` 内申请，注入点更靠近图运行阶段。
+  - 总预算选择逻辑为：
+    - 优先使用 `cntl->timeout_ms()`
+    - 其次使用 `request.common_info().dynamic_timeout()`
+    - 最后使用兜底值 `700ms`
+  - scene 当前固定为 `default`。
+  - `MutableFrameworkContext.timeout_cntl` 在图运行前写入。
+  - 图执行结束后调用 `report_request_time()`，但上报的是更接近完整请求总耗时的口径。
+
+- **配置与代码的匹配情况：**
+  - `conf/plugins/dynamic_timeout.conf` 中存在多个 scene：
+    - `default`
+    - `spark`
+    - `guanzhu`
+  - 但当前 `service/grc_service.cpp` 入口固定使用 `default`。
+  - 因此，`spark`、`guanzhu` 是否实际生效，需要继续确认是否存在其他入口、环境或历史版本引用。就当前扫描结果看，它们在主服务入口中并不会被直接命中。
+
+- **图内消费现状：**
+  - `util/util.cpp` / `util/util.hpp` 中已有动态超时工具函数，可作为业务 RPC 取预算和反馈的统一入口。
+  - `src/plugin/parallel_predictor.cpp` 中存在：
+    - `Util::get_dynamic_timeout(context, rpc_name)`
+    - `Util::report_timeout(context, rpc_name, cost, ret)`
+  - `src/processor/reddot/reddot_index_recall.cpp` 中通过 `vertext_context.m_framework_context->timeout_cntl` 将控制器传给下游 plugin。
+
+- **现有标准库使用规模：**
+  - `std::vector`：8432 次，分布在 1275 个文件
+  - `std::string`：7153 次，分布在 1231 个文件
+  - `std::unordered_map`：2833 次，分布在 638 个文件
+
+- **典型业务代码位置：**
+  - `service/grc_http_service.cpp`
+    - 使用 `std::unordered_map<std::string, std::vector<int>> depend_map`
+    - 使用静态 `std::vector<std::string> colors`
+    - 解析 HTTP query 参数时使用多个 `std::vector<std::string>`
+  - 这些位置虽然不是动态超时主链路，但体现出图依赖、HTTP 调试、配置展示等代码中字符串和容器使用较重，后续做静态校验或可视化排查工具时可以复用这些数据结构处理逻辑。
+
+- **适合作为动态超时接入参考的代码：**
+  - `service/grc_service.cpp`
+    - 可作为 GRC 入口注入 `DTController` 的参考。
+  - `util/util.cpp` / `util/util.hpp`
+    - 可作为图内 RPC 获取动态超时预算和反馈调用结果的统一封装参考。
+  - `src/plugin/parallel_predictor.cpp`
+    - 可作为批量预测 RPC 接入动态超时的参考。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先治理 `feeda-mv-grg` 中 `news_updates_dibar` 的 scene 映射歧义**
+  - 相关文件：
+    - `service/grg_service.cpp`
+    - `conf/plugins/dynamic_timeout/news_updates_dibar.conf`
+    - `conf/plugins/dynamic_timeout/short_micro_video.conf`
+  - 当前问题：
+    - 配置中存在 `news_updates_dibar` 独立 scene。
+    - 但入口代码会将 `news_updates_dibar` 强制映射到 `short_micro_video`。
+  - 建议处理方式：
+    - 如果业务确实希望 `news_updates_dibar` 复用 `short_micro_video` 的预算策略，建议在 `service/grg_service.cpp` 映射处增加明确注释，并在 `news_updates_dibar.conf` 中标注该配置当前不生效或删除该配置，避免误导。
+    - 如果业务希望 `news_updates_dibar` 独立调参，则应修改 `service/grg_service.cpp` 中的 scene 映射逻辑，让 `scene = graph_name` 直接生效。
+  - 预期收益：
+    - 避免配置变更后线上无效果。
+    - 降低动态超时问题排查成本。
+
+- **建议 2：评估 `feeda-mv-grc` 是否需要从固定 `default` scene 升级为按 `graph_name` 选择 scene**
+  - 相关文件：
+    - `service/grc_service.cpp`
+    - `service/grc_service.h`
+    - `conf/plugins/dynamic_timeout.conf`
+  - 当前问题：
+    - GRC 配置中存在 `default`、`spark`、`guanzhu` 多个 scene。
+    - 但当前入口固定使用 `default`。
+    - 如果 query 入口实际会路由到 `dibar_reddot`、`video_immersion`、`searchc_related`、`news_updates_dibar` 等不同 graph，它们仍会共享同一套动态超时策略。
+  - 建议处理方式：
+    - 在 `service/grc_service.cpp` 中将 scene 选择逻辑从固定 `"default"` 抽成函数，例如：
+      - `get_dynamic_timeout_scene(graph_name, request)`
+    - 初期可以保持默认返回 `"default"`，只对白名单 graph 开启独立 scene。
+    - 对 `spark`、`guanzhu` 做一次配置溯源，确认是否仍有线上入口依赖。
+  - 预期收益：
+    - 不同召回图可以根据 RPC 结构、耗时分布、降级优先级配置不同预算。
+    - 避免所有 GRC 场景共用 `default` 导致调参互相影响。
+
+- **建议 3：基于 `util/util.cpp` / `util/util.hpp` 建立 RPC 名称静态校验工具**
+  - 相关文件：
+    - `util/util.cpp`
+    - `util/util.hpp`
+    - `src/plugin/parallel_predictor.cpp`
+    - `src/processor/reddot/reddot_index_recall.cpp`
+    - `conf/plugins/dynamic_timeout.conf`
+    - `conf/plugins/dynamic_timeout/*.conf`
+  - 当前问题：
+    - 图内 RPC 通过 `rpc_name` 获取动态超时预算。
+    - 如果代码中的 `rpc_name` 与配置中的 stage / concurrent 名称不一致，可能会走默认预算，甚至无法获得动态预算。
+  - 建议处理方式：
+    - 扫描以下调用点：
+      - `Util::get_dynamic_timeout(context, rpc_name)`
+      - `Util::report_timeout(context, rpc_name, cost, ret)`
+      - `DynamicChannel::on(cntl, dt_cntl, rpc_name)`
+      - `DynamicChannel::feedback(cntl, dt_cntl, rpc_name)`
+    - 将提取到的 `rpc_name` 与动态超时配置中的 stage 名称做对比。
+    - 可以先输出 warning，不阻断编译；稳定后再接入 CI。
+  - 预期收益：
+    - 提前发现配置未命中问题。
+    - 降低“改了 timeout 配置但线上没有变化”的排查成本。
+
+- **建议 4：统一或显式标注 GRC / GRG 的 `report_request_time()` 反馈口径**
+  - 相关文件：
+    - `service/grc_service.cpp`
+    - `service/grg_service.cpp`
+  - 当前问题：
+    - GRC 上报更接近完整 request 总耗时。
+    - GRG 上报更接近 graph run 耗时。
+    - 两者如果进入同一套动态超时学习或监控系统，容易产生口径混淆。
+  - 建议处理方式：
+    - 在日志字段中显式区分：
+      - `request_total_cost_ms`
+      - `graph_run_cost_ms`
+      - `dynamic_timeout_feedback_cost_ms`
+    - 如果 `DynamicTimeOutPlugin::report_request_time()` 无法区分来源，建议在调用前后的日志中补充 scene、graph_name、cost_type。
+  - 预期收益：
+    - 便于稳定性复盘。
+    - 避免跨服务比较时误判动态超时策略效果。
+
+- **建议 5：对 `service/grc_http_service.cpp` 这类图依赖展示代码补充动态超时配置可视化信息**
+  - 相关文件：
+    - `service/grc_http_service.cpp`
+  - 当前代码特征：
+    - 已经存在图依赖关系处理逻辑，例如：
+      - `std::unordered_map<std::string, std::vector<int>> depend_map`
+      - `graph_engine->get_vertexs_message(graph_name)`
+      - 静态颜色列表 `std::vector<std::string> colors`
+  - 建议处理方式：
+    - 在 HTTP 图展示或调试页面中增加当前 graph 对应的动态超时 scene。
+    - 展示每个 RPC 节点是否命中动态超时配置。
+    - 对未命中的 RPC 节点标记为 warning。
+  - 预期收益：
+    - 排查人员可以从图视角直接看到动态超时是否生效。
+    - 对 GRC 这种固定 `default` scene 的服务尤其有价值，可以快速确认 graph 与 scene 的真实关系。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：配置存在不代表线上真实生效**
+  - 在 `feeda-mv-grg` 中，`news_updates_dibar.conf` 存在，但 `service/grg_service.cpp` 会把 `news_updates_dibar` 映射到 `short_micro_video`。
+  - 在 `feeda-mv-grc` 中，`dynamic_timeout.conf` 中存在 `spark`、`guanzhu`，但入口固定使用 `default`。
+  - 因此，后续修改配置前必须先确认服务入口的 scene 映射逻辑，否则容易出现“配置已发布但策略未变化”的问题。
+
+- **风险 2：`DTController` 生命周期不能跨请求或跨 graph reset 复用**
+  - `DTController` 来自 `controller_pool`，并通过 `MutableFrameworkContext.timeout_cntl` 注入图运行上下文。
+  - 图内 Processor、RPC Plugin 只能在当前请求生命周期内使用该指针。
+  - 不建议在异步回调、全局缓存、静态对象中长期保存 `timeout_cntl`。
+  - 尤其需要关注：
+    - `src/plugin/parallel_predictor.cpp`
+    - `src/plugin/grc.cpp`
+    - `src/processor/reddot/reddot_index_recall.cpp`
+
+- **风险 3：RPC 名称不一致会导致动态预算失效**
+  - 动态超时策略依赖 `rpc_name` 与配置中的 stage / concurrent 名称匹配。
+  - 代码中如果存在硬编码字符串、拼接字符串、历史别名，容易造成配置无法命中。
+  - 建议不要仅依赖人工检查，应增加静态扫描或启动期校验。
+
+- **风险 4：GRC 与 GRG 的默认预算不同，迁移策略不能直接照搬**
+  - GRC 兜底值为 `700ms`。
+  - GRG 兜底值为 `800ms`。
+  - 如果后续统一封装入口逻辑，需要保留服务级差异，不能简单抽成一个固定默认值。
+  - 同时，两者反馈耗时口径也不同，动态超时学习参数不宜直接共用。
+
+---
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
