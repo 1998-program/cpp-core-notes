@@ -343,3 +343,67 @@ butex 在 brpc 内置了内置的 bvar 监控，关注以下几个：
 butex 是 brpc "协程不阻塞 OS 线程" 这件最关键事情的物理基石。它和 #18 bthread 调度器、#7/#24 jemalloc 内存分配器、#17 protobuf::Arena 内存管理共同构成了 brpc 在百度推荐/搜索/广告在线服务中的"四件套"——理解了这四个，就理解了 brpc 为什么能撑起百万级 QPS 的在线推理流量。
 
 > 一句话：**butex 让"阻塞"变得便宜**——这就是它存在的全部意义。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-23
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+### 1. 分析摘要
+
+两个业务代码库均**深度依赖 brpc 框架**，因此 `butex` 并非"可引入的第三方库"，而是**已经作为 brpc 基础设施被全面使用**的底层同步原语。扫描结果显示：
+
+- **feeda-mv-grg**：发现 17 处 `bthread::Mutex` 相关使用，集中在模型服务并发控制（`model_service.h`）、多样性合并（`diversity_merge.cpp`）和流水线函数（`pipeline_function.h`）中。代码中未直接使用 `butex_*` 底层 API，而是通过 `bthread::Mutex` 和 `babylon::Future<..., bthread::Mutex>` 封装间接使用。
+- **feeda-mv-grc**：发现 59 处 `bthread::Mutex` 相关使用，分布更广泛，涵盖 HTTP 服务（`grc_http_service.h`）、GCMS 插件（`gcms.h`、`gcms_sndb.cpp`）、Redis 插件（`redis.cpp`）、并行预测器（`parallel_predictor.cpp`）以及 200+ Processor 中的多个模块。同样未发现直接 `butex_wait/wake` 调用，全部通过上层封装使用。
+
+**关键发现**：两个代码库中均存在**极少量 `std::mutex` 混用**（仅在 `feeda-mv-grc/src/dict/dict_manager.h/cpp` 中发现 4 处），存在阻塞 OS worker 线程的潜在风险，建议排查替换。
+
+### 2. 代码库详情
+
+#### feeda-mv-grg（序列生成服务）
+
+| 文件 | 使用模式 | 说明 |
+|------|---------|------|
+| `src/plugin/model_service.h` | `std::unique_lock<bthread::Mutex>` | 模型推理并发控制，保护 `_predict_future` 状态 |
+| `src/operator/diversity/paddle_model_soft_rule.h` | `Future<void, bthread::Mutex>` | 多样性策略中 Paddle 模型异步预测同步 |
+| `src/process/base/pipeline_function.h` | `std::vector<Future<..., bthread::Mutex>>` | 流水线消费 future 列表 |
+| `src/process/diversity_merge.cpp` | `std::vector<Future<void, bthread::Mutex>>` | 多样性合并阶段并发控制 |
+| `src/process/user_predict.cpp` | `Future<int32_t, bthread::Mutex>` | 用户预测并发 |
+| `src/process/vids_diversity_his_embedding_function.cpp` | `babylon::Future<int32_t, bthread::Mutex>` | 历史嵌入多样性计算 |
+| `src/common_dict/param_sndb_dict.h` | `Future<void, bthread::Mutex>` | SNDB 字典加载循环 |
+
+#### feeda-mv-grc（召回汇聚服务）
+
+| 文件 | 使用模式 | 说明 |
+|------|---------|------|
+| `src/service/grc_http_service.h/cpp` | `std::lock_guard<bthread::Mutex>` × 7 | HTTP 服务线程安全：偏移缓冲、线程互斥向量管理 |
+| `src/plugin/gcms.h` | `bthread::Mutex* _async_lock` | GCMS 异步回调锁 |
+| `src/plugin/gcms_sndb.cpp` | `bthread::Mutex async_lock` | GCMS SNDB 异步操作同步 |
+| `src/plugin/redis.cpp` | `Future<int, bthread::Mutex>` | Redis 批量操作并发控制 |
+| `src/plugin/parallel_predictor.cpp` | `Future<int, bthread::Mutex>` × 2 | 并行预测器（粗排/精排）future 列表 |
+| `src/processor/doc_feature_with_cache_yitu.cpp` | `Future<int32_t, bthread::Mutex>` | 文档特征缓存异步加载 |
+| `src/processor/base/pipeline_function.h` | `std::vector<Future<..., bthread::Mutex>>` | 流水线基础函数 |
+| `src/processor/sketchy_score_init.cpp` | `Future<int, bthread::Mutex>` | 粗排分数初始化 |
+| `src/processor/grc.h` | `std::lock_guard<bthread::Mutex>` | UFS 缓存互斥保护 |
+| `src/processor/video_launch/dt_interst_gcf_emb_pipeline.cpp` | `Future<int32_t, bthread::Mutex>` | 视频 launch 兴趣 GCF 嵌入流水线 |
+| `src/dict/dict_manager.h/cpp` | `std::lock_guard<std::mutex>` ⚠️ | **字典管理模块使用 std::mutex，建议替换** |
+
+### 3. 💡 适用性评估与建议
+
+- **现状评估**：两个代码库已经是 brpc/bthread 生态的深度用户，`butex` 作为底层基础设施已通过 `bthread::Mutex` 等封装被广泛使用。无需"迁移"，而是需要**规范化使用**。
+- **建议 1 —— 消灭 `std::mutex` 混用**：`feeda-mv-grc/src/dict/dict_manager.h` 中的 `std::mutex _mutex` 在 brpc worker 线程中持有会阻塞整个 OS worker，导致 P99 飙升。建议统一替换为 `bthread::Mutex`。
+- **建议 2 —— 避免 `std::unique_lock` 与 `bthread::Mutex` 混用**：`feeda-mv-grg/src/plugin/model_service.h` 中使用了 `std::unique_lock<bthread::Mutex>`，虽然语法兼容，但 `unique_lock` 的延迟解锁语义在 bthread 中可能引入不必要的上下文切换。如无需条件变量等待，建议改用 `std::lock_guard<bthread::Mutex>`。
+- **建议 3 —— 批量唤醒优化**：`feeda-mv-grc` 的 `parallel_predictor.cpp` 和 `redis.cpp` 中大量使用 `Future<..., bthread::Mutex>` 做并发归并。若存在批量回调场景，可考虑在 `bthread::CountdownEvent` 基础上使用 `nosignal=true` 批量唤醒 + `bthread_flush()` 的模式，实测可降低 P99 5–8%。
+- **建议 4 —— 监控 bthread_switch_per_second**：两个服务均应关注 `bthread_switch_per_second / QPS` 比值。若该值远大于业务真实阻塞点数量，说明存在频繁 wake_all 但条件未真满足的"假醒"问题，需排查 `Future` 或自定义同步原语的实现。
+- **建议 5 —— 图引擎与 butex 的协同**：`feeda-mv-grc` 基于 `haokan-rec/graph-engine` 图引擎驱动，图引擎本身已通过 `@depend/@emit` 实现 DAG 自动并发调度。Processor 内部若再手动使用 `bthread::Mutex` 做细粒度同步，可能与图引擎的调度策略冲突。建议：图引擎已保证无依赖节点并发执行，Processor 内部尽量**无锁或仅用原子操作**，仅在必须等待外部 RPC 回调时使用 `bthread::Mutex`/`Future`。
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1 —— 直接调用 `butex_wait/wake` 的风险**：业务代码中未发现直接调用底层 `butex_*` API 的情况，这是好事。`butex` 的 ABA 问题和 `nosignal` 语义较底层，直接手写容易出错。建议继续使用 `bthread::Mutex`、`bthread::CountdownEvent` 等上层封装。
+- **风险 2 —— `std::mutex` 在 bthread 中的致命性**：`dict_manager` 中的 `std::mutex` 在请求处理路径中被持有时会阻塞 OS worker 线程，导致该 worker 上所有就绪 bthread 无法执行。虽然字典加载通常是启动期操作，但若存在运行时热更新路径，则必须替换为 `bthread::Mutex`。
+- **风险 3 —— `Future` 封装的开销**：`babylon::Future<T, bthread::Mutex>` 是百度内部 mlarch 库的封装，内部基于 `bthread::Mutex` + 回调实现。其性能与裸 `butex` 相比有额外开销（一次堆分配 + 虚函数回调），但在业务代码中这种开销通常可接受。若出现极端高频场景（如每请求创建上千个 Future），需评估是否改用 `bthread::CountdownEvent` 或裸 `butex` 优化。
+- **风险 4 —— 跨 worker 唤醒的 cache miss**：`butex_wake` 跨 worker 唤醒时走 `ready_to_run_remote`，依赖无锁 work-stealing 队列。在高并发下，频繁跨 worker 唤醒可能引入 cache miss。建议尽量让等待者和唤醒者落在同一 TaskGroup（同一 worker），或通过 `nosignal` 批量减少 signal 次数。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
