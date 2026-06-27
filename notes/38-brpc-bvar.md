@@ -225,3 +225,258 @@ bvar 的独特价值在于：**和 brpc 深度耦合**——`/vars`/`/status`/`/
 - brpc 官方文档：[bvar/intro_cn.md](https://github.com/apache/brpc/blob/master/docs/cn/bvar.md)
 - 源码：`brpc/src/bvar/` 目录，重点看 `reducer.h` / `detail/agent.h` / `latency_recorder.h`
 - 关联笔记：[34-brpc-butex](34-brpc-butex.md)（同样依赖 TLS+butex 优化）、[24-jemalloc](24-jemalloc.md)（per-arena 同源思想）
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-27T19:04:46.511848
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：brpc::bvar
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库中已经存在一定规模的 bvar 使用痕迹，两个仓库均发现约 10 个相关文件，说明团队并非从零引入，可以优先复用现有封装、命名规范和接入方式进行扩展。其中 `feeda-mv-grg` 中的 `bvar_grc.cc`、`plugin/grc.cpp`、`plugin/predictor.h`，以及 `feeda-mv-grc` 中的 `plugin/user_intent_predictor.cpp`、`plugin/set2set_predictor.h` 等文件可以作为后续改造的参考入口。
+
+- 从业务形态看，`feeda-mv-grg` 偏序列生成与模型打分，`feeda-mv-grc` 偏召回汇聚、HTTP 服务与多插件调用，二者都存在高 QPS、热点 RPC、模型预测、下游调用、召回合并等典型在线服务场景，非常适合用 `bvar::Adder`、`bvar::LatencyRecorder`、`bvar::Window` 对请求量、错误量、耗时分位、下游失败率等指标进行低开销监控。尤其是热点路径中如果仍存在 `std::atomic` 计数、日志式统计或手写耗时聚合，具备较高迁移收益。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg
+
+- 已发现 bvar 相关使用：约 10 个文件。
+- 代表性文件包括：
+  - `plugin/feature_service.h`
+  - `plugin/grc.cpp`
+  - `bvar_grc.cc`
+  - `plugin/predictor.h`
+  - `plugin/model_service.cpp`
+
+- 现有代码特征：
+  - `model/model.h`、`model/paddle_model.h` 中存在模型预测相关接口，例如：
+    - `Model::predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)`
+    - `predict_with_tensor_input(...)`
+  - 这些函数通常处在推荐链路的核心路径上，适合统计：
+    - 单次预测耗时
+    - 候选集大小
+    - 模型预测失败次数
+    - 下游特征服务异常次数
+    - batch size 分布与最大值
+
+- 适配判断：
+  - 该仓库已经有 `bvar_grc.cc`，说明可能已经存在集中式 bvar 定义或注册文件。
+  - 后续建议优先沿用 `bvar_grc.cc` 中已有的命名风格与声明方式，避免每个模块自行创建零散指标。
+  - `plugin/grc.cpp`、`plugin/model_service.cpp` 这类服务入口文件，适合作为 `LatencyRecorder` 的第一批改造点。
+
+#### feeda-mv-grc
+
+- 已发现 bvar 相关使用：约 10 个文件。
+- 代表性文件包括：
+  - `plugin/set2set_predictor.h`
+  - `dict/dict_manager.h`
+  - `plugin/gcms.h`
+  - `plugin/user_intent_predictor.cpp`
+  - `plugin/dalton_user_client.h`
+
+- 现有代码特征：
+  - `service/grc_http_service.cpp` 中存在 HTTP 服务处理逻辑，并大量使用：
+    - `std::unordered_map<std::string, std::vector<int>> depend_map`
+    - `std::vector<std::string> sub_access_off_vec`
+    - `std::vector<std::string> sub_access_on_vec`
+  - 这类文件通常包含请求解析、图依赖遍历、召回开关处理和响应构造逻辑，适合增加：
+    - HTTP 请求 QPS
+    - 请求失败数
+    - 参数非法数
+    - 图节点数量、依赖边数量
+    - 接口整体耗时与 p99
+
+- 适配判断：
+  - `feeda-mv-grc` 的代码规模更大，`std::vector`、`std::string`、`std::unordered_map` 使用分布更广，说明业务逻辑复杂、调用链较长，监控维度也会更丰富。
+  - bvar 迁移不应以替换 STL 容器为目标，而应聚焦在热点业务路径中的统计、计数、耗时记录上。
+  - `plugin/user_intent_predictor.cpp`、`plugin/dalton_user_client.h`、`plugin/set2set_predictor.h` 这类预测器和下游客户端文件，适合优先补充 `LatencyRecorder` 与错误计数器。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议一：以 `bvar_grc.cc` 作为 feeda-mv-grg 的统一指标定义入口**
+  - 适用文件：
+    - `feeda-mv-grg/bvar_grc.cc`
+    - `feeda-mv-grg/plugin/grc.cpp`
+    - `feeda-mv-grg/plugin/model_service.cpp`
+    - `feeda-mv-grg/plugin/predictor.h`
+  - 建议做法：
+    - 将已有 bvar 定义集中整理到 `bvar_grc.cc`，例如：
+      - `grg_predict_latency`
+      - `grg_predict_error`
+      - `grg_feature_service_latency`
+      - `grg_feature_service_error`
+      - `grg_candidate_count`
+    - 服务入口或核心预测函数中只引用声明，避免在函数内部临时构造 bvar。
+  - 示例方向：
+    ```cpp
+    // bvar_grc.cc
+    bvar::LatencyRecorder g_grg_predict_latency("grg_predict");
+    bvar::Adder<int64_t> g_grg_predict_error("grg_predict_error");
+    bvar::Maxer<int64_t> g_grg_candidate_max("grg_candidate_max");
+    ```
+    ```cpp
+    // plugin/model_service.cpp
+    bvar::LatencyRecorderHelper helper(&g_grg_predict_latency);
+    if (ret != 0) {
+        g_grg_predict_error << 1;
+    }
+    g_grg_candidate_max << candidate_vec.size();
+    ```
+  - 预期收益：
+    - 减少手写耗时日志和 atomic 计数带来的热点开销。
+    - 通过 `/vars` 直接观测预测服务 QPS、平均耗时、p99、错误量。
+
+- **建议二：在 `model/model.h` 与 `model/paddle_model.h` 对模型预测链路增加耗时与候选集指标**
+  - 适用文件：
+    - `feeda-mv-grg/model/model.h`
+    - `feeda-mv-grg/model/paddle_model.h`
+  - 适用场景：
+    - `Model::predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)`
+    - `predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec, ...)`
+  - 建议做法：
+    - 不建议在纯虚基类 `model/model.h` 中直接埋点，以免污染接口层。
+    - 建议在具体实现或统一调用入口中增加 `bvar::LatencyRecorderHelper`。
+    - 对 `candidate_vec.size()` 使用 `bvar::Maxer<int64_t>` 或 `bvar::Adder<int64_t>` 配合 `Window` 统计候选规模。
+  - 预期收益：
+    - 能快速判断 p99 抖动是否来自模型预测阶段。
+    - 能关联候选集大小和预测耗时，定位 batch 放大、召回异常等问题。
+
+- **建议三：在 `service/grc_http_service.cpp` 增加 HTTP 入口级 bvar 指标**
+  - 适用文件：
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 适用场景：
+    - HTTP 请求解析
+    - query 参数处理
+    - graph 依赖遍历
+    - response 构造
+  - 建议增加指标：
+    - `grc_http_latency`：整体请求耗时
+    - `grc_http_qps`：HTTP 请求 QPS，可由 `LatencyRecorder` 自动导出
+    - `grc_http_bad_request`：参数错误次数
+    - `grc_http_graph_vertex_count`：图节点数量
+    - `grc_http_graph_depend_count`：依赖边数量
+  - 示例方向：
+    ```cpp
+    static bvar::LatencyRecorder g_grc_http_latency("grc_http");
+    static bvar::Adder<int64_t> g_grc_http_bad_request("grc_http_bad_request");
+    static bvar::Maxer<int64_t> g_grc_http_vertex_max("grc_http_vertex_max");
+
+    void GrcHttpService::SomeHandler(...) {
+        bvar::LatencyRecorderHelper helper(&g_grc_http_latency);
+
+        const std::string* off = cntl->http_request().uri().GetQuery("off");
+        if (invalid_param) {
+            g_grc_http_bad_request << 1;
+            return;
+        }
+
+        auto& all_vertex = graph_engine->get_vertexs_message(graph_name);
+        g_grc_http_vertex_max << all_vertex.size();
+    }
+    ```
+  - 预期收益：
+    - 快速区分是入口流量异常、参数异常，还是图结构过大导致的耗时上升。
+    - 避免通过高频日志统计请求量，降低热点路径 I/O 和锁竞争。
+
+- **建议四：在 `plugin/user_intent_predictor.cpp`、`plugin/set2set_predictor.h` 中补齐预测器级别指标**
+  - 适用文件：
+    - `feeda-mv-grc/plugin/user_intent_predictor.cpp`
+    - `feeda-mv-grc/plugin/set2set_predictor.h`
+  - 建议做法：
+    - 每个核心 predictor 建议至少包含：
+      - 一个 `bvar::LatencyRecorder`
+      - 一个错误计数 `bvar::Adder<int64_t>`
+      - 一个空结果计数 `bvar::Adder<int64_t>`
+      - 一个候选数量或输出数量 `bvar::Maxer<int64_t>` / `bvar::Adder<int64_t>`
+  - 指标命名建议：
+    - `grc_user_intent_predict_latency`
+    - `grc_user_intent_predict_error`
+    - `grc_user_intent_empty_result`
+    - `grc_set2set_predict_latency`
+    - `grc_set2set_predict_error`
+  - 预期收益：
+    - 召回汇聚服务通常由多个 predictor 组成，入口总耗时只能说明整体变慢，无法定位具体插件。
+    - predictor 级别 bvar 可以直接定位是哪一路召回、意图模型或 set2set 模块导致尾延迟升高。
+
+- **建议五：在 `plugin/dalton_user_client.h`、`plugin/gcms.h` 等下游客户端封装中增加调用耗时和失败统计**
+  - 适用文件：
+    - `feeda-mv-grc/plugin/dalton_user_client.h`
+    - `feeda-mv-grc/plugin/gcms.h`
+    - `feeda-mv-grg/plugin/feature_service.h`
+  - 适用场景：
+    - 访问用户画像服务
+    - 访问特征服务
+    - 访问外部召回或模型服务
+  - 建议增加指标：
+    - 下游 RPC 耗时：`LatencyRecorder`
+    - 超时次数：`Adder<int64_t>`
+    - 非零错误码次数：`Adder<int64_t>`
+    - 返回空结果次数：`Adder<int64_t>`
+  - 预期收益：
+    - p99 抖动排查时，可以快速判断是否由下游服务超时、特征缺失或外部依赖异常引起。
+    - bvar 写路径为 TLS 累加，适合放在高频下游调用路径中。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **避免在请求路径中动态创建 bvar**
+  - 风险场景：
+    - 在 `service/grc_http_service.cpp` 中根据 `graph_name`、`user_id`、`query` 动态拼接 bvar 名称。
+    - 在 `plugin/user_intent_predictor.cpp` 中按模型版本、实验分桶、用户分群动态创建指标。
+  - 问题：
+    - bvar 构造会注册到全局变量表，涉及锁和全局元数据。
+    - 动态高基数指标会导致内存膨胀、`/vars` 输出变大、sidecar 拉取变慢。
+  - 建议：
+    - bvar 名称必须是有限集合。
+    - 高基数维度应使用日志、trace 或采样上报，不应使用 bvar。
+
+- **注意 `/vars` 拉取频率与指标数量**
+  - 风险场景：
+    - `feeda-mv-grc` 模块多、插件多，如果每个插件、每个下游、每个状态都暴露大量 bvar，单机指标数量可能快速膨胀。
+  - 问题：
+    - bvar 写路径很轻，但读路径需要聚合所有线程的 TLS slot。
+    - 当指标数量过万、sidecar 高频拉取时，读聚合开销会对服务进程产生可见影响。
+  - 建议：
+    - 对业务核心指标优先接入，避免过度细分。
+    - Noah / Prometheus 拉取周期建议不低于 5s，窗口类指标建议使用 30s 或 60s。
+
+- **不要把 bvar 当作精确实时计数器使用**
+  - 风险场景：
+    - 在业务逻辑中读取 `bvar::Adder::get_value()` 作为强一致判断依据。
+    - 例如用 bvar 当前值参与限流、熔断、状态机判断。
+  - 问题：
+    - bvar 的设计目标是监控观测，不是强一致同步原语。
+    - 读路径是聚合 TLS 数据，适合秒级监控，不适合纳秒级控制逻辑。
+  - 建议：
+    - 限流、熔断仍应使用专门的限流器或原子状态。
+    - bvar 仅用于观测 QPS、错误量、耗时分布等监控指标。
+
+- **迁移时需统一命名规范，避免监控面板割裂**
+  - 风险场景：
+    - `feeda-mv-grg` 使用 `grg_predict_latency`，`feeda-mv-grc` 使用 `predict_user_intent_cost`，不同模块命名风格不一致。
+  - 问题：
+    - Noah / Prometheus 自动聚合困难。
+    - 告警规则和 dashboard 难以复用。
+  - 建议：
+    - 推荐统一采用：
+      - `{service}_{module}_{operation}`
+      - `{service}_{module}_{operation}_error`
+      - `{service}_{module}_{operation}_empty`
+      - `{service}_{module}_{operation}_timeout`
+    - 示例：
+      - `grg_model_predict`
+      - `grg_model_predict_error`
+      - `grc_user_intent_predict`
+      - `grc_dalton_user_rpc_timeout`
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
