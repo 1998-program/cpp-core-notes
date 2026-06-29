@@ -539,3 +539,144 @@ bthread_start_background(&tid, &attr, task_fn, arg);
 ---
 
 > **总结**: bthread 是 brpc 高性能的核心秘密。通过 WorkStealingQueue 实现无锁任务调度，通过 butex 实现用户态同步，通过汇编优化实现纳秒级切换。在 ng-framework 在线推荐场景中，bthread 让我们能够以极低的成本处理海量并发请求，是现代 C++ 服务端开发的必备技术。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-06-29T19:01:58.372452
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析：brpc::bthread
+
+### 1. 分析摘要
+
+- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库中均已发现目标库相关使用，各扫描到 10 个文件，说明业务侧已经具备一定的 brpc / bthread 接入基础，并非完全从零迁移。尤其是 `feeda-mv-grc` 中出现了 `plugin/parallel_predictor.cpp`、`processor/get_vid_clk_from_redis_rpc.cpp` 等典型并发、RPC、预测聚合场景，具备进一步利用 `bthread` 做轻量级并发调度的潜力。
+
+- 从代码规模看，两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用非常广泛，说明业务逻辑中存在大量候选集处理、特征聚合、字典查询、召回结果合并等数据密集型流程。`bthread` 本身并不是容器替换技术，而是并发执行模型优化手段，因此更适合优先作用于 **RPC 并发调用、模型预测并行化、召回源并发请求、字典/Redis/下游服务访问、候选集分片处理** 等场景，而不是直接替换 STL 容器。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标库相关使用：10 个文件，代表文件包括：
+  - `plugin/model_service.h`
+  - `operator/diversity/pk_generate_v5_soft_rule.cpp`
+  - `operator/diversity/scatter_context.cpp`
+  - `common_dict/param_sndb_dict.h`
+  - `process/diversity_merge.cpp`
+
+- STL 使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 典型业务形态：
+  - `model/model.h` 中 `Model::predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)` 表明预测逻辑以候选集 `candidate_vec` 为核心输入。
+  - `model/paddle_model.h` 中存在 `predict_with_tensor_input`，说明模型预测链路可能涉及较重的计算或远程推理调用。
+  - `process/diversity_merge.cpp`、`operator/diversity/scatter_context.cpp` 等文件说明该服务中存在多路结果聚合、打散、合并等流程，适合评估按召回源、分桶、分段候选集进行 bthread 并发化。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库相关使用：10 个文件，代表文件包括：
+  - `processor/compute_item_graphrag_weight.cpp`
+  - `dict/mv_tgi_adjust_sndb_dict.cpp`
+  - `processor/video_launch/rank_index_calc.cpp`
+  - `plugin/parallel_predictor.cpp`
+  - `processor/get_vid_clk_from_redis_rpc.cpp`
+
+- STL 使用规模：
+  - `std::vector`：8438 次，分布在 1277 个文件
+  - `std::string`：7157 次，分布在 1233 个文件
+  - `std::unordered_map`：2834 次，分布在 639 个文件
+
+- 典型业务形态：
+  - `service/grc_http_service.cpp` 中存在 `std::unordered_map<std::string, std::vector<int>> depend_map`，说明服务中有图依赖、节点依赖或执行 DAG 相关逻辑。
+  - `plugin/parallel_predictor.cpp` 从命名上看已经是并行预测模块，可作为引入或规范化 bthread 并发模型的重点参考文件。
+  - `processor/get_vid_clk_from_redis_rpc.cpp` 属于 Redis / RPC 访问场景，非常适合使用 bthread 降低大量 I/O 等待带来的线程占用。
+  - `processor/compute_item_graphrag_weight.cpp`、`processor/video_launch/rank_index_calc.cpp` 可能存在批量 item 计算、分片计算、特征聚合等场景，可评估使用 bthread 做细粒度任务拆分。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **优先在 `feeda-mv-grc/plugin/parallel_predictor.cpp` 统一并发模型**
+  - 该文件从命名上已经承担并行预测职责，建议优先检查当前实现是否仍在使用 `std::thread`、线程池、同步阻塞 RPC 或串行循环预测。
+  - 如果存在多个模型、多个塔、多个召回分支的预测调用，可以改造为：
+    - 每个预测分支使用 `bthread_start_background` 启动；
+    - 使用 `bthread_join` 或 `bthread::CountdownEvent` 等方式等待；
+    - 对共享结果容器采用分片写入或局部结果合并，避免多 bthread 竞争同一个 `std::vector`。
+  - 该文件可以作为后续 `feeda-mv-grg/model/paddle_model.h`、`feeda-mv-grg/plugin/model_service.h` 并行预测改造的参考样板。
+
+- **在 `feeda-mv-grc/processor/get_vid_clk_from_redis_rpc.cpp` 引入 bthread 化 I/O 并发**
+  - Redis/RPC 请求通常是高等待、低 CPU 的典型 bthread 适配场景。
+  - 如果当前逻辑是按 vid 串行访问 Redis，建议按批次或分片启动多个 bthread 并发查询。
+  - 建议控制并发度，例如按请求维度设置最大并发数，避免将所有 vid 一次性展开为大量 bthread，导致 Redis 下游被打爆。
+  - 推荐模式：
+    - 将 vid 列表切分为 N 个 shard；
+    - 每个 shard 一个 bthread；
+    - 每个 bthread 内部复用已有 Redis client；
+    - 最终在主流程中合并 `vid -> clk` 结果。
+
+- **在 `feeda-mv-grg/process/diversity_merge.cpp` 和 `feeda-mv-grg/operator/diversity/scatter_context.cpp` 评估候选集合并并行化**
+  - 这类文件通常包含多路候选集处理、去重、打散、规则过滤等逻辑。
+  - 如果当前对多个 bucket、多个通道、多个候选列表串行处理，可以考虑：
+    - 使用 bthread 按业务分桶并发处理；
+    - 每个 bthread 内部只操作自己的局部 `std::vector<RidTmpInfoPtr>`；
+    - 最后统一 merge，减少锁竞争。
+  - 注意不要让多个 bthread 同时 `push_back` 到同一个 `std::vector`，否则需要加锁或预分配并按 index 写入。
+
+- **在 `feeda-mv-grg/model/paddle_model.h` 的 `predict_with_tensor_input` 链路上评估模型预测拆分**
+  - 当前接口形态为：
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                                  general_predict::PredictSample* predict_sample = nullptr,
+                                  bool is_from_cube = true) const;
+    ```
+  - 如果 `candidate_vec` 较大，可以按候选集范围切分，使用多个 bthread 并发构造 tensor input 或并发调用多个模型实例。
+  - 如果底层 Paddle predictor 实例不是线程安全的，应避免多个 bthread 共享同一个 predictor，需要使用：
+    - predictor 对象池；
+    - thread-local / bthread-local 上下文；
+    - 或在模型层做实例隔离。
+
+- **在 `feeda-mv-grc/service/grc_http_service.cpp` 的图依赖处理上谨慎引入 bthread**
+  - 文件中存在依赖图相关逻辑：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    ```
+  - 如果该服务内部存在 DAG 节点执行、多个 vertex 独立计算的场景，可以将无依赖节点并发调度到 bthread。
+  - 但建议先从耗时节点、I/O 节点、下游 RPC 节点开始，而不是对所有图节点盲目 bthread 化。
+  - 可参考 `plugin/parallel_predictor.cpp` 中已有并行调用模式，形成统一的异步执行封装。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **bthread 适合 I/O 密集与轻量任务，不适合无控制地并发 CPU 密集任务**
+  - `bthread` 的优势在于 M:N 调度、低创建/切换成本以及与 brpc I/O 模型协同。
+  - 对于纯 CPU 计算，例如 `processor/compute_item_graphrag_weight.cpp`、`processor/video_launch/rank_index_calc.cpp` 中如果是大规模特征计算或排序打分，直接把循环拆成大量 bthread 不一定提升性能，甚至可能因为调度、缓存失效、共享数据竞争导致变慢。
+  - CPU 密集场景建议按核心数控制并发度，避免超过 `bthread_concurrency` 太多。
+
+- **需要排查阻塞调用是否 bthread 友好**
+  - 如果 bthread 内部调用了不支持 bthread 让出的阻塞接口，例如普通阻塞 socket、长时间 `pthread_mutex` 等，可能会占住 worker pthread，降低整个 bthread 调度池吞吐。
+  - 对 `processor/get_vid_clk_from_redis_rpc.cpp`、`plugin/model_service.h` 这类 RPC / Redis / 模型服务调用，需要确认底层 client 是否兼容 brpc bthread 模型。
+  - 优先使用 brpc channel、bthread-aware mutex / condition 或 butex 相关同步原语。
+
+- **共享容器需要重新设计写入方式**
+  - 两个代码库中 `std::vector`、`std::unordered_map` 使用量很大，例如 `feeda-mv-grc` 中 `std::vector` 达 8438 次、`std::unordered_map` 达 2834 次。
+  - bthread 并发化后，原本串行安全的代码可能变成数据竞争。
+  - 建议采用：
+    - 每个 bthread 使用局部 `std::vector` / `std::unordered_map`；
+    - 主 bthread 统一归并；
+    - 或预分配结果数组并按分片 index 写入；
+    - 尽量避免多个 bthread 频繁竞争同一把锁。
+
+- **协程迁移会影响 TLS、线程亲和性和部分第三方库假设**
+  - bthread 是 M:N 模型，协程可能在不同 pthread worker 间迁移。
+  - 如果业务代码或第三方库依赖 `thread_local`、pthread id、线程绑定资源、GPU/模型上下文绑定等，需要重点排查。
+  - 对 `model/paddle_model.h`、`plugin/model_service.h`、`plugin/parallel_predictor.cpp` 这类模型预测相关文件，尤其要确认 predictor、tensor buffer、上下文对象是否可以跨线程访问或迁移。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
