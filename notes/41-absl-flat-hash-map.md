@@ -511,3 +511,237 @@ struct NonMovable {
 ---
 
 > 写于 2026-07-01，配合 brpc::bthread + protobuf::Arena + jemalloc 使用效果更佳 🦞
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-02T19:06:29.571027
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，`absl::flat_hash_map` 已经在两个业务代码库中有少量落地：`feeda-mv-grg` 中发现 1 个文件使用，`feeda-mv-grc` 中发现 3 个文件使用，说明业务侧已经具备一定的 Abseil 容器接入基础，可作为后续迁移参考。
+
+- 两个代码库中 `std::unordered_map` / `std::unordered_set` 使用规模非常大，且 `map_find` 调用次数明显高于 `map_insert`，符合 `absl::flat_hash_map` 的典型适用场景：高频查找、短生命周期临时索引、请求内聚合表、配置/字典类只读表。整体看，`feeda-mv-grc` 的迁移潜力更高，因其 `std::unordered_map` 使用达到 2834 次、`map_find` 达到 5030 次，热点路径中通过 Swiss Table 降低 cache miss 的收益更值得优先验证。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现 `absl::flat_hash_map` 或相关目标库使用：
+  - `plugin/sid.h`
+  - 该文件可作为 `feeda-mv-grg` 内部引入 Abseil 容器的参考样例，重点关注其 include 方式、命名空间使用、编译依赖配置。
+
+- 现有 `std` 等价物使用规模：
+  - `std::unordered_map`：734 次，分布在 205 个文件
+  - `std::unordered_set`：240 次，分布在 91 个文件
+  - `map_insert`：836 次，分布在 134 个文件
+  - `map_find`：1625 次，分布在 222 个文件
+
+- 典型命中场景：
+  - `model/paddle_model.h`
+    - `init_tensor_input(const std::unordered_map<std::string, size_t>& input_tensor_size)`
+    - 该场景属于接口参数传递，需要谨慎替换，因为容器类型出现在函数签名中，直接改成 `absl::flat_hash_map` 会影响调用方 ABI/API。
+  - `model/paddle_model.h`
+    - `std::unordered_map<uint64_t, std::vector<float>*> output_map;`
+    - 该场景为请求处理过程中的临时索引表，且有明确 `reserve(instance_id_vec.size())`，非常适合优先尝试替换为 `absl::flat_hash_map<uint64_t, std::vector<float>*>`。
+  - `service/grg_http_service.cpp`
+    - `std::unordered_map<std::string, std::vector<int>> depend_map;`
+    - 该场景疑似依赖关系构建表，如果在请求路径中频繁构造和查询，也适合评估替换。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现 `absl::flat_hash_map` 或相关目标库使用：
+  - `data/converge_baoliang_phase.h`
+  - `dict/sid_new_dict.h`
+  - `data/base.h`
+  - 这三个文件可作为 `feeda-mv-grc` 中迁移 `std::unordered_map` 的参考，尤其是 `dict/sid_new_dict.h`、`data/base.h` 这类字典/基础数据结构文件，通常更接近高频读取场景。
+
+- 现有 `std` 等价物使用规模：
+  - `std::unordered_map`：2834 次，分布在 639 个文件
+  - `std::unordered_set`：871 次，分布在 290 个文件
+  - `map_insert`：2738 次，分布在 372 个文件
+  - `map_find`：5030 次，分布在 708 个文件
+
+- 典型命中场景：
+  - `service/grc_service.h`
+    - `std::unordered_map<std::string, size_t>& res_len_map`
+    - 该容器作为函数参数引用传递，直接替换会影响接口边界，建议先保持接口不变，在内部热点逻辑使用 `absl::flat_hash_map`。
+  - `service/grc_http_service.cpp`
+    - `std::unordered_map<std::string, std::vector<int>> depend_map;`
+    - 与 `feeda-mv-grg` 中的 `service/grg_http_service.cpp` 类似，属于依赖关系构建表，适合做统一替换验证。
+  - `service/grc_service.cpp`
+    - `std::unordered_map<std::string, size_t> res_len_map;`
+    - 该容器用于请求处理过程中的结果长度统计，通常 key 为字符串、value 为小整数，适合评估 `absl::flat_hash_map<std::string, size_t>` 的查找和插入性能收益。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **优先替换请求内临时索引表，避免先动公共接口**
+  - 建议优先评估 `feeda-mv-grg/model/paddle_model.h` 中的局部变量：
+    ```cpp
+    std::unordered_map<uint64_t, std::vector<float>*> output_map;
+    ```
+  - 该 map 的特点是：
+    - key 为 `uint64_t`，哈希计算成本低；
+    - value 为指针，元素体积较小；
+    - 构建后用于快速查询；
+    - 已经调用 `reserve(instance_id_vec.size())`。
+  - 推荐替换为：
+    ```cpp
+    absl::flat_hash_map<uint64_t, std::vector<float>*> output_map;
+    output_map.reserve(instance_id_vec.size());
+    ```
+  - 这是非常典型的 Swiss Table 受益场景，替换成本低，且不影响外部 API。
+
+- **对 `service/grc_service.cpp` 中的请求级统计表做 A/B 压测**
+  - `feeda-mv-grc/service/grc_service.cpp` 中存在：
+    ```cpp
+    std::unordered_map<std::string, size_t> res_len_map;
+    ```
+  - 该 map 用于请求处理过程中统计结果长度，属于高频在线服务路径中的临时聚合表。
+  - 建议替换为：
+    ```cpp
+    absl::flat_hash_map<std::string, size_t> res_len_map;
+    ```
+  - 如果 key 来源可控且生命周期短，也可以进一步评估是否能使用 `absl::string_view` 作为 key，但这需要严格保证底层字符串生命周期，不建议第一阶段直接改。
+
+- **统一评估 HTTP 服务中的依赖关系表**
+  - 两个代码库均存在类似逻辑：
+    - `feeda-mv-grg/service/grg_http_service.cpp`
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 典型代码：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    ```
+  - 如果 `depend_map` 是在服务初始化、图加载或请求处理过程中频繁构建/查询，可以替换为：
+    ```cpp
+    absl::flat_hash_map<std::string, std::vector<int>> depend_map;
+    ```
+  - 该场景 value 为 `std::vector<int>`，元素移动成本相对可控，但需要关注 rehash 时 value 移动带来的影响。建议配合 `reserve(all_vertex.size())` 或根据依赖数量预估容量。
+
+- **参考已有 Abseil 使用文件，沉淀迁移模板**
+  - `feeda-mv-grg` 可参考：
+    - `plugin/sid.h`
+  - `feeda-mv-grc` 可参考：
+    - `data/converge_baoliang_phase.h`
+    - `dict/sid_new_dict.h`
+    - `data/base.h`
+  - 建议从这些文件中整理统一规范：
+    - include 方式：
+      ```cpp
+      #include "absl/container/flat_hash_map.h"
+      #include "absl/container/flat_hash_set.h"
+      ```
+    - 类型别名：
+      ```cpp
+      template <class K, class V>
+      using FastHashMap = absl::flat_hash_map<K, V>;
+      ```
+    - 编译依赖配置：
+      - Bazel / CMake / makefile 中统一增加 Abseil container 依赖；
+      - 避免不同模块重复、零散接入。
+
+- **优先迁移 `find` 远多于 `insert` 的热点路径**
+  - 扫描数据显示：
+    - `feeda-mv-grg`：`map_find` 1625 次，高于 `map_insert` 836 次；
+    - `feeda-mv-grc`：`map_find` 5030 次，高于 `map_insert` 2738 次。
+  - `absl::flat_hash_map` 的核心收益主要来自查找路径上的缓存友好布局和 SIMD 控制字节过滤，因此应优先选择：
+    - 字典查询；
+    - 请求路由；
+    - sid / user_id / item_id 到上下文对象的索引；
+    - 结果聚合；
+    - 临时去重集合。
+  - 对纯写多读少、元素很大、迭代顺序敏感的场景，不建议作为第一批迁移对象。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **引用、指针、迭代器稳定性与 `std::unordered_map` 不同**
+  - `absl::flat_hash_map` 采用开放寻址和内联 slot 存储，rehash 后元素会移动。
+  - 如果业务代码保存了 map 中元素的指针、引用或迭代器，并在后续插入/删除后继续使用，迁移后可能引入悬垂引用风险。
+  - 迁移前需要重点排查：
+    ```cpp
+    auto* p = &map[key];
+    auto& v = map[key];
+    auto it = map.find(key);
+    ```
+    是否跨越了 `insert` / `emplace` / `erase` / `reserve` / `rehash` 操作。
+
+- **不要优先替换公共头文件中的接口类型**
+  - 例如：
+    - `feeda-mv-grg/model/paddle_model.h`
+      ```cpp
+      void init_tensor_input(const std::unordered_map<std::string, size_t>& input_tensor_size)
+      ```
+    - `feeda-mv-grc/service/grc_service.h`
+      ```cpp
+      std::unordered_map<std::string, size_t>& res_len_map
+      ```
+  - 这些容器出现在函数签名中，直接替换会影响调用方编译、依赖传播和接口兼容性。
+  - 建议第一阶段只替换函数内部局部变量；第二阶段再评估公共接口是否有必要统一迁移。
+
+- **大对象 value 场景需要谨慎**
+  - `absl::flat_hash_map` 将元素内联存储在 slot array 中，cache locality 更好，但 rehash 时需要移动元素。
+  - 如果 value 是非常大的对象、不可廉价移动对象，或者内部管理复杂资源，迁移收益可能不如预期。
+  - 对于类似：
+    ```cpp
+    absl::flat_hash_map<std::string, LargeObject>
+    ```
+    应先评估是否改为：
+    ```cpp
+    absl::flat_hash_map<std::string, std::unique_ptr<LargeObject>>
+    ```
+    或继续保留 `std::unordered_map`。
+
+- **迭代顺序不可依赖，且迁移后顺序可能变化**
+  - `std::unordered_map` 本身也不保证稳定顺序，但历史上业务代码可能隐式依赖某种实现顺序。
+  - `absl::flat_hash_map` 的迭代顺序与 Swiss Table 的探测布局相关，迁移后很可能发生变化。
+  - 对以下场景需要额外关注：
+    - 输出结果顺序；
+    - 日志顺序；
+    - 测试用例中的字符串拼接顺序；
+    - 指标上报顺序；
+    - 多路召回合并时的 tie-break 行为。
+
+---
+
+### 5. 建议迁移路径
+
+- 第一阶段：低风险局部变量替换
+  - `feeda-mv-grg/model/paddle_model.h`
+    - `output_map`
+  - `feeda-mv-grc/service/grc_service.cpp`
+    - `res_len_map`
+  - `feeda-mv-grg/service/grg_http_service.cpp`
+    - `depend_map`
+  - `feeda-mv-grc/service/grc_http_service.cpp`
+    - `depend_map`
+
+- 第二阶段：字典类、基础数据结构类替换
+  - 参考已有使用：
+    - `feeda-mv-grc/data/base.h`
+    - `feeda-mv-grc/dict/sid_new_dict.h`
+    - `feeda-mv-grc/data/converge_baoliang_phase.h`
+    - `feeda-mv-grg/plugin/sid.h`
+  - 重点评估 sid、user_id、item_id、feature name 等高频查询索引。
+
+- 第三阶段：统一封装和规范化
+  - 在公共基础库中引入统一别名，例如：
+    ```cpp
+    template <typename K, typename V>
+    using FastHashMap = absl::flat_hash_map<K, V>;
+
+    template <typename K>
+    using FastHashSet = absl::flat_hash_set<K>;
+    ```
+  - 避免业务代码中混用大量不同哈希容器，降低后续维护和回滚成本。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
