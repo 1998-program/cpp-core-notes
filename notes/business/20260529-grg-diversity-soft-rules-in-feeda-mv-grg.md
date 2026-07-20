@@ -134,3 +134,229 @@ Dapper 采集线程通过 `START_COLLECTOR_WORKER(FLAGS_dapper_conf_file, FLAGS_
 1. 未在当前 GRG 仓库中直接找到 `multi_stream_engine_plugin` 的实现文件；已确认配置与调用点为 `vertex.conf:930-932`、`diversity_merge.cpp:86-90`，下一步应在外部依赖 `baidu/feed/general/common-processor/plugin/exec_engine.h` 或 `baidu/feed/gr/exec_engine` 中追踪。
 2. 未在当前仓库中直接找到 `ExecType` 数值 1/3 的枚举说明；当前只能确认其配置位置与业务使用，不展开解释其调度细节。
 3. 今日计划未提供业务 KU 文档 URL，未做内网文档读取；如需补充业务背景，可后续提供与 GRG 多样性、soft rule 或 MultiStreamEngine 相关 KU URL。
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:19:49.745297
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，目标技术/目标库在 **feeda-mv-grg** 与 **feeda-mv-grc** 中已经有少量落地使用，主要集中在多样性规则、scatter/rollback、特征处理等性能敏感模块。例如 `operator/diversity/sor_factor_rule.cpp`、`operator/diversity/diehard_topic_soft_rule.cpp`、`operator/diversity/rollback_rule.cpp`、`operator/diversity/scatter_context.cpp` 等文件可作为后续迁移时的参考样例。
+
+- 两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 的使用规模很大：  
+  - **feeda-mv-grg**：`std::vector` 1969 次、`std::string` 2443 次、`std::unordered_map` 734 次。  
+  - **feeda-mv-grc**：`std::vector` 8442 次、`std::string` 7170 次、`std::unordered_map` 2834 次。  
+  这说明如果目标技术是面向容器、字符串、哈希表或小对象优化的替代方案，在业务代码中具备较高迁移潜力。但考虑到 GRG/GRC 属于在线推荐链路，建议优先选择 **DiversityMergeFunction、MultiStreamEngine 输入准备、规则算子、召回汇聚热路径** 等高频模块做增量适配，而不是全仓库机械替换。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- 已发现目标库使用：**10 个文件**，主要集中在多样性规则和结果处理相关逻辑中：
+  - `operator/diversity/sor_factor_rule.cpp`
+  - `operator/diversity/diehard_topic_soft_rule.cpp`
+  - `process/rkcj_v3_get_result_function.cpp`
+  - `operator/diversity/diversity_sim_rule.cpp`
+  - `operator/diversity/slow_in_rule.cpp`
+
+- 现有 `std` 等价物使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件
+  - `std::string`：2443 次，分布在 425 个文件
+  - `std::unordered_map`：734 次，分布在 205 个文件
+
+- 从业务链路看，feeda-mv-grg 的热点主要在：
+  - `src/process/diversity_merge.cpp`
+    - 负责读取 loads/rule/news_rule/function/effect 多类队列。
+    - 构造 `SelectStreamContainerMap input_container_map`。
+    - 将候选按 `merge_pos` 分槽。
+    - 调用 `MultiStreamEngine::run()`。
+    - 将输出结果写回 `DiversityMergeResult`。
+  - `src/process/response_function.cpp`
+    - 消费 diversity 输出。
+    - 维护大量 q 值监控字段与响应构造逻辑。
+  - `operator/diversity/*.cpp`
+    - 实现软规则、硬规则、相似性规则、慢插规则等。
+    - 对候选 item 做大量遍历、打分、过滤和上下文判断。
+
+- 当前典型代码仍大量使用标准容器，例如：
+  - `model/model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+
+- 结论：  
+  feeda-mv-grg 是更适合优先适配的代码库。尤其是 `DiversityMergeFunction` 处在短视频图的核心链路中，且内部存在大量候选集合遍历、哈希去重、字符串 condition、规则配置匹配和多流容器构造，具备明确的性能优化空间。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- 已发现目标库使用：**6 个文件**，主要集中在召回策略、多样性规则、特征处理和上下文模块：
+  - `strategy/virtual_mark_select.cpp`
+  - `operator/diversity/rollback_rule.cpp`
+  - `processor/vids_gcf_embeddings.cpp`
+  - `operator/diversity/author_vec_diversity_rule.cpp`
+  - `operator/diversity/scatter_context.cpp`
+
+- 现有 `std` 等价物使用规模：
+  - `std::vector`：8442 次，分布在 1279 个文件
+  - `std::string`：7170 次，分布在 1234 个文件
+  - `std::unordered_map`：2834 次，分布在 639 个文件
+
+- 从扫描示例看，GRC 中 `std` 容器不仅出现在召回主流程，也出现在服务可视化、HTTP debug、图依赖分析等非核心链路中，例如：
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    static std::vector<std::string> colors{...};
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+
+- 结论：  
+  feeda-mv-grc 的 `std` 容器使用规模显著大于 GRG，但其中相当一部分可能位于管理、HTTP、调试、配置解析等非请求核心路径。适配时应优先关注：
+  - `operator/diversity/rollback_rule.cpp`
+  - `operator/diversity/author_vec_diversity_rule.cpp`
+  - `operator/diversity/scatter_context.cpp`
+  - `processor/vids_gcf_embeddings.cpp`
+  - `strategy/virtual_mark_select.cpp`
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `src/process/diversity_merge.cpp` 的候选槽位与输入容器构造阶段做小范围替换**
+  - 适用场景：
+    - `DiversityMergeFunction::process()` 中读取五类 channel。
+    - `data_prepare_for_engine()` 中按 `merge_pos` 将 `RidTmpInfo*` 放入不同槽位。
+    - 构造 `SelectStreamContainerMap input_container_map` 并传给 `MultiStreamEngine`。
+  - 优化方向：
+    - 对固定或上界明确的候选列表，评估使用目标库中的小 vector / inline vector / flat vector 类容器，减少小规模 vector 的堆分配。
+    - 对 `_input_map`、`input_container_map` 这类短生命周期哈希结构，评估使用目标库中的 flat hash map / dense hash map 类结构，降低哈希桶分配和指针跳转成本。
+  - 注意点：
+    - 当前代码存在将 `RidTmpInfo*` vector reinterpret 为 `DynamicStruct*` vector 的逻辑，这类地方对内存布局和指针类型非常敏感，不能直接机械替换底层容器。
+    - 建议先封装局部临时容器，保持传给 ExecEngine 的接口不变。
+
+- **建议 2：在 `operator/diversity/*.cpp` 中复用已有目标库使用经验，优先迁移规则内部临时集合**
+  - 可参考文件：
+    - `operator/diversity/sor_factor_rule.cpp`
+    - `operator/diversity/diehard_topic_soft_rule.cpp`
+    - `operator/diversity/diversity_sim_rule.cpp`
+    - `operator/diversity/slow_in_rule.cpp`
+  - 适用场景：
+    - 软规则中对候选 item 的临时打分集合。
+    - 相似性规则中的 nid、author、topic、category 去重集合。
+    - PK 或 rule 过程中构造的局部 map/set。
+  - 优化方向：
+    - 将局部 `std::unordered_map` / `std::unordered_set` 替换为目标库的高性能哈希容器。
+    - 将生命周期仅限单次规则执行的 `std::vector` 替换为目标库的小对象优化容器。
+  - 收益判断：
+    - 这些规则在 `MultiStreamEngine` 内部可能按槽位多轮执行，单次优化会被请求量和候选规模放大。
+    - 已有目标库使用文件可作为编码规范和 ABI 兼容参考，迁移风险低于全新模块。
+
+- **建议 3：`src/process/response_function.cpp` 适合做字符串与监控字段的只读化/预分配优化**
+  - 适用场景：
+    - 初始化阶段注册大量 q 值监控项。
+    - `ResponseFunction::process()` 构造最终响应和 pass-through content key。
+  - 优化方向：
+    - 对固定监控 key、固定 content key，避免每次请求重复构造 `std::string`。
+    - 可评估使用 string view / constexpr 字符串 / 静态常量，降低请求路径上的临时字符串分配。
+    - 对响应 item vector，如果有明确 `reqnum` 或 topN 上限，可提前 `reserve()`，或迁移为目标库提供的预分配容器。
+  - 具体文件：
+    - `src/process/response_function.cpp`
+    - `data/base.h`
+    - 与响应 item 结构定义相关的数据头文件。
+  - 预期收益：
+    - 单点 CPU 收益可能不如 diversity 规则明显，但响应阶段稳定出现在每次请求中，适合做低风险优化。
+
+- **建议 4：feeda-mv-grc 中优先迁移召回/多样性热路径，暂不优先处理 `service/grc_http_service.cpp`**
+  - 优先文件：
+    - `operator/diversity/rollback_rule.cpp`
+    - `operator/diversity/author_vec_diversity_rule.cpp`
+    - `operator/diversity/scatter_context.cpp`
+    - `processor/vids_gcf_embeddings.cpp`
+    - `strategy/virtual_mark_select.cpp`
+  - 暂缓文件：
+    - `service/grc_http_service.cpp`
+  - 原因：
+    - `service/grc_http_service.cpp` 中虽然有 `std::unordered_map<std::string, std::vector<int>>`、`std::vector<std::string>` 等结构，但更像 graph view / HTTP debug / 可视化链路，不一定在主请求路径高频执行。
+    - 优先迁移在线召回、embedding、scatter、rollback 相关逻辑，收益更确定。
+  - 优化方向：
+    - 对 embedding id 列表、author/category 去重集合、rollback 候选集合进行容器替换。
+    - 对只读字符串 key 或配置 key 引入轻量字符串视图，减少拷贝。
+
+- **建议 5：模型预测接口暂不直接改签名，先从调用点临时容器入手**
+  - 涉及文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 当前接口：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - 建议：
+    - 不建议第一阶段直接将接口参数从 `std::vector` 改为目标库容器，否则会影响所有模型实现类和调用方。
+    - 可以先在上游构造阶段减少临时 vector 的重复分配，例如复用 buffer、提前 `reserve()`、减少中间拷贝。
+    - 如果目标库支持 span / array view 类抽象，可在后续阶段新增重载接口，而不是直接替换原有虚函数签名。
+  - 原因：
+    - 虚函数接口属于 ABI 和继承体系边界，改动范围大。
+    - 模型预测链路可能还和 paddle、cube、general_predict 等外部库交互，容器类型兼容性需要单独验证。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：GraphEngine / ExecEngine 边界存在强类型与内存布局假设**
+  - `src/process/diversity_merge.cpp` 中 MultiStreamEngine 输入构造涉及 `RidTmpInfo*`、`DynamicStruct*`、`SelectStreamContainer` 等结构。
+  - 如果目标容器的内存连续性、迭代器失效规则、元素地址稳定性与 `std::vector` 不一致，可能破坏现有 reinterpret 或指针传递逻辑。
+  - 建议：
+    - 不要直接替换跨 ExecEngine 边界传递的容器类型。
+    - 先替换函数内部临时 map/vector。
+    - 对传入 engine 的容器保持原始接口兼容。
+
+- **风险 2：请求级上下文和 channel 数据生命周期复杂**
+  - `DiversityMergeFunction` 依赖 `MutableChannelConsumer` drain 队列，并将 item 指针放入槽位集合。
+  - 候选对象生命周期可能由 GraphData、Channel 或上游 Processor 管理。
+  - 如果迁移时引入移动语义、容器扩容、对象重排，可能导致悬垂指针或重复释放。
+  - 建议：
+    - 对存放 `RidTmpInfo*`、`RidTmpInfoPtr` 的容器保持指针语义不变。
+    - 优先优化索引、key、临时状态集合，而不是移动候选对象本身。
+
+- **风险 3：`std::unordered_map` 替换需要关注哈希、相等比较和遍历顺序**
+  - 多样性规则、PK、soft rule 中可能存在隐含的遍历顺序依赖。
+  - 高性能哈希表通常不保证与 `std::unordered_map` 相同的 bucket 行为和迭代顺序。
+  - 建议：
+    - 对影响最终排序、打分、去重结果的 map/set 替换前后做 diff。
+    - 灰度时重点观察：
+      - `DiversityMergeResult` topN 变化。
+      - `queue_type` 分布变化。
+      - `div_res_score`、`offer_score`、`pk_generate_score_v5`、`pk_generate_rlhf_score` 等监控项变化。
+
+- **风险 4：全仓库机械迁移收益不稳定，且可能增加维护成本**
+  - feeda-mv-grc 中 `std::vector` 和 `std::string` 使用规模非常大，但并非都在热点路径。
+  - 例如 `service/grc_http_service.cpp` 中的 graph view / HTTP 参数解析逻辑，即使迁移也未必能改善主链路延迟。
+  - 建议：
+    - 按链路优先级推进：
+      1. GRG：`src/process/diversity_merge.cpp`
+      2. GRG：`operator/diversity/*.cpp`
+      3. GRC：`operator/diversity/*.cpp`、`processor/vids_gcf_embeddings.cpp`
+      4. 响应与日志：`src/process/response_function.cpp`
+      5. 非核心 HTTP/debug/config 模块
+    - 每一阶段都用线上 p99、CPU、内存分配次数和结果一致性作为验收指标。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
