@@ -211,3 +211,285 @@ data
 
 - 当前本地代码能证明 fake_id 的消费链路，但未找到 `CommonInfo::fake_id` 的赋值闭环。需要补充：最近提交 `feed-arch-37113` 的 diff、上游 CommonInfo 填充模块、或内部文档，才能完整说明“关闭/替换”的业务触发条件与 rollout 范围。
 - 如果目标是验证线上已关闭，应结合日志字段 `fake_id_size`、UFS fork request、PredictorUser uid/cuid/bid 抽样，而不是只看代码中是否仍保留 fake_id 分支。
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:21:18.807678
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析
+
+### 1. 分析摘要
+
+- 从扫描结果看，目标技术在两个业务代码库中**已经存在少量使用经验**，但整体仍处于局部试点或零散接入阶段：
+  - `feeda-mv-grg` 中发现目标库使用文件约 10 个。
+  - `feeda-mv-grc` 中发现目标库使用文件约 10 个。
+- 与此同时，两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 等标准库容器使用规模非常大，说明如果目标技术面向容器、字符串、哈希表或内存分配优化，具备较高的迁移潜力，但也需要分层、分场景推进，避免对核心链路一次性大范围替换。
+
+- 结合本篇技术笔记中的 `CommonInfo::fake_id` 链路，`feeda-mv-grc` 是本次业务适配的重点库。该库内 `fake_id` 相关逻辑位于请求解析、上下文信息、UFS 请求构造、CTR/EC/Rerank 请求构造等性能敏感路径。任何涉及字符串、容器或请求对象构造的替换，都应优先关注这些高 QPS、低延迟路径中的收益与风险。
+
+---
+
+### 2. 代码库详情
+
+#### 2.1 `feeda-mv-grg`：序列生成服务
+
+- 扫描发现：
+  - 已发现目标库使用：约 10 个文件。
+  - 典型文件包括：
+    - `process/microvideo_adjust_merge_get_result_function.cpp`
+    - `operator/diversity/quota_modi_test1.cpp`
+    - `operator/diversity/microvideo_llm_disu_suppress_soft_rule.cpp`
+    - `operator/diversity/microvideo_pk4_adjust.cpp`
+    - `operator/diversity/base_div_score.cpp`
+
+- 标准库等价物使用规模：
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+
+- 典型代码形态：
+  - `model/model.h`
+    ```cpp
+    class Model {
+    public:
+        virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    };
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+
+- 适配判断：
+  - `feeda-mv-grg` 中 `std::vector` 主要出现在候选集、排序结果、模型输入等场景。
+  - 这类代码通常处于召回后处理、重排、打散、多样性控制等链路，容器遍历和对象访问频繁，具备一定优化空间。
+  - 但从示例看，很多接口直接暴露 `std::vector<RidTmpInfoPtr>&`，属于 ABI/API 边界，迁移时不能简单替换函数签名，应优先做局部内部结构优化。
+
+#### 2.2 `feeda-mv-grc`：召回汇聚服务
+
+- 扫描发现：
+  - 已发现目标库使用：约 10 个文件。
+  - 典型文件包括：
+    - `processor/mv_bloom_filter_parse.cpp`
+    - `processor/video_launch/pcs_yitiao_author_result.cpp`
+    - `processor/compute_attractive_vec.h`
+    - `processor/reddot/dibar_reddot_rank_query_tag.cpp`
+    - `processor/video_launch/nid_potent_score_pipeline.cpp`
+
+- 标准库等价物使用规模：
+  - `std::vector`：8442 次，分布在 1279 个文件。
+  - `std::string`：7170 次，分布在 1234 个文件。
+  - `std::unordered_map`：2834 次，分布在 639 个文件。
+
+- 典型代码形态：
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    static std::vector<std::string> colors{
+        "#FFB6C1", "#DC143C", "#DB7093", "#FF1493"
+    };
+    ```
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str =
+        cntl->http_request().uri().GetQuery("off");
+    ```
+
+- 与 `fake_id` 链路相关的关键文件：
+  - `src/data/base.h`
+    - 定义 `CommonInfo::fake_id`，默认空字符串。
+    - `CommonInfo::clear()` 会将 `fake_id` 重置为空。
+  - `src/plugin/feed_ufs_plugin.cpp`
+    - `FeedUfsPlugin::gen_request()` 中根据 `fake_id` 覆盖 UFS 请求的 `cuid`、`uid`、`baiduid`。
+  - `src/processor/ctr_rank.cpp`
+    - `CtrRankProcessor::gen_request()` 中 `fake_id` 非空时覆盖 `PredictorUser.cuid` 和 `PredictorUser.bid`。
+  - `src/processor/ec_sketchy_rank.cpp`
+    - 二跳/EC 粗排请求中使用相同的 `fake_id` 覆盖模式。
+  - 其他同类消费点：
+    - `src/processor/ctr_rerank.cpp`
+    - `src/processor/sketchy_rpc.cpp`
+    - `src/processor/ec_cvr_rank.cpp`
+    - `src/processor/parallel_ctr_rank.cpp`
+    - `src/processor/video_launch/sketchy_rpc_pipeline.cpp`
+    - `src/processor/video_launch/ctr_rank_function.cpp`
+    - `src/processor/video_launch/sketchy_rpc_config.cpp`
+
+- 适配判断：
+  - `feeda-mv-grc` 的容器、字符串、哈希表使用规模明显大于 `feeda-mv-grg`。
+  - 该库位于召回汇聚和多路 rank 请求构造链路，字符串复制、哈希查找、请求字段构造会直接影响端到端延迟。
+  - `fake_id` 相关逻辑主要依赖 `std::string` 的空值判断、字段覆盖、日志输出和下游请求赋值，适配时应优先保证语义不变。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `feeda-mv-grc` 的非核心 HTTP/debug 路径验证目标库用法**
+  - 推荐文件：
+    - `service/grc_http_service.cpp`
+  - 适用场景：
+    - `std::unordered_map<std::string, std::vector<int>> depend_map`
+    - `std::vector<std::string> sub_access_off_vec`
+    - `std::vector<std::string> sub_access_on_vec`
+    - `std::string resp_str`
+  - 建议：
+    - 该文件主要涉及服务管理、图信息展示、HTTP 参数解析等逻辑，相比 rank 主链路风险更低。
+    - 可先在这里验证目标容器或字符串类型的 API 兼容性、编译依赖、性能收益和可维护性。
+    - 如果目标技术是更高性能的 hash map，可优先替换 `depend_map` 这类局部临时 map。
+    - 如果目标技术是字符串优化，可优先减少 HTTP query 解析中的字符串拷贝和临时对象构造。
+  - 参考价值：
+    - `feeda-mv-grc` 已有约 10 个文件使用目标库，可从 `processor/mv_bloom_filter_parse.cpp`、`processor/compute_attractive_vec.h` 等文件中参考 include 方式、命名空间和编译配置。
+
+- **建议 2：`CommonInfo::fake_id` 相关链路暂不建议直接替换字段类型，优先优化使用方式**
+  - 推荐文件：
+    - `src/data/base.h`
+    - `src/plugin/feed_ufs_plugin.cpp`
+    - `src/processor/ctr_rank.cpp`
+    - `src/processor/ec_sketchy_rank.cpp`
+  - 适用场景：
+    - `CommonInfo::fake_id` 当前是横切业务语义字段。
+    - 多个 processor 依赖 `fake_id.size() > 0` 判断是否覆盖用户身份。
+  - 建议：
+    - 不建议第一阶段将 `CommonInfo::fake_id` 从 `std::string` 替换为其他字符串类型，因为它是跨 processor、跨请求构造、跨日志观测的公共字段。
+    - 可以先做低风险优化：
+      - 将 `fake_id.size() > 0` 统一为 `!fake_id.empty()`，提升可读性。
+      - 在 `FeedUfsPlugin::gen_request()`、`CtrRankProcessor::gen_request()`、`EcSketchyRankProcessor::gen_request()` 中使用 `const auto& fake_id = common_info_ptr->fake_id;` 避免重复成员访问。
+      - 对下游 protobuf/request 字段赋值时检查是否存在重复 set 或不必要临时字符串。
+    - 迁移前必须确认所有消费点：
+      - `ctr_rerank.cpp`
+      - `sketchy_rpc.cpp`
+      - `ec_cvr_rank.cpp`
+      - `parallel_ctr_rank.cpp`
+      - `video_launch/ctr_rank_function.cpp`
+      - `video_launch/sketchy_rpc_config.cpp`
+
+- **建议 3：在 `feeda-mv-grg` 的模型预测接口中避免修改公开函数签名，优先优化函数内部临时容器**
+  - 推荐文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 适用场景：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - 建议：
+    - `predict(std::vector<RidTmpInfoPtr>&)` 是虚函数接口，不建议直接替换为目标容器类型，否则会影响所有派生类、调用方和 ABI。
+    - 如果目标技术是容器替换，应优先在函数内部的临时 `vector`、中间特征数组、batch 输入构造中试点。
+    - 对 `candidate_vec` 本身可做以下优化：
+      - 使用 `reserve()` 预分配候选容量。
+      - 避免循环中频繁 `push_back` 触发扩容。
+      - 避免对 `RidTmpInfoPtr` 进行不必要复制。
+      - 对只读场景改为 `const std::vector<RidTmpInfoPtr>&`。
+  - 迁移路径：
+    - 第一阶段：保留接口 `std::vector`，内部使用目标容器或更高效临时 buffer。
+    - 第二阶段：如果性能数据明确，再考虑在非虚函数、非跨模块接口中推广。
+
+- **建议 4：对 `feeda-mv-grc` 中高频 hash 查询场景优先评估替换 `std::unordered_map`**
+  - 推荐文件：
+    - `service/grc_http_service.cpp`
+    - `processor/mv_bloom_filter_parse.cpp`
+    - `processor/reddot/dibar_reddot_rank_query_tag.cpp`
+    - `processor/video_launch/nid_potent_score_pipeline.cpp`
+  - 适用场景：
+    - 召回汇聚、过滤、打标、红点、视频首刷等 processor 中通常存在大量 key-value 查找。
+    - 当前 `feeda-mv-grc` 中 `std::unordered_map` 使用 2834 次，覆盖 639 个文件，优化潜力较高。
+  - 建议：
+    - 优先选择局部生命周期、非接口暴露、key/value 类型简单的 map 替换。
+    - 对热路径 map 增加以下基础优化：
+      - 构造后立即 `reserve()`。
+      - 使用 `find()` 避免 `operator[]` 误插入。
+      - 对只读静态映射考虑静态初始化或 flat map。
+      - 对 `std::string` key 避免重复构造临时字符串。
+    - 如果目标库提供更高性能哈希表，应先在这些 processor 中做 A/B 性能验证，再推广到 rank 主链路。
+
+- **建议 5：`feeda-mv-grg` 的 diversity/operator 模块适合作为中风险收益试点**
+  - 推荐文件：
+    - `operator/diversity/quota_modi_test1.cpp`
+    - `operator/diversity/microvideo_llm_disu_suppress_soft_rule.cpp`
+    - `operator/diversity/microvideo_pk4_adjust.cpp`
+    - `operator/diversity/base_div_score.cpp`
+  - 适用场景：
+    - 多样性控制、配额调整、规则抑制通常涉及候选集遍历、分组、计数和排序。
+  - 建议：
+    - 如果这些文件中存在大量 `std::vector`、`std::unordered_map`、`std::string` 临时对象，可优先进行局部替换。
+    - 推荐先从不改变函数签名的内部变量开始。
+    - 对候选 item 数量较大的场景重点关注：
+      - vector 扩容次数。
+      - map rehash 次数。
+      - string 拼接与 key 构造次数。
+      - 排序或去重中的临时对象复制。
+    - 这些文件已有目标库使用记录，可作为 `feeda-mv-grg` 内部推广的参考样例。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：`fake_id` 是业务语义字段，不能只按性能字段处理**
+  - `CommonInfo::fake_id` 非空会影响：
+    - UFS 请求用户身份。
+    - CTR rank 请求用户身份。
+    - EC/二跳粗排请求用户身份。
+    - Rerank、SketchyRPC、ParallelCtrRank 等多个下游请求。
+  - 因此在 `src/data/base.h` 或相关 processor 中修改字段类型、默认值、清空逻辑、判空逻辑，都可能改变线上业务行为。
+  - 尤其要保证：
+    - 默认值仍为空。
+    - `CommonInfo::clear()` 后仍为空。
+    - `!fake_id.empty()` 与原有 `fake_id.size() > 0` 语义一致。
+    - 关闭 fake_id 时所有消费点自然回退真实用户标识。
+
+- **风险 2：不要直接替换跨模块接口中的 `std::vector` / `std::string`**
+  - 例如：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 这些文件中的 `predict(std::vector<RidTmpInfoPtr>&)` 属于模型接口或虚函数接口。
+  - 一旦修改签名，可能导致：
+    - 派生类全部需要同步修改。
+    - 调用方无法兼容。
+    - ABI 变化。
+    - 动态库或插件加载失败。
+  - 建议优先在函数内部局部变量、临时 buffer、非虚函数辅助逻辑中试点。
+
+- **风险 3：目标库与 `std` 等价物 API 不一定完全兼容**
+  - 即使目标库提供类似 `vector`、`string`、`unordered_map` 的能力，也需要重点确认：
+    - 迭代器失效规则。
+    - `string` 的空值、`c_str()` 生命周期和隐式转换。
+    - hash map 的 rehash 行为。
+    - 是否支持异构查找。
+    - 是否允许存储 protobuf 字段引用或指针。
+    - 是否影响日志宏、RPC request setter、序列化逻辑。
+  - 在 `FeedUfsPlugin::gen_request()`、`CtrRankProcessor::gen_request()` 这类请求构造路径中，字符串生命周期尤其需要谨慎。
+
+- **风险 4：扫描结果只能说明使用规模，不能直接等价于性能收益**
+  - 当前统计显示：
+    - `feeda-mv-grc` 中 `std::vector`、`std::string`、`std::unordered_map` 使用非常广。
+    - `feeda-mv-grg` 中也有较大规模使用。
+  - 但是否值得替换，仍取决于：
+    - 是否在热路径。
+    - 容器元素数量。
+    - 是否频繁分配释放。
+    - 是否存在 rehash 或扩容。
+    - 是否跨线程共享。
+    - 是否位于请求级生命周期。
+  - 建议先用 perf、pprof、heap profile、耗时埋点确认热点，再选择文件级试点，避免“全局替换但收益不可见”。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
