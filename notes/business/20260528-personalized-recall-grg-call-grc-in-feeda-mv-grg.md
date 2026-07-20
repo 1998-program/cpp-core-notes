@@ -423,3 +423,147 @@ channel_name: microvideo_grc
    - `EffectQueue` → FillMeta → Filter → Rank → set2set
    - 需要从 `conf/plugins/graph/short_micro_video/pipeline.conf` 追踪各队列的依赖关系
 4. **pass_though_content_vec 的后续处理**：第 382 行透传的内容未被分发到队列，需要确认这些内容的消费方。
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:18:24.175536
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 1. 分析摘要
+
+- 从扫描结果看，**GRG 调 GRC 的通用召回链路在业务代码库中已具备部分落点，但覆盖度不高**。  
+  在 `feeda-mv-grg` 中**未发现直接使用**该链路的现成代码；在 `feeda-mv-grc` 中仅发现 **1 个直接相关文件**：`processor/recall_personalized_quota.cpp`。这说明当前更多是**局部接入**，还没有形成大范围复用的统一召回入口。
+
+- 从容器使用规模看，两个代码库都属于**重度 STL 容器驱动**的工程：  
+  `feeda-mv-grg` 里 `std::vector` / `std::string` / `std::unordered_map` 使用量分别为 **1969 / 2443 / 734**；  
+  `feeda-mv-grc` 中分别为 **8442 / 7170 / 2834**。  
+  这意味着若要迁移到“GRG → GRC”这类统一召回链路，**业务收益主要来自链路收敛、召回能力统一、参数透传标准化**，而不是简单替换容器带来的微观性能收益。整体迁移潜力偏**中高**，但更适合先从 `feeda-mv-grc` 的局部场景切入。
+
+---
+
+## 2. 代码库详情
+
+### 2.1 `feeda-mv-grg`（汇聚层）
+
+- **扫描结论**
+  - 未发现该技术的直接落地代码。
+  - 现有代码更像是“候选集承接 + 模型排序”架构，核心接口大量使用 `std::vector<RidTmpInfoPtr>` 传递候选内容。
+  - 说明 GRG 侧已有良好的“召回结果承接面”，适合接入 GRC 返回的 `recall_nid_vec` / `recall_nid_map`。
+
+- **可参考的现有代码**
+  - `model/model.h`
+    ```cpp
+    class Model {
+    public:
+      virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    };
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+  - `model/paddle_model.h`
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+
+- **适配判断**
+  - GRG 侧的主链路已经是“候选向量驱动”的设计，若引入 GRC 召回，通常只需要在**召回入口层**接入，而不必大面积改动模型推理层。
+  - 迁移价值主要在于：  
+    - 扩展召回来源  
+    - 统一请求参数透传  
+    - 提升召回可配置性和容灾能力
+
+---
+
+### 2.2 `feeda-mv-grc`（内容推荐中心）
+
+- **扫描结论**
+  - 已发现 1 个直接相关文件：`processor/recall_personalized_quota.cpp`
+  - 说明 GRC 侧已经存在**个性化配额/召回控制**相关实现，可作为 GRG 调用 GRC 链路的参考入口。
+  - GRC 侧整体 STL 使用量更大，说明其更偏向**复杂召回编排与集合处理**，与“多队列召回”的技术形态匹配度较高。
+
+- **可参考的现有代码**
+  - `processor/recall_personalized_quota.cpp`
+    - 这是当前扫描中唯一确认与目标技术相关的落地点，建议作为 **GRC 侧适配参考样板**。
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+    - 说明 GRC 已有较成熟的图结构/依赖映射处理逻辑，适合承载 `GRCRequest` 到多队列响应的分发逻辑。
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::string resp_str;
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    ```
+    - 表明服务端已广泛使用向量/字符串进行请求参数和响应处理。
+
+- **适配判断**
+  - GRC 侧更适合成为**通用召回编排中心**，将 loads / rule / function / effect / news 等队列统一输出。
+  - 从代码结构看，GRC 已具备承接 `is_grg_request=true` 这类特殊请求标记的条件，适合继续增强为 GRG 的标准召回上游。
+
+---
+
+## 3. 💡 适用性评估与建议
+
+- - **建议 1：优先在 `feeda-mv-grc/processor/recall_personalized_quota.cpp` 旁边补一层“GRG 请求适配器”**
+  - 场景：GRG 发起的请求需要统一打标 `is_grg_request=true`，并透传 `backup_sign`、`dt_user_activity`、`intent_score` 等字段。
+  - 建议：将这类请求判断和字段透传逻辑抽成可复用适配层，避免散落在多个 processor 中。
+  - 收益：减少重复判断逻辑，增强 GRC 侧对 GRG 请求的可控性。
+
+- - **建议 2：在 `feeda-mv-grg/model/model.h` 和 `model/paddle_model.h` 保持 `candidate_vec` 接口不变，只在召回入口接入 GRC 返回结果**
+  - 场景：GRG 当前模型层已经依赖 `std::vector<RidTmpInfoPtr>`。
+  - 建议：不要改动下游 `predict()` 接口，而是在召回阶段把 `GRCResponse` 解析成 `recall_nid_vec` / `recall_nid_map` 后，再映射到现有候选结构。
+  - 收益：迁移成本低，避免影响排序和特征计算链路。
+
+- - **建议 3：参考 `feeda-mv-grc/service/grc_http_service.cpp` 的图依赖处理方式，统一 GRC 服务端的队列输出组织**
+  - 场景：GRC 会输出 loads / rule / function / effect / news 等多队列结果。
+  - 建议：将队列组装、依赖映射、结果聚合逻辑集中管理，保证 `GRCResponse` 的 attachment 与队列结果同步一致。
+  - 收益：便于后续扩展新的召回类型，也更容易做灰度和排障。
+
+- - **建议 4：在 GRG 侧新增一层“GRC 结果归一化”逻辑，优先落在召回解析模块而不是模型模块**
+  - 场景：`GRCResponse` 中会返回多种附加信息，如 `actual_reqnum`、`dt_user_activity`、`sv_prefer` 等。
+  - 建议：在 GRG 的召回处理文件中做统一归一化，将这些字段映射到现有请求上下文和候选特征中。
+  - 收益：避免模型层混入 RPC 协议细节，职责更清晰。
+
+- - **建议 5：对 `backup_sign=2` 的容灾分支单独做配置化，避免硬编码切换插件**
+  - 场景：当前逻辑会在 `backup_sign == 2` 时切到 `no_backup_microvideo_grc`。
+  - 建议：将这类路由规则抽成配置或策略表，放到 `conf/plugins/graph/short_micro_video/vertex.conf` 这类配置层管理。
+  - 收益：后续机房切换、灰度发布、容灾回滚都更容易控制。
+
+---
+
+## 4. ⚠️ 引入风险与限制
+
+- - **风险 1：请求透传字段不完整会导致召回结果偏差**
+  - `is_grg_request`、`backup_sign`、`dt_user_activity`、`intent_score` 这类字段如果在 GRG → GRC 之间丢失，可能导致 GRC 走错分支或返回不一致候选。
+  - 建议在接入时做字段白名单校验和日志对账。
+
+- - **风险 2：GRG 侧当前没有直接使用经验，迁移需要补齐联调与回归**
+  - `feeda-mv-grg` 扫描结果显示没有直接的 GRC 链路代码可复用。
+  - 这意味着需要额外做接口联调、候选集对齐、召回数量一致性验证，不能仅靠静态代码迁移完成。
+
+- - **风险 3：多队列结果回填可能影响下游排序稳定性**
+  - GRC 返回的多个队列如果顺序、去重策略、优先级定义不清晰，会影响 GRG 下游 `fill-meta / filter / rank` 的结果稳定性。
+  - 尤其要关注 `recall_nid_vec` 与 `recall_nid_map` 的一致性。
+
+- - **风险 4：容灾插件切换带来配置与运行时双重复杂度**
+  - `microvideo_grc` 与 `no_backup_microvideo_grc` 的切换策略如果过于依赖运行时判断，容易出现灰度环境和正式环境行为不一致的问题。
+  - 建议将路由规则、备机房策略、超时策略统一纳入配置管理。
+
+---
+
+如果你愿意，我可以继续把这份内容整理成**“可直接粘贴到技术笔记中的最终章节版”**，或者补一版**更偏“迁移落地方案”的执行清单**。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
