@@ -349,3 +349,175 @@ rg "call_ifcs_recall fail|gcms request failed|not found, deleted|open_gcms_stati
 2. **`GcmsData` 定义未在本次报告中展开**：当前代码通过 `boost::make_shared<const microvideo::grc::GcmsData>(...)` 构造，定义可能来自 `src/data/gcms.h` 或公共依赖，后续可单独分析其 wrapper 语义。
 3. **GenericGRCService 请求注入 graph 的细节未展开**：本次入口确认到 `src/main.cpp` 注册服务与 graph 配置，后续如写“请求如何进入 graph”，应继续读 `src/service/grc_service.*`。
 4. **ku 全站搜索不可用**：当前 `ku` CLI 无 `search` 子命令，本次只读取了代码配置引用文档。若需要更多业务背景，可通过已知 repo/目录 `query-repo` 或其它内网搜索工具补充 `GCMS/正排/ContentFeature/doc feature` 文档。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:17:11.121606
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+# 业务代码库适配分析：正排（GCMS/IFCS）
+
+## 1. 分析摘要
+
+- 从现有代码和配置看，**`feeda-mv-grc` 已经是 GCMS/IFCS 的深度接入方**：它不是简单“调用一次正排接口”，而是把 IFCS 正排结果贯穿到 `FillMeta -> Filter -> Rank -> Response` 的主链路中，用于补齐 `MicroVideoInfo` / `NewsInfo`，并驱动过滤、特征构造和卡片组装。
+- 对于 `feeda-mv-grg`，当前**未发现直接的 GCMS/IFCS 调用链**，但已有多个与召回、填充、策略、Diversity 相关的处理文件，说明它具备接入正排的业务入口；从 `std` 容器使用规模看，代码体量较大，若引入正排能力，收益主要体现在**减少本地内容特征维护成本、统一内容元数据来源、降低 miss 穿透压力**。
+
+---
+
+## 2. 代码库详情
+
+### 2.1 `feeda-mv-grc`
+
+- **定位明确，已经接入 IFCS/GCMS**
+  - `README.md` 直接说明是“小视频业务 grc 层模块”。
+  - `src/main.cpp` 负责启动 `brpc + baidu_std_reuse + graph engine`，说明它是图引擎驱动的服务。
+  - `conf/plugins/graph/global.conf`、`conf/plugins/graph/queue_vertex.conf`、`conf/plugins/graph/conf_template/recall_fill_filter.conf` 构成主 DAG，其中 `FillMetaPipelineFunction` / `FillMetaBaseProcessor` 是正排注入点。
+
+- **已有成熟的 IFCS 访问封装**
+  - `src/plugin/gcms_component.h`
+  - `src/plugin/gcms_component.cpp`
+  - 这两处封装了 `query_common`、`query_news`，并通过 `feed::ifcs::IfcsSdk<BaseDocInfo>` 访问正排。
+  - `conf/ifcs_sdk.conf` 里已经配置了 `MvRecallDocParser`、`scene`、`hot_cache`、`server_cache_only` 等关键参数。
+
+- **正排结果已被业务逻辑广泛消费**
+  - `src/processor/video_launch/fill_meta_pipeline.cpp`
+  - `src/processor/fill_meta.cpp`
+  - 这两处不仅查询 IFCS，还将结果挂到 `RidTmpInfo::_video_info`、`gcms_data`，并基于 `fc_tag`、`del_tag`、`vertical_type`、`content_type` 等字段做过滤和小流量修正。
+  - 说明正排不是旁路能力，而是**主链路依赖**。
+
+- **可直接作为参考的代码**
+  - 正排访问入口：`src/plugin/gcms_component.cpp`
+  - 视频召回填充：`src/processor/video_launch/fill_meta_pipeline.cpp`
+  - 通用填充逻辑：`src/processor/fill_meta.cpp`
+  - 正排字段结构体：`src/data/video_info.h`、`src/data/news_info.h`
+  - IFCS 配置：`conf/ifcs_sdk.conf`
+  - 文档引用配置：`conf/common_component/gcms_common_pb_plugin.conf`
+
+- **代码规模与迁移特征**
+  - 统计到的 `std` 使用非常高：
+    - `std::vector`：8442 次 / 1279 文件
+    - `std::string`：7170 次 / 1234 文件
+    - `std::unordered_map`：2834 次 / 639 文件
+  - 这意味着该仓库是一个**典型的大型业务编排库**，正排接入的价值主要在热点链路，而不是全量替换数据结构。
+
+---
+
+### 2.2 `feeda-mv-grg`
+
+- **当前未发现直接的 GCMS/IFCS 调用痕迹**
+  - 扫描到的相关文件主要是：
+    - `operator/diversity/diversity_rule_new_middle_tier.cpp`
+    - `operator/diversity/diversity_rule_fan_politics.cpp`
+    - `operator/diversity/slow_in_rule.cpp`
+    - `process/news_fill_meta_pipeline.cpp`
+    - `operator/diversity/diversity_rule_rollback.cpp`
+  - 这些文件更偏向**召回后处理、策略控制、Diversity、填充流水线**，不是正排访问层。
+
+- **可作为未来接入正排的候选链路**
+  - `process/news_fill_meta_pipeline.cpp`
+    - 如果后续需要引入内容元数据、作者信息、标签信息等，最适合在这里接 IFCS 正排。
+  - `operator/diversity/*`
+    - 如果 diversity 规则需要依赖内容类型、历史标签、IP 名称、垂类等字段，可以把正排结果作为规则输入。
+  - `operator/diversity/slow_in_rule.cpp`
+    - 适合依赖“内容质量/热度/策略标签”做慢速流量保护或兜底控制。
+
+- **代码规模较大，适合“按链路接入”而非全局替换**
+  - `std` 使用规模同样很高：
+    - `std::vector`：1969 次 / 356 文件
+    - `std::string`：2443 次 / 425 文件
+    - `std::unordered_map`：734 次 / 205 文件
+  - 这说明该仓库也有较多内容编排逻辑，但从当前结果看，**还没有形成像 grc 那样的正排统一入口**。
+  - 迁移收益应聚焦在**召回后填充、策略分支、diversity 规则**等热点节点。
+
+- **当前可参考的“邻近能力”代码**
+  - `process/news_fill_meta_pipeline.cpp`
+  - `operator/diversity/diversity_rule_new_middle_tier.cpp`
+  - `operator/diversity/diversity_rule_rollback.cpp`
+  - 这些文件可以作为将来接入 `gcms_component` 式封装后的消费端参考。
+
+---
+
+## 3. 💡 适用性评估与建议
+
+- **建议 1：把正排访问统一收口到一个薄封装层**
+  - 适用文件：`src/plugin/gcms_component.cpp`
+  - 建议：
+    - 保持 `query_common` 作为唯一的 IFCS 查询入口；
+    - 将 `scene` 切换、`server_cache_only`、`sids`、`flow_loc` 等逻辑集中处理；
+    - 避免 `src/processor/fill_meta.cpp`、`src/processor/video_launch/fill_meta_pipeline.cpp` 各自拼装请求参数。
+  - 价值：
+    - 降低重复逻辑；
+    - 方便后续字段扩展或 parser 替换；
+    - 便于统一打点和失败降级。
+
+- **建议 2：在 `fill_meta` 热路径上做“结果复用 + 减少重复重建”**
+  - 适用文件：`src/processor/fill_meta.cpp`、`src/processor/video_launch/fill_meta_pipeline.cpp`
+  - 建议：
+    - 对同一批 `merge_rids` 的 `meta_map` 结果尽量复用；
+    - `gcms_data` 的构造尽量集中，避免在多个分支里重复 `make_shared` / 重建；
+    - 若字段只是读用途，优先传递只读引用或共享指针。
+  - 价值：
+    - 降低正排字段在热路径上的 CPU 和内存抖动；
+    - 对大批量召回结果尤其有效。
+
+- **建议 3：把“正排字段驱动的过滤逻辑”抽成独立策略函数**
+  - 适用文件：`src/processor/fill_meta.cpp`、`src/processor/video_launch/fill_meta_pipeline.cpp`
+  - 建议：
+    - 将 `fc_tag`、`del_tag`、`vertical_type`、`content_type`、`newhot`、`ip_strategy` 相关判断抽成独立函数或 policy 类；
+    - 让主流程只负责“查询 + 挂载 + 调用策略”。
+  - 价值：
+    - 后续新增 IFCS 字段时改动更小；
+    - 更方便 A/B 实验和灰度开关；
+    - 也更利于单测覆盖。
+
+- **建议 4：`feeda-mv-grg` 若要接入正排，优先从 `process/news_fill_meta_pipeline.cpp` 切入**
+  - 适用文件：`process/news_fill_meta_pipeline.cpp`
+  - 建议：
+    - 先接入与内容展示最直接相关的字段，如标题、标签、作者、IP 名称、垂类；
+    - 按 `grc` 的 `src/plugin/gcms_component.cpp` 思路，封装一个轻量访问层；
+    - 再把结果传给 `operator/diversity/*` 和后续排序/规则模块。
+  - 价值：
+    - 接入成本最小；
+    - 见效最快；
+    - 避免直接侵入多处策略规则文件。
+
+- **建议 5：把 `conf/ifcs_sdk.conf` 和 parser 变更纳入发布检查清单**
+  - 适用文件：`conf/ifcs_sdk.conf`、`conf/common_component/gcms_common_pb_plugin.conf`
+  - 建议：
+    - 新增字段前，先确认 parser 与结构体同步；
+    - 重点检查 `MvRecallDocParser` / `MvNewsDocParser` 的字段映射；
+    - 对 `scene`、`hot_cache`、`server_cache_only` 的改动加发布前检查。
+  - 价值：
+    - 避免“字段已上线、业务结构体未同步”的脏读问题；
+    - 降低线上回滚风险。
+
+---
+
+## 4. ⚠️ 引入风险与限制
+
+- **风险 1：schema / parser 强耦合**
+  - `src/data/video_info.h`、`src/data/news_info.h`、`conf/ifcs_sdk.conf`、`conf/common_component/gcms_common_pb_plugin.conf` 必须同步。
+  - 一旦字段新增或重命名，parser、配置、业务结构体任一处遗漏，都会导致字段缺失或解析失败。
+
+- **风险 2：缓存策略配置不当会带来结果不一致**
+  - `src/plugin/gcms_component.cpp` 中的 `server_cache_only`、scene 切换逻辑很关键。
+  - 如果 search / recall / news 场景切换错误，可能出现：
+    - 该命中的正排未命中；
+    - 不同链路读到不同版本内容；
+    - 热点数据与长尾数据表现不一致。
+
+- **风险 3：热路径引入额外 CPU 和内存开销**
+  - `src/processor/fill_meta.cpp`、`src/processor/video_launch/fill_meta_pipeline.cpp` 会在批量召回后做 IFCS 查询和 `gcms_data` 组装。
+  - 如果批量过大，或者重复重建对象较多，会放大延迟尾部和内存分配压力。
+
+- **风险 4：跨模块推广时需要更严格的灰度**
+  - `feeda-mv-grc` 已经是成熟接入方，但 `feeda-mv-grg` 当前没有直接经验。
+  - 若把正排能力扩展到 `process/news_fill_meta_pipeline.cpp` 或 `operator/diversity/*`，建议先做小流量灰度和完整打点，否则容易把内容策略问题误判成正排问题。
+
+---
+
+如果你愿意，我可以继续把这份内容整理成你笔记里可直接粘贴的正式章节版，或者再补一版“**接入路径图 + 风险矩阵表**”。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
