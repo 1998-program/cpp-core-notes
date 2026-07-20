@@ -213,3 +213,135 @@ data
 - `src/plugin/ifcs_component.cpp:700-816`：`MvRecallDocParser` 中大量字段 COPY、reserve 与复杂结构解析。
 - `src/plugin/ifcs_component.cpp:827-835`：IFCS parser 组件注册。
 - `conf/ifcs_sdk.conf:6-154`：recall/search/news accessor、shard、freq_update_queue、hot_cache 配置。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:24:33.356914
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+# 业务代码库适配分析：GRC 正排 GCMS / IFCS fill_meta 链路
+
+## 1. 分析摘要
+
+- 从技术形态看，`fill_meta` 更适合落在**召回汇聚 / 排序前补全**这一层：它解决的是“召回结果只有 `rid/type/mark`，但后续策略需要完整内容对象”的问题，核心价值是**批量正排补全、减少逐条查询、统一字段解析**。
+- 结合当前扫描结果，`feeda-mv-grc` 的适配潜力明显高于 `feeda-mv-grg`：前者是召回汇聚服务，更贴近 `FillMetaBaseProcessor` 的职责边界；后者是序列生成服务，更多是消费候选结果，若没有显式正排补全需求，迁移收益偏间接。
+
+- 代码规模上，两边都已经有大量容器和字符串处理逻辑，说明业务链路本身是“候选对象重组型”而不是简单透传型：
+  - `feeda-mv-grg`：`std::vector` 1969 次、`std::string` 2443 次、`std::unordered_map` 734 次。
+  - `feeda-mv-grc`：`std::vector` 8442 次、`std::string` 7170 次、`std::unordered_map` 2834 次。
+- 这意味着如果引入 `fill_meta`，最可能的收益点是：
+  - 合并重复的内容查询；
+  - 统一候选对象的内容补全入口；
+  - 让后续规则直接读 `MicroVideoInfo/GcmsData`，减少散落在各处的字段拼装逻辑。
+
+---
+
+## 2. 代码库详情
+
+### feeda-mv-grg：序列生成服务
+
+- 扫描到的相关文件共 10 个，说明已有一定的候选处理和规则消费入口，但**未发现 `FillMetaBaseProcessor` / IFCS parser 的直接实现**，暂时没有现成的 fill_meta 经验可以复用。
+- 已发现的目标文件里，最值得关注的接入点是：
+  - `plugin/grc.h`
+  - `process/msv_readlist_parse_function.cpp`
+  - `operator/diversity/douyin_popular_soft_rule_v2.cpp`
+  - `operator/diversity/yitushibie_v2_soft_rule.cpp`
+  - `operator/diversity/mv_attn_dislike_factor.cpp`
+
+- 结合现有代码风格，`grg` 更像是“消费候选、做规则变换”的链路：
+  - `model/model.h`
+  - `model/paddle_model.h`
+  - 示例里 `predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)` 说明它已经有**候选向量驱动**的接口形态。
+- 适配判断：
+  - 如果 `grg` 的规则仅依赖轻量特征，`fill_meta` 的收益有限；
+  - 如果 `msv_readlist_parse_function.cpp` 这一类入口需要从候选恢复更完整的内容对象，那么可以作为“二次补全”接入点。
+
+### feeda-mv-grc：召回汇聚服务
+
+- 扫描到的相关文件共 10 个，和 `fill_meta` 的职责更加贴近。
+- 已发现的目标文件：
+  - `processor/ctr_rank.h`
+  - `processor/compute_duanju_filter_lcn_info_new.h`
+  - `strategy/diversity/baoliang_rule/subcate_diversity_rule.cpp`
+  - `operator/adjuster/precise/searchc_immersion_related/searchc_duanju_video_adjust.cpp`
+  - `processor/response_with_set2set.cpp`
+
+- 从代码形态看，`grc` 更接近“召回融合 + 排序前加工”：
+  - `service/grc_http_service.cpp` 中已经有依赖图、请求参数和响应拼装逻辑；
+  - 大量 `vector/string/unordered_map` 的使用，说明候选合并、属性补全、结果重排很常见。
+- 这类服务非常适合引入 `fill_meta` 的批量补全模式：
+  - 先聚合 `rid`；
+  - 再统一查询正排；
+  - 最后把 `GcmsData/MicroVideoInfo` 挂到候选对象上供策略读取。
+- 适配判断：
+  - `grc` 是更优先的迁移对象；
+  - 尤其适合在 `processor/response_with_set2set.cpp`、`processor/ctr_rank.h` 这类“结果整形/排序前处理”位置接入。
+
+- 可作为参考的现有代码形态：
+  - `service/grc_http_service.cpp`：已体现依赖聚合和响应组装模式；
+  - `model/model.h`、`model/paddle_model.h`（来自 `grg`）：体现候选向量接口风格，可参考其对象传递方式。
+
+---
+
+## 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 `feeda-mv-grc` 落地批量正排补全，而不是在 `grg` 里直接铺开**
+  - 推荐文件：`processor/response_with_set2set.cpp`、`processor/ctr_rank.h`
+  - 场景：候选已经汇聚完成，后续需要统一补齐 `MicroVideoInfo/GcmsData`
+  - 理由：这里最接近 `FillMetaBaseProcessor -> GcmsComponent::query_common()` 的链路，能直接复用“批量 `rid` 查询 + 过滤 not found”的模式。
+
+- **建议 2：在 `processor/compute_duanju_filter_lcn_info_new.h`、`operator/adjuster/precise/searchc_immersion_related/searchc_duanju_video_adjust.cpp` 中优先改造“读字段方式”，不要先改业务规则**
+  - 场景：规则本身只依赖少量字段，但字段来源目前散落在多个对象里
+  - 建议：将读取入口统一切到 `GcmsData` 或其 const 包装，避免规则代码直接依赖零散结构体成员
+  - 好处：后续加字段时只需要补 parser 和包装层，规则层改动更小。
+
+- **建议 3：`feeda-mv-grg` 先在 `process/msv_readlist_parse_function.cpp` 做“小范围试点”**
+  - 场景：读取读书单/候选列表后，需要少量内容字段参与后续规则
+  - 建议：仅对需要的候选做正排补全，不要把完整 fill_meta 链路全量搬入 `grg`
+  - 参考：`model/model.h`、`model/paddle_model.h` 已经使用 `std::vector<RidTmpInfoPtr>` 作为候选输入，说明这里有承接候选扩展的基础。
+
+- **建议 4：对 `operator/diversity/douyin_popular_soft_rule_v2.cpp`、`operator/diversity/yitushibie_v2_soft_rule.cpp` 这类规则文件，采用“字段白名单”而不是“全对象复制”**
+  - 场景：只需要标题、作者、时长、频道等少数字段
+  - 建议：把 parser 输出限制在必要字段，避免把 `MicroVideoInfo` 全量搬进规则层
+  - 这样可以减少 `COPY_*` 带来的 CPU 和内存压力，也更符合 fill_meta 的“补全而非重建”原则。
+
+- **建议 5：如果 `feeda-mv-grc` 已经存在响应组装逻辑，可把 `service/grc_http_service.cpp` 作为适配边界参考**
+  - 场景：请求参数、依赖图、候选聚合、响应返回都集中在一个服务层
+  - 建议：在该层之前插入“rid 聚合 -> 正排查询 -> 对象挂载”的处理段
+  - 这样更容易控制生命周期，避免策略层拿到悬空指针或临时对象引用。
+
+---
+
+## 4. ⚠️ 引入风险与限制
+
+- **风险 1：对象生命周期管理复杂**
+  - `fill_meta` 的 `tmp->_video_info` 往往依赖 `shared_ptr` 或 copy 对象存活。
+  - 如果业务代码里像 `service/grc_http_service.cpp` 这类地方把裸指针一路传下去，很容易出现生命周期悬空问题。
+  - 建议：明确“原始正排对象 vs copy 对象”的边界，改字段后必须同步重建包装对象。
+
+- **风险 2：字段默认值和 merge 语义容易出错**
+  - IFCS parser 里字段不是“加了就能看见”，必须经过 `COPY_*`、`repeated reserve`、`map emplace` 等逻辑。
+  - 如果 `grg/grc` 的规则层假定“字段存在即生效”，但 parser 没补齐，结果会表现为“字段没生效但没有报错”。
+  - 建议：字段新增时同时补 parser 和策略读取验证。
+
+- **风险 3：性能收益依赖批量化，若退化成逐条查询会适得其反**
+  - `fill_meta` 的核心优势是 `merge_rids + batch query`。
+  - 如果在 `operator/diversity/*` 或 `processor/*` 里按候选逐个查正排，RPC 和缓存命中都会变差。
+  - 建议：严格保持批量入口，不要在下游规则里临时补查。
+
+- **风险 4：迁移面较大，尤其是 `feeda-mv-grc`**
+  - `grc` 中 `std::vector` / `std::unordered_map` 使用非常广，说明对象流转链路长、接入点多。
+  - 一旦把正排补全引入核心处理路径，需要同步检查过滤、重排、响应拼装的所有分支。
+  - 建议：先选一个小流量入口或单条链路试点，再逐步扩展。
+
+---
+
+如果你愿意，我可以继续把这份分析整理成更适合放进技术笔记的版本，比如补一个：
+
+- **“迁移优先级矩阵”**
+- **“适配改造路线图”**
+- **“文件级改造清单”**
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
