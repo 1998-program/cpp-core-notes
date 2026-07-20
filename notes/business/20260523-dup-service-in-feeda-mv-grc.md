@@ -351,3 +351,145 @@ ChannelCollectorManager::instance().DapperDirectCollect(
 5. 补充豁免策略（huomian）体系，展示 5 类豁免条件。
 
 > ⚠️ 本次分析**不**把 `feeda-mv-grg` 的 Dup Service 结论直接套用到 `feeda-mv-grc`；所有证据均来自 `feeda-mv-grc` 本地代码。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:15:36.437054
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+# 业务代码库适配分析报告：Dup Service / VFS 去重链路
+
+## 1. 分析摘要
+
+- `feeda-mv-grc` 已经**真实接入** Dup Service，核心链路集中在 `src/processor/vfs.cpp`、`src/plugin/dup_service.cpp`、`src/processor/video_launch/vfs_rpc_function.cpp` 和 `src/processor/video_launch/vfs_filter_function.cpp` 等文件，说明该技术在召回汇聚侧已经具备可运行的业务落地能力。
+- `feeda-mv-grg` 当前**没有发现直接使用** Dup Service / DupClient 的代码，但代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模很大，且候选集处理场景明显，说明若要引入去重能力，具备较好的**插入点和迁移潜力**，尤其适合在候选生成后、排序前增加过滤层。
+
+## 2. 代码库详情
+
+- **`feeda-mv-grc`：已有完整参考实现**
+  - 已发现目标技术使用，且覆盖链路较完整：
+    - `src/plugin/dup_service.cpp` / `src/plugin/dup_service.h`
+      - 负责 `DupServicePlugin` 初始化，创建并管理 `DupClient` 连接池。
+    - `src/processor/vfs.cpp`
+      - 主去重逻辑入口，负责构造 `DupRequest`、拼装 `show_map` 和候选 `rank_vec`、发起 RPC、执行过滤。
+    - `src/processor/video_launch/vfs_rpc_function.cpp`
+      - Graph Function 版本的 Dup RPC 调用，适合新闻/更新类场景复用。
+    - `src/processor/video_launch/vfs_filter_function.cpp`
+      - Graph Function 版本的去重过滤逻辑，可作为“RPC 与过滤解耦”的参考。
+    - `src/processor/searchc_related_deepin/searchc_immersive_vfs.cpp`
+    - `src/processor/searchc_related_deepin/searchc_deepin_vfs.cpp`
+      - 说明该能力不仅用于单一场景，而是可扩展到搜索/沉浸式链路。
+  - 典型业务语义已经明确：
+    - `show_map` 代表用户历史下发记录；
+    - `rank_vec` 代表当前候选队列；
+    - `dup_strategy` 支持多策略组合，如 `DUPTYPE_HISTORY_GROUP`、`DUP_STRATEGY_VIDEO_VFS`、`DUP_STRATEGY_NID`、`DUP_STRATEGY_VIDEO_BLOOM` 等。
+  - 这部分代码可直接作为**迁移蓝本**，特别适合参考其“插件初始化 + 请求组装 + 结果过滤”的三段式结构。
+
+- **`feeda-mv-grg`：未发现直接使用，但具备较强迁移基础**
+  - 扫描结果显示：
+    - **未发现目标库直接使用** Dup Service / DupClient。
+    - `std::vector`：1969 次，356 个文件
+    - `std::string`：2443 次，425 个文件
+    - `std::unordered_map`：734 次，205 个文件
+  - 代表性文件：
+    - `model/model.h`
+      - 以 `std::vector<RidTmpInfoPtr>` 作为候选输入，说明业务天然存在“候选集处理”接口。
+    - `model/paddle_model.h`
+      - 多处基于候选向量做预测/打分，适合作为去重前后的处理节点。
+  - 从结构上看，`grg` 更像是**序列生成/预测链路**，如果未来要引入去重，建议优先落在：
+    - 候选生成后；
+    - 排序/预测前；
+    - 或输出前的统一过滤层。
+  - 由于已有大量容器型接口，迁移时主要改造点会是**数据流接入与服务调用封装**，而不是数据结构本身。
+
+## 3. 💡 适用性评估与建议
+
+- **建议 1：优先复用 `feeda-mv-grc` 的去重接入方式，作为 `feeda-mv-grg` 的参考模板**
+  - 参考文件：
+    - `src/plugin/dup_service.cpp`
+    - `src/processor/vfs.cpp`
+    - `src/processor/video_launch/vfs_rpc_function.cpp`
+    - `src/processor/video_launch/vfs_filter_function.cpp`
+  - 建议做法：
+    - 在 `grg` 中单独抽一个“候选过滤层”，模仿 `vfs.cpp` 的处理流程：
+      - 先收集历史命中；
+      - 再对候选向量做去重；
+      - 最后输出过滤后的 `std::vector<RidTmpInfoPtr>`。
+  - 适用场景：
+    - 候选量较大、重复内容较多、需要降低重复曝光的业务链路。
+
+- **建议 2：如果 `grg` 有候选生成模块，优先在“模型预测前”插入去重**
+  - 参考文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 建议做法：
+    - 在 `predict(std::vector<RidTmpInfoPtr>& candidate_vec, ...)` 之前先做一次去重过滤；
+    - 对重复候选直接裁剪，减少无效推理和后续排序压力。
+  - 预期收益：
+    - 降低候选规模；
+    - 减少重复样本对模型排序的干扰；
+    - 节省计算资源。
+
+- **建议 3：为 `grg` 新增独立的 DupClient 适配层，不要直接把 RPC 逻辑散落在各个 model 文件里**
+  - 参考文件：
+    - `src/plugin/dup_service.h`
+    - `src/plugin/dup_service.cpp`
+  - 建议做法：
+    - 新增一个类似 `DupServiceAdapter` 的封装层，统一负责：
+      - 初始化；
+      - 连接池获取；
+      - 请求构造；
+      - 异常兜底。
+  - 这样做的好处：
+    - 避免 `model/` 下代码和外部服务强耦合；
+    - 后续切换策略、灰度、回滚更容易。
+
+- **建议 4：复用 `grc` 中的“多策略开关”思路，但先从单策略接入开始**
+  - 参考文件：
+    - `src/processor/vfs.cpp`
+  - 建议做法：
+    - 第一阶段仅接入 `DUP_STRATEGY_NID` 或单一 VFS 策略；
+    - 稳定后再扩展 Bloom、标题、历史组等多策略。
+  - 原因：
+    - 多策略组合会增加请求复杂度和排查成本；
+    - 先保证链路稳定，再逐步扩展策略收益更高。
+
+- **建议 5：对于 `grc` 现有实现，整理成可复用的“过滤工具函数”**
+  - 参考文件：
+    - `src/processor/vfs.cpp`
+    - `src/processor/video_launch/vfs_filter_function.cpp`
+  - 建议做法：
+    - 把历史去重、队列内去重、空指针过滤等逻辑抽成公共函数；
+    - 方便 `searchc_related_deepin/` 和 `video_launch/` 场景复用。
+  - 价值：
+    - 降低重复代码；
+    - 统一去重口径；
+    - 便于后续策略升级。
+
+## 4. ⚠️ 引入风险与限制
+
+- **风险 1：外部依赖强，协议和行为不完全受本仓库控制**
+  - `DupClient`、连接池、RPC 协议细节依赖外部库和服务端实现；
+  - 一旦服务协议变更，`src/plugin/dup_service.cpp` 和 `src/processor/vfs.cpp` 都可能需要联动调整。
+
+- **风险 2：RPC 去重会引入额外时延**
+  - 去重链路会多一次远程调用；
+  - 对高 QPS 场景，需要关注：
+    - 超时；
+    - 降级；
+    - 连接池复用；
+    - 批量请求大小控制。
+
+- **风险 3：多策略并存会增加排障难度**
+  - `dup_strategy`、实验开关、阈值配置较多时，容易出现“同一请求在不同实验下结果不同”的情况；
+  - 建议先固定最小策略集，再逐步放开。
+
+- **风险 4：历史下发与当前候选的语义必须对齐**
+  - `show_map`、`rank_vec`、`rid`、`nid` 的定义要统一；
+  - 如果 `grg` 的候选数据结构与 `grc` 不一致，需要先做字段映射，否则容易出现误杀或漏杀。
+
+如果你愿意，我可以进一步把这份内容整理成**适合直接粘贴到技术笔记中的正式章节版**，或者补一版**“grg 迁移落地方案（接口设计 + 文件改造点）”**。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
