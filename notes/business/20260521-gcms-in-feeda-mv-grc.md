@@ -514,3 +514,143 @@ GCMS scene 枚举（`src/plugin/gcms_component.h:19-24`）：
 2. **FillMetaPipelineFunction 的 concurrencts/batch_size 配置来源**：虽然 `parallel_consume()` 调用了 `context.concurrents()` 和 `context.batch_size()`，但 gflags/graph option 中这些值的赋值链路未追踪到。下一步追 `BaseGraphFunction::setup()` 如何读取这些 option。
 3. **`autor_level_sm` 小流量 sid 列表的动态更新机制**：当前代码中硬编码为 17 个 sid，`src/processor/fill_meta.cpp:208-220`。下一步确认是否有动态配置或实验参数化的方式。
 4. **FillMetaBaseProcessor 的 GCMS 查询结果如何与 anonymous depend 匹配**：代码显示对 `merge_rids` 一次性查询，但 `RecallResult` 中每个匿名 depend 的类型/来源处理逻辑（`src/processor/fill_meta.cpp:285-321`）仍有未完全解析的分支，如 `_hk_handle_names` / `_channel_handle_names` 对正排字段的特殊处理。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:14:29.786272
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+# 业务代码库适配分析：GCMS / IFCS 正排能力
+
+## 1. 分析摘要
+
+- 这套技术的本质是**召回结果的正排补元**：先通过 `GCMS/IFCS` 把候选 `rid/nid` 对应的 `MicroVideoInfo / NewsInfo` 拉出来，再挂到候选对象上，供后续的过滤、排序、特征构造使用。
+- 在 `feeda-mv-grc` 中，这条链路已经比较完整，核心入口集中在 `FillMeta / FillMetaPipeline`，并进一步被 `ContentFeature`、`RecommendFeature`、各类过滤与排序逻辑消费，说明**适配成熟度高、迁移收益明确**。
+- 在 `feeda-mv-grg` 中，本次扫描到的是与补元、多样性、策略相关的周边代码，但**未直接命中 `gcms_component` / `ifcs_sdk` 的核心调用链**，因此更像是“可迁移、但尚未落地”的状态。若业务需要文档级元信息参与序列生成或多样性控制，迁移潜力中等偏高；若当前流程不依赖正排字段，则收益有限。
+
+## 2. 代码库详情
+
+### feeda-mv-grc
+
+- 这是本次分析的**主落地点**，GCMS/IFCS 正排链路已经接入。
+- 已确认的关键文件包括：
+  - `conf/common_component/gcms_common_pb_plugin.conf`
+    - 明确写有“`mv-grc` 已接入 `ifcs` 正排缓存服务”，属于配置级证据。
+  - `src/plugin/gcms_component.cpp`
+    - 初始化 `feed::ifcs::IfcsSdk<BaseDocInfo>`，并通过 `query_common()` / `query_news()` 发起正排查询。
+  - `src/plugin/ifcs_component.cpp`
+    - 把 IFCS 返回的 PB 解析成 `MicroVideoInfo` / `NewsInfo`，包含 `smfw` 合并逻辑。
+  - `src/processor/fill_meta.cpp`
+    - 召回结果进入后补元，并把 `MicroVideoInfo` 挂到 `RidTmpInfo`。
+  - `src/processor/video_launch/fill_meta_pipeline.cpp`
+    - pipeline 版本的补元主链路，查询后将 `_video_info` 和 `gcms_data` 写回候选。
+  - `src/processor/doc_feature_with_cache_yitu.cpp`
+    - 将正排内容转成 `ContentFeature / RecommendFeature`，是“正排 → 模型特征”的典型消费点。
+  - `src/data/rid_tmp_info.h`
+    - 候选对象承载正排字段：`gcms_data / const_gcms_data / _video_info / _video_info_copy`。
+- 现有使用特点：
+  - 正排不是散点式调用，而是**集中在 FillMeta 阶段**；
+  - 下游过滤、排序、响应阶段会反复读取 `rid_info->gcms_data`；
+  - 已存在对 `UA / scene / flow_loc` 的查询分流和降级逻辑，说明链路考虑了场景差异。
+- 结论：
+  - `feeda-mv-grc` 已具备较完整的正排能力，是**优先保留并优化**的对象；
+  - 如果后续要扩展字段或调整查询策略，优先改这里，而不是在下游零散补逻辑。
+
+### feeda-mv-grg
+
+- 本次扫描到的相关文件主要是“流程/策略周边”，例如：
+  - `process/news_fill_meta_pipeline.cpp`
+  - `operator/diversity/mount_priority_soft_rule.cpp`
+  - `operator/diversity/diversity_rule_rollback.cpp`
+  - `strategy/diversity/diversity_util.h`
+  - `operator/diversity/last_scene_hard_rule.cpp`
+- 但在本次给出的摘要里，**没有看到 `GcmsComponent`、`ifcs_sdk`、`MicroVideoInfo` 这类核心正排调用的直接命中证据**。
+- 这意味着：
+  - `feeda-mv-grg` 可能已经有补元/策略链路，但**未显式接入 GCMS/IFCS 正排**；
+  - 如果要引入该能力，`process/news_fill_meta_pipeline.cpp` 这类入口会是最自然的落点；
+  - 多样性规则文件 `operator/diversity/*` 更适合作为“消费正排字段”的位置，而不是首个接入点。
+- 代码规模侧面信息：
+  - `std::vector` / `std::string` / `std::unordered_map` 使用量都很大，说明该库已有较成熟的业务对象流转与策略计算代码；
+  - 但这并不直接等价于正排能力已存在，更像是**适合承接正排字段的复杂业务框架**。
+- 结论：
+  - `feeda-mv-grg` 对 GCMS/IFCS 的适配属于**待评估迁移型**；
+  - 若其业务场景确实需要“召回后补元、基于内容质量/类目/时长做规则过滤”，则引入收益可观；
+  - 若只是序列生成且不依赖文档级元信息，迁移收益会明显下降。
+
+## 3. 💡 适用性评估与建议
+
+- **建议 1：在 `feeda-mv-grc/src/processor/video_launch/fill_meta_pipeline.cpp` 保持正排查询集中化，并抽公共函数降低重复代码**
+  - 该文件已经是补元主链路，建议把 `GcmsComponent::query_common()` 之后的“查表、挂载、复制、重包装”抽成公共 helper。
+  - 适用场景：
+    - 召回结果批量补元；
+    - 合集/短剧等需要二次改写 `MicroVideoInfo` 的场景。
+  - 价值：
+    - 降低 `FillMetaPipelineFunction` 内部复杂度；
+    - 便于统一处理 cache miss、字段缺失、实验开关。
+
+- **建议 2：在 `feeda-mv-grc/src/processor/fill_meta.cpp` 和 `src/processor/video_launch/fill_meta_pipeline.cpp` 之间统一正排写回语义**
+  - 现在看起来存在“普通路径”和“pipeline 路径”两套补元入口。
+  - 建议统一 `RidTmpInfo` 中 `_video_info / gcms_data` 的写入规范，避免不同路径下字段状态不一致。
+  - 适用场景：
+    - `response.cpp`、`merge_recall.cpp`、`ctr_rank.cpp` 等下游多处依赖 `gcms_data != nullptr` 的逻辑。
+  - 价值：
+    - 降低下游空指针与字段不一致风险；
+    - 便于后续做特征缓存和命中率统计。
+
+- **建议 3：在 `feeda-mv-grc/src/processor/doc_feature_with_cache_yitu.cpp` 增加“字段缺失兜底”和“延迟构造”优化**
+  - 该文件是典型的“正排 → 特征”消费点。
+  - 建议：
+    - 仅在 `_video_info != nullptr` 时构造 `ContentFeature`，当前方向是对的；
+    - 对 `manual tags / 类目 / 时长 / 垂类` 等高频字段做局部缓存，减少重复读取；
+    - 对 `public_time / duration / video_type` 等缺失字段做默认值兜底。
+  - 价值：
+    - 降低特征构造失败率；
+    - 减少无效对象创建开销。
+
+- **建议 4：如果 `feeda-mv-grg` 计划接入 GCMS/IFCS，优先从 `process/news_fill_meta_pipeline.cpp` 切入**
+  - 这类文件最适合承接“召回后补元”逻辑。
+  - 推荐迁移方式：
+    - 先接入只读正排查询；
+    - 再把必要字段挂到候选对象；
+    - 最后让 `operator/diversity/*` 和 `strategy/diversity/diversity_util.h` 消费这些字段做规则控制。
+  - 可直接参考 `feeda-mv-grc/src/plugin/gcms_component.cpp` 的查询封装方式。
+  - 价值：
+    - 先形成最小闭环，再逐步扩展到排序/多样性。
+
+- **建议 5：在 `feeda-mv-grc/src/plugin/ifcs_component.cpp` 中补齐解析校验与日志维度，便于后续迁移复用**
+  - 当前 parser 已承担 `IfcsItem → MicroVideoInfo/NewsInfo` 的转换。
+  - 建议把：
+    - `smfw` 合并结果；
+    - 解析失败原因；
+    - 关键字段缺失统计；
+    - 场景切换信息
+    统一埋点。
+  - 价值：
+    - 对 `feeda-mv-grg` 后续迁移时，可直接复用成熟解析逻辑；
+    - 有助于比对不同场景下的正排命中率。
+
+## 4. ⚠️ 引入风险与限制
+
+- **风险 1：查询延迟与稳定性风险**
+  - 正排引入后，召回链路会额外依赖 `IFCS` 缓存服务。
+  - 一旦发生超时、降级或缓存击穿，会直接影响补元完整性，并传导到后续过滤/排序。
+
+- **风险 2：字段一致性与版本兼容风险**
+  - `MicroVideoInfo / NewsInfo` 的字段很多，且部分字段会被下游硬依赖。
+  - 若 `parser`、PB 定义或字段语义变化，容易导致 `ContentFeature` 或策略规则失真。
+
+- **风险 3：对象拷贝开销与内存压力**
+  - 从代码看，存在 `queue_iter->_video_info = ...` 以及 `boost::make_shared<const GcmsData>(...)` 这类包装动作。
+  - 若在高 QPS 场景下频繁复制正排对象，可能带来额外内存与 CPU 开销。
+
+- **风险 4：场景切换逻辑复杂**
+  - `query_common()` 中已有按 `UA / flow_loc / scene` 切换查询模式的逻辑。
+  - 迁移到新业务库时，如果没有明确场景边界，容易出现“查得太多”或“查得不够”的问题。
+
+---
+
+如果你愿意，我可以继续把这份内容整理成**更像技术学习笔记正文**的版本，或者进一步补成一份**“适配建议清单 + 迁移优先级表”**。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
