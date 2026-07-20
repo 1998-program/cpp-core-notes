@@ -196,3 +196,115 @@ data
 - `src/util/util.h`：声明 `caculate_fake_id()`。
 - `src/process/grc_recall_function.cpp:153-162`：GRG 内部调用 GRC 时从当前 request 拷贝并设置 `is_grg_request`。
 - `git show 8ed39c0`：提交 `feed-arch-37111 [Story] 【架构】grg 兼容关闭个性化推荐关闭开关_fakeid 代替 cuid`，涉及 `grg_service.cpp`、`util.cpp`、`util.h`。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-20T19:23:01.807912
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+# 业务代码库适配分析：GRG 个性化推荐关闭开关 fake_id 兼容
+
+## 1. 分析摘要
+
+- 这次 `fake_id` 兼容的核心价值在于：**把“关闭个性化推荐”从下游各处分散判断，收敛为入口层统一改写请求身份**。对业务代码库来说，这类改造通常更适合放在服务入口、请求包装层、或者统一上下文注入层，而不是散落到每个召回/排序/日志 processor 中逐个处理。
+- 从扫描结果看，`feeda-mv-grg` 已经具备较好的承接基础，且技术笔记中的 `feed-arch-37111` 已在 `src/service/grg_service.cpp`、`src/util/util.cpp`、`src/util/util.h` 落地。`feeda-mv-grc` 暂未发现直接使用 `fake_id` 的代码，但其 `response_for_grg.cpp`、多条 diversity 规则和上下文处理文件，说明它是**很可能被透传影响的下游链路**，迁移潜力主要体现在“请求身份统一改写”和“日志/缓存/特征键口径统一”。
+
+---
+
+## 2. 代码库详情
+
+### `feeda-mv-grg`（序列生成服务）
+
+- 扫描到的相关文件共 10 个，集中在以下模块：
+  - `operator/diversity/set2set_short_soft_rule.cpp`
+  - `operator/diversity/mcv_recpage_tgi_manju_rule.cpp`
+  - `operator/diversity/microvideo_pcs_adjudt_mereg.cpp`
+  - `process/microvideo_adjust_merge_get_result_function.cpp`
+  - `process/feature_service/doc_feature_with_cache_pipeline.cpp`
+- 结合技术笔记可确认，`grg` 侧已经有入口级兼容实现：
+  - `src/service/grg_service.cpp`：在 `query()` 入口识别 `is_close_individual()`，复制请求并替换 `uid/cuid/baiduid` 为 `fake_id`
+  - `src/util/util.cpp` / `src/util/util.h`：提供 `caculate_fake_id()` 工具函数
+- 这意味着 `grg` 的迁移方式不是“新增一套分支逻辑”，而是**沿用已有入口替换模型**，对下游 operator / process 的侵入性较低。
+- `std` 使用规模较大，说明该库代码量和工程成熟度都较高：
+  - `std::vector`：1969 次，356 个文件
+  - `std::string`：2443 次，425 个文件
+  - `std::unordered_map`：734 次，205 个文件
+- 这类规模下，引入一个小而稳定的请求改写工具，通常收益高于成本，适合做“少点改、多处复用”的迁移。
+
+### `feeda-mv-grc`（召回汇聚服务）
+
+- 扫描到的相关文件共 6 个，集中在：
+  - `processor/video_launch/response_for_grg.cpp`
+  - `operator/diversity/rollback_rule.cpp`
+  - `operator/diversity/author_vec_diversity_rule.cpp`
+  - `processor/vids_gcf_embeddings.cpp`
+  - `operator/diversity/scatter_context.cpp`
+- 当前未发现 `fake_id` 兼容的直接实现，但从文件职责看，这些位置更像是：
+  - 接收 GRG 侧请求结果
+  - 做多路召回结果组织
+  - 处理 diversity / 回滚 / context 透传
+- 因此 `grc` 更适合做**兼容性承接层**，重点关注请求是否已经被匿名化、是否继续以 fake 身份构造子请求、是否把 fake 身份写入缓存键或日志链路。
+- `std` 使用规模更大，说明其工程面更广，迁移前需要更强的边界约束：
+  - `std::vector`：8442 次，1279 个文件
+  - `std::string`：7170 次，1234 个文件
+  - `std::unordered_map`：2834 次，639 个文件
+- 由于使用面很广，如果要推广 fake_id 兼容，建议只落在**请求入口、跨服务桥接、上下文传播、日志与缓存关键路径**，不要扩散到每个 operator 内部。
+
+---
+
+## 3. 💡 适用性评估与建议
+
+- **`feeda-mv-grg/src/service/grg_service.cpp`：继续作为 fake_id 入口改写的主控点**
+  - 建议保持“入口复制请求 + 统一替换 `uid/cuid/baiduid`”的模式，不要把关闭个性化判断下沉到 `operator/diversity/*` 和 `process/*`。
+  - 适用场景：`query()`、`fill_basic_data_for_graph()`、`run()` 之间的统一请求流转。
+  - 价值：减少重复判断，降低漏改风险，保证下游 processor 无需感知开关细节。
+
+- **`feeda-mv-grg/src/process/feature_service/doc_feature_with_cache_pipeline.cpp`：重点检查缓存键是否依赖真实用户身份**
+  - 如果该 pipeline 里使用 `uid/cuid/baiduid` 作为特征缓存 key、请求签名或用户画像定位键，建议明确区分：
+    - 正常请求：使用真实身份
+    - 关闭个性化请求：使用 fake_id
+  - 适用场景：特征缓存、文档特征取值、用户上下文拼装。
+  - 价值：避免“入口改写了身份，但缓存仍按真实用户命中”的口径不一致。
+
+- **`feeda-mv-grg/operator/diversity/set2set_short_soft_rule.cpp`、`mcv_recpage_tgi_manju_rule.cpp`、`microvideo_pcs_adjudt_mereg.cpp`：检查是否直接读取 `common_info.uid/cuid` 做用户相关判定**
+  - 如果这些 diversity 规则内部有用户维度的偏好、黑白名单、频控、去重逻辑，建议统一改为读取 `run_request` 里的身份字段，而不是旁路拿原始 request。
+  - 适用场景：排序去重、偏好控制、召回融合规则。
+  - 价值：保证关闭个性化时逻辑一致，避免局部模块绕开入口改写。
+
+- **`feeda-mv-grc/processor/video_launch/response_for_grg.cpp`：作为下游承接 fake_id 的优先改造点**
+  - 建议在这个文件里明确区分“来自 GRG 的请求”与普通请求，避免把 fake_id 再反向映射成真实用户身份。
+  - 适用场景：响应回填、跨服务结果合并、GRG 专用返回路径。
+  - 价值：保证 fake 身份在跨服务链路中持续生效，不被二次转换破坏。
+
+- **`feeda-mv-grc/operator/diversity/rollback_rule.cpp`、`author_vec_diversity_rule.cpp`、`scatter_context.cpp`：统一校验上下文传播口径**
+  - 如果这些模块使用 `context`、`vector`、`unordered_map` 等结构保存用户信息，建议约定只保存“已改写后的用户标识”或显式保存 `identity_type` 标记。
+  - 适用场景：多路召回调度、回滚策略、作者向量多样性。
+  - 价值：减少“部分字段是真实身份、部分字段是假身份”的混乱状态。
+
+---
+
+## 4. ⚠️ 引入风险与限制
+
+- **fake_id 带有 `logid` 参与计算，天然不稳定**
+  - 同一用户跨请求生成的 fake_id 可能不同，这非常适合关闭个性化场景，但会影响依赖“稳定用户画像”的缓存、召回命中率和历史行为聚合。
+  - 需要明确：这是“匿名化/伪身份化”，不是“稳定用户 ID 替换”。
+
+- **日志和监控口径会变化**
+  - 一旦入口改写，`NOTICE` 日志、`GraphMonitor`、VIP 命中判断可能都看到 fake_id 而不是真实 `uid/cuid/baiduid`。
+  - 排障时不能把 fake_id 直接当真实用户身份使用，建议保留 old id 与 fake_id 的对应关系日志，但注意访问权限和隐私边界。
+
+- **`grg_service.cpp` 中存在引用生命周期依赖**
+  - 当前模式依赖 `run_request` 指向局部 `grg_request`，之所以安全，是因为流程看起来是同步闭环。
+  - 如果未来 `run()`、`fill_basic_data_for_graph()` 或子调用改成真正异步，需要重新审查 `ref()` 注入和栈上对象生命周期。
+
+- **下游模块容易“绕过入口改写”**
+  - `feeda-mv-grg` 与 `feeda-mv-grc` 都有较多 operator / process 文件，如果某些模块直接从别的上下文拿真实用户字段，就可能破坏 fake_id 兼容。
+  - 建议统一约束：**所有个性化相关模块只信任入口传入的 run_request**，不要重复读取原始 request。
+
+---
+
+如果你需要，我可以继续把这份内容整理成你技术笔记里可直接粘贴的章节样式，或者补一版“适配优先级矩阵（高/中/低）”。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
