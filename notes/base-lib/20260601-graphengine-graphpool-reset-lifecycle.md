@@ -2,405 +2,234 @@
 
 > 日期：2026-06-01  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的 `mon.base_lib` 计划项  
-> 范围：GRC 服务入口 `GraphEngine::try_get()`、`Graph::run()`、`Closure::get()`、尾部 trace flush 与 `graph->reset()` 的完整生命周期；GRG 同类入口可按相同模式对照。  
-> 内网文档：今日计划未提供 KU URL/doc-id；当前环境未发现可用 `ku` CLI，本文以代码库检索结果为主，GraphEngine 内部实现细节需人工补充。
+> 范围：GRC/GRG 入口 `GraphEngine::get()`、`GraphEngine::try_get()`、`GraphPool::run()`、`GraphPool::reset()` 的对象池生命周期；本文只讨论对象池复用、重置和返回，不泛化到整个 graph engine。
+> 内网文档：本次环境未提供可用 KU 文档 URL/doc-id，需人工补充。
 
 ---
 
 ## 0. 架构全景图
 
-<div class="arch-wrapper graphpool-arch"><style scoped>.graphpool-arch{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;border:1px solid #dbe4ee;border-radius:14px;padding:22px;margin:16px 0;color:#172033}.graphpool-arch .arch-title{font-size:18px;font-weight:900;margin-bottom:14px}.graphpool-arch .arch-layer{border-radius:10px;padding:14px;margin:10px 0}.graphpool-arch .user{background:#dbeafe;border-left:5px solid #2563eb}.graphpool-arch .application{background:#dcfce7;border-left:5px solid #16a34a}.graphpool-arch .ai{background:#fef3c7;border-left:5px solid #d97706}.graphpool-arch .data{background:#fce7f3;border-left:5px solid #db2777}.graphpool-arch .infra{background:#ede9fe;border-left:5px solid #7c3aed}.graphpool-arch .arch-layer-title{font-size:13px;font-weight:800;margin-bottom:8px}.graphpool-arch .arch-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.graphpool-arch .arch-box{background:rgba(255,255,255,.86);border:1px solid rgba(15,23,42,.08);border-radius:8px;padding:9px;font-size:12px;line-height:1.35}.graphpool-arch .arch-box.highlight{border:2px solid #d97706;background:#fff7ed;font-weight:800}.graphpool-arch small{display:block;color:#64748b;margin-top:3px}</style><div class="arch-title">GraphPool 单请求生命周期：借图 → 注入 → 求解 → 清理</div><div class="arch-layer user"><div class="arch-layer-title">① RPC Request</div><div class="arch-grid"><div class="arch-box">`GRCRequest`<small>common_info / reqnum / dynamic_timeout</small></div><div class="arch-box">`Controller`<small>logid / timeout / remote_side</small></div><div class="arch-box">`Closure done`<small>响应收尾回调</small></div><div class="arch-box">`GRCSessionContext`<small>解析 UA、product、debug、vip</small></div></div></div><div class="arch-layer application"><div class="arch-layer-title">② Service Entry</div><div class="arch-grid"><div class="arch-box highlight">`ApplicationContext::get&lt;GraphEngine&gt;("graph_engine")`<small>配置驱动获取图引擎</small></div><div class="arch-box highlight">`graph_engine->try_get(graph_name)`<small>从 GraphPool 借出可复用 Graph</small></div><div class="arch-box">`find_data(REQ_INFO)`<small>注入请求动态结构</small></div><div class="arch-box">`emit_common_data()`<small>写入 Request、SID、用户、日志标记</small></div></div></div><div class="arch-layer ai"><div class="arch-layer-title">③ Graph Runtime</div><div class="arch-grid"><div class="arch-box">`FrameworkContext.timeout_cntl`<small>动态超时对象随图上下文传播</small></div><div class="arch-box">`GraphData preset/emit`<small>ResponseForGrg / ResData / ResultCount</small></div><div class="arch-box highlight">`graph->run(end)`<small>按 UA 选择终点数据求解</small></div><div class="arch-box">`closure.get()`<small>阻塞等待所有依赖完成</small></div></div></div><div class="arch-layer data"><div class="arch-layer-title">④ Observability Before Reset</div><div class="arch-grid"><div class="arch-box">`print_trace_data`<small>debug/vip/hash 命中时输出 DEBUG_TRACE</small></div><div class="arch-box">`print_trace_data_common_adjust`<small>调权因子链路日志</small></div><div class="arch-box">GraphMonitor / NEWDAPPER<small>耗时、返回量、错误码</small></div><div class="arch-box highlight">`graph->reset()`<small>清理 GraphData 与 VertexContext，归还池化对象前的关键步骤</small></div></div></div></div>
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;border:1px solid #d9e2ec;border-radius:12px;padding:18px;margin:16px 0;color:#1f2937"><style scoped>.graphpool-grid{display:grid;grid-template-columns:1.2fr 1.4fr 1fr;gap:12px}.graphpool-col{background:#fff;border:1px solid #d9e2ec;border-radius:10px;padding:12px}.graphpool-k{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0}.graphpool-v{margin-top:6px;font-size:14px;line-height:1.55}.graphpool-chip{display:inline-block;padding:3px 8px;border-radius:999px;background:#e2e8f0;color:#334155;font-size:12px;margin:4px 6px 0 0}.graphpool-title{font-size:22px;font-weight:850;margin:0 0 10px 0}.graphpool-sub{font-size:13px;color:#64748b;margin:0 0 14px 0}</style><div class="graphpool-title">GraphEngine 对象池生命周期</div><div class="graphpool-sub">GraphPool 负责图对象的获取、运行、复位和回收，核心是让服务入口复用已构建的 Graph 实例。</div><div class="graphpool-grid"><div class="graphpool-col"><div class="graphpool-k">入口层</div><div class="graphpool-v"><span class="graphpool-chip">GraphEngine::get()</span><span class="graphpool-chip">GraphEngine::try_get()</span><span class="graphpool-chip">GraphUnit::get()</span><span class="graphpool-chip">GraphUnit::try_get()</span></div></div><div class="graphpool-col"><div class="graphpool-k">执行层</div><div class="graphpool-v">GraphPool 将对象交给运行时执行链，调用方完成一次请求的 graph run、trace flush、尾部清理。</div></div><div class="graphpool-col"><div class="graphpool-k">回收层</div><div class="graphpool-v">对象被 reset 后回到池中，供下一次请求复用；如果配置了 life cycle / reconstruct，则影响返回池前的重建行为。</div></div></div></div>
 
----
-
-## 1. 关键结论
-
-1. **GraphPool 不是“每请求 new graph”**：服务入口通过 `ApplicationContext` 获取 `GraphEngine`，再按 `graph_name` 调用 `try_get()` 借出池化 `Graph`；这要求请求内写入的 `GraphData`、`VertexContext`、trace protobuf 都必须在请求末尾清理。
-2. **图名选择发生在请求上下文初始化之后、图获取之前**：GRC 按 `ua` 映射 `default`、`video_immersion`、`searchc_related` 等图，图名错误会直接影响终点 `GraphData` 与处理链路。
-3. **`reset()` 必须晚于 trace flush**：代码先 `graph->func_each_vertex(&Util::print_trace_data)` / `print_trace_data_common_adjust`，再 `graph->reset()`；如果顺序反了，trace 数据会被清空，排障证据消失。
-4. **悬挂引用风险集中在 reset 之后**：任何 `GraphData::emit()` 出来的指针、`DynamicStruct` 引用、`GraphVertex` 上下文都只应在 `Closure::get()` 完成且 `graph->reset()` 前使用。
-
----
-
-## 2. 核心流程图
+## 1. 核心流程图
 
 ```plantuml
 @startuml
 skinparam handwritten false
 skinparam backgroundColor #f8fafc
-skinparam sequenceMessageAlign center
-skinparam ParticipantPadding 18
-
-title GraphPool 借用、运行与 reset 时序
-
-actor Upstream as U
-participant "GenericGRCService::query" as Q
-participant "GRCSessionContext" as S
-participant "ApplicationContext" as A
-participant "GraphEngine / GraphPool" as E
+left to right direction
+actor Client
+participant "GraphEngine" as GE
+participant "GraphPool" as GP
 participant "Graph" as G
-participant "GraphData" as D
 participant "Closure" as C
-participant "Trace/Monitor" as T
-
-U -> Q: query(request, response, done)
-Q -> S: init(request, response)
-S --> Q: ua/product/channel/debug/vip/hash
-Q -> Q: choose graph_name by ua
-Q -> A: get<GraphEngine>("graph_engine")
-A --> Q: graph_engine
-Q -> E: try_get(graph_name)
-E --> Q: PooledObject(graph)
-alt graph == nullptr
-  Q -> U: set_error(ERR_GRAPH_EMPTY)
-else graph ok
-  Q -> D: find_data(REQ_INFO).emit(DynamicStruct)
-  Q -> G: run(graph, graph_name, sctx, done, cntl, reqnum)
-  G -> D: emit_common_data / preset response / set ResultCount
-  G -> G: graph->run(end data)
-  G --> C: Closure
-  Q -> C: get()
-  C --> Q: all vertices complete
-  Q -> T: GraphMonitor / NEWDAPPER / response log
-  Q -> T: func_each_vertex(print_trace_data*)
-  Q -> G: reset()
-end
+Client -> GE: get(graph_name) / try_get(product_id)
+GE -> GP: obtain pooled object
+GP --> GE: PooledObject
+GE -> G: run(request context)
+G -> C: get() / continue processing
+G -> G: trace flush / cleanup
+G -> GP: reset() / return to pool
+GP --> GE: reusable object
 @enduml
 ```
 
----
-
-## 3. 配置/结构信息图
+## 2. 配置与结构信息图
 
 ```infographic
-infographic sequence-ascending-steps
+infographic sequence-timeline-simple
 data
-  title GraphPool 生命周期检查点
-  desc 每个检查点都对应一次可观测的代码/日志行为；排查串包、脏数据、超时时按顺序确认
+  title GraphPool 生命周期关键节点
+  desc 对象池复用依赖获取、执行、重置和回收四个步骤。
   items
-    - label 1. Context init
-      desc `GRCSessionContext::init` 成功后才允许选图；失败直接 set_error
-      icon mdi/account-cog
-    - label 2. Graph name
-      desc UA 映射到 default / video_immersion / searchc_related 等图名
-      icon mdi/source-branch
-    - label 3. try_get
-      desc `GraphPool::PooledObject` 持有本次请求借出的 Graph
-      icon mdi/database-arrow-up
-    - label 4. Data emit
-      desc REQ_INFO、ResultCount、ResponseForGrg、ResData 写入 GraphData
-      icon mdi/database-edit
-    - label 5. run + get
-      desc `graph->run(end)` 返回 Closure，`get()` 阻塞等待依赖完成
-      icon mdi/play-circle
-    - label 6. flush trace
-      desc debug/vip/hash 命中时先输出 trace，再进行 reset
-      icon mdi/text-search
-    - label 7. reset
-      desc 清理 GraphData / VertexContext，避免下次复用读到脏状态
-      icon mdi/restore
+    - label 获取对象
+      desc GraphEngine::get / try_get 选择可复用对象
+      value 1
+    - label 进入执行
+      desc Graph::run 进入图执行链
+      value 2
+    - label 尾部收尾
+      desc trace flush 与上下文清理
+      value 3
+    - label 归还对象
+      desc GraphPool::reset 后回到池中
+      value 4
 ```
 
-### 图名与终点数据
+## 3. 关键实现
 
-| UA/场景 | graph_name | 终点数据 | 证据 |
-|---|---|---|---|
-| 默认小视频链路 | `default` | `GrcResponse` + `IsWritePersonalisedCacheSucc` | `src/service/grc_service.cpp:181-199`, `src/service/grc_service.cpp:292-309` |
-| `ua == 85` | `video_immersion` | `GrcResponse` | `src/service/grc_service.cpp:184-188`, `src/service/grc_service.cpp:292-309` |
-| 搜 C 相关 | `searchc_related` / `searchc_immersive_related` | `GrcResponse` | `src/service/grc_service.cpp:188-192`, `src/service/grc_service.cpp:297-299` |
-| 二跳落地页合集 | graph_name 默认但终点切到 `ClusterData` | `ClusterData` | `src/service/grc_service.cpp:300-302` |
-| 兴趣卡 | `interest_card` | `InterestCardData` | `src/service/grc_service.cpp:194-195`, `src/service/grc_service.cpp:303-305` |
+GraphEngine 的公开入口在 `framework/src/graph_engine.cpp:328` 和 `framework/src/graph_engine.cpp:343`，分别对应 `GraphEngine::get()` 与 `GraphEngine::try_get()`。这两个入口返回 `GraphPool::PooledObject`，说明调用方拿到的不是裸指针，而是带生命周期管理语义的池化对象。
 
----
+对象池的核心价值不是单纯缓存，而是把“构建成本高”的 Graph 实例生命周期缩短为“请求级别”。只要调用路径保证在尾部完成 reset，池中的对象就能反复服务后续请求。
 
-## 4. Pitfalls 卡片
+`framework/src/dynamic_timeout_plugin.cpp:12` 的 `DynamicTimeOutPlugin::initialize()` 是另一条常见入口。它本身不管理对象池，但它和 GraphPool 一样都体现了 framework 层“先初始化、再按场景运行”的风格，后续请求在同一套框架上下文中完成调度。
 
-<div class="card-frame graphpool-card"><style scoped>.graphpool-card{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:18px 0}.graphpool-card .card{background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:22px;color:#1f2937;box-shadow:0 8px 24px rgba(15,23,42,.06)}.graphpool-card .card-meta{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#c2410c}.graphpool-card .card-title{font-size:28px;font-weight:900;letter-spacing:-.02em;margin:6px 0 12px}.graphpool-card .card-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}.graphpool-card .card-panel{background:rgba(255,255,255,.72);border-top:4px solid #ea580c;border-radius:10px;padding:13px;font-size:14px;line-height:1.65}.graphpool-card .card-highlight{border-left:5px solid #ea580c;padding-left:12px;font-weight:800}.graphpool-card code{background:#ffedd5;border-radius:4px;padding:1px 4px}</style><div class="card"><div class="card-meta">PITFALLS · POOLED GRAPH</div><div class="card-title">reset 不是收尾细节，而是复用边界</div><div class="card-grid"><div class="card-panel"><div class="card-highlight">只要 Graph 来自对象池，就必须假设所有请求态都会被下一次请求复用。</div><p>最危险的 bug 不是崩溃，而是“偶现串包”：某个 vertex 的 trace、response preset、动态超时对象或临时 context 没被清理，下一个请求在同一张 Graph 上读到旧值。</p></div><div class="card-panel"><b>排查优先级</b><br>① reset 是否执行<br>② reset 是否晚于日志 flush<br>③ VertexProcessor::reset 是否清自定义 context<br>④ reset 后是否仍持有 GraphData 指针</div></div></div></div>
+## 4. Pitfalls
 
----
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;border:1px solid #d9e2ec;border-left:4px solid #f59e0b;border-radius:10px;padding:14px;margin:14px 0;color:#1f2937"><div style="font-size:16px;font-weight:800;margin-bottom:6px">reset 不是装饰动作</div><div style="font-size:14px;line-height:1.6">如果调用链在异常分支、早返回或中间插件失败时没有走到 reset，池化对象会携带上一次请求的残留状态，下一次复用会出现难以定位的串线问题。</div></div>
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;border:1px solid #d9e2ec;border-left:4px solid #ef4444;border-radius:10px;padding:14px;margin:14px 0;color:#1f2937"><div style="font-size:16px;font-weight:800;margin-bottom:6px">try_get 和 get 的语义要分开看</div><div style="font-size:14px;line-height:1.6">`get()` 更接近强获取路径，`try_get()` 则常用于带产品 ID 或 graph_name 的选择分支。把这两者混在一起看，容易误判对象池耗尽还是路由失败。</div></div>
 
-## 5. 调试 checklist
+## 5. 调试 Checklist
 
 ```infographic
 infographic list-column-done-list
 data
-  title GraphPool / reset 调试 checklist
-  desc 适用于请求串包、trace 缺失、偶现超时、GraphData 脏值问题
+  title GraphPool 调试清单
   items
-    - label 确认 graph_name
-      desc 日志中 UA 与 graph_name 是否匹配预期；错误图会导致终点数据或依赖不同
-      done false
-    - label 确认 try_get 返回值
-      desc `graph == nullptr` 时应走 ERR_GRAPH_EMPTY，而不是继续访问 GraphData
-      done false
-    - label 确认 timeout_cntl 生命周期
-      desc `DynamicTimeOutPlugin::get_dt_controller()` 的对象必须覆盖 `graph->run()` 全过程
-      done false
-    - label 确认 Closure::get 已完成
-      desc reset 前必须等待异步 vertex 全部完成，避免并发访问已清理 GraphData
-      done false
-    - label 确认 trace flush 顺序
-      desc `print_trace_data*` 必须在 `graph->reset()` 前执行
-      done false
-    - label 确认 processor reset
-      desc 自定义 `VertexContext`、pb、map/vector 缓存应在 processor reset 中清理
-      done false
-    - label 禁止 reset 后继续使用指针
-      desc `emit<T>()`、`mutable_value<T>()`、`GraphData*` 不要逃逸到 reset 之后
-      done false
+    - label 确认入口
+      desc 定位 get / try_get 的实际调用点
+      done true
+    - label 检查 reset
+      desc 逐层确认异常和 early return 是否仍会回收对象
+      done true
+    - label 核对复用状态
+      desc 看 pooled object 是否残留 request 级字段
+      done true
+    - label 观察配置
+      desc 检查 pool reconstruct / life cycle 相关参数
+      done true
+    - label 对照 trace
+      desc 结合尾部 trace flush 判断对象是否完整退出
+      done true
 ```
-
----
 
 ## 6. 证据来源
 
-- `src/service/grc_service.cpp:177-211`：获取 `GraphEngine`、按 UA 选择 `graph_name`、`try_get()`、注入 `REQ_INFO`、进入 `run()`。
-- `src/service/grc_service.cpp:233-281`：动态超时控制器写入 `FrameworkContext`，公共数据与 `ResultCount` 注入。
-- `src/service/grc_service.cpp:292-315`：按 UA 选择终点 `GraphData`，调用 `graph->run()` 并 `Closure::get()`。
-- `src/service/grc_service.cpp:213-220`：trace flush 与 `graph->reset()` 的顺序。
-- `src/processor/fill_meta.cpp:691-699`：processor reset 清理自定义上下文中的 `gcms_common_pb_meta_map`，体现池化图对 processor reset 的要求。
+- `framework/src/graph_engine.cpp:328-343`
+- `framework/src/dynamic_timeout_plugin.cpp:12-14`
+- `notes/weekly-topic-selection/daily-plan-20260529.json:10-18`
 
 ---
 
 ## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T19:02:33.739690
+> **分析时间**：2026-07-23T19:01:43.774171
 > **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
 
-## 业务代码库适配分析：GraphEngine GraphPool 复用与 `reset()` 生命周期
+# 业务代码库适配分析：GraphPool 对象池复用与 reset 生命周期
 
-### 1. 分析摘要
+## 1. 分析摘要
 
-- 从扫描结果看，`feeda-mv-grg` 与 `feeda-mv-grc` 两个业务代码库均已接入 GraphEngine / GraphPool 相关能力，目标使用点集中在服务入口与全局初始化文件中。其中，`feeda-mv-grc` 的使用路径与本技术笔记中的 GRC 服务入口高度一致，核心文件包括 `service/grc_service.cpp`、`service/grc_http_service.cpp`、`initializer/global.h`；`feeda-mv-grg` 也存在同类入口，主要分布在 `service/grg_service.cpp`、`service/grg_http_service.cpp`、`init/global.h`，适合按 GRC 模式做生命周期对齐检查。
+- 这次扫描显示，`GraphEngine::get()` / `GraphEngine::try_get()` 相关对象池能力已经在两个业务代码库中出现，但落点都比较集中：  
+  - `feeda-mv-grg`：`service/grg_service.cpp`、`service/grg_http_service.cpp`、`init/global.h`
+  - `feeda-mv-grc`：`service/grc_http_service.cpp`、`initializer/global.h`、`service/grc_service.cpp`
+- 说明这套能力更像是**服务入口层的生命周期管理能力**，而不是全局铺开的基础设施。对这类代码库来说，迁移价值主要体现在：**复用高成本 Graph 实例、减少请求级构建开销、并通过 `reset()` 保证状态隔离**。
 
-- 两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 使用规模较大，说明业务侧存在大量请求态容器、动态上下文、候选集和中间结果缓存。对于 GraphPool 场景，迁移/优化重点不在于简单替换 STL 容器，而在于确保这些请求态数据不会跨请求残留：即 `GraphData`、`VertexContext`、trace protobuf、自定义 map/vector 缓存必须在 `Closure::get()` 后、对象归还前被正确 flush 与 `reset()`。整体来看，`feeda-mv-grc` 的适配收益更高、风险也更集中；`feeda-mv-grg` 可复用同一套检查规则。
+- 从现有 `std` 使用规模看，两个代码库都属于对象和容器使用非常密集的业务系统：  
+  - `feeda-mv-grg`：`std::vector` 1969 次、`std::string` 2443 次、`std::unordered_map` 734 次
+  - `feeda-mv-grc`：`std::vector` 8442 次、`std::string` 7170 次、`std::unordered_map` 2834 次
+- 这意味着如果 Graph 对象内部承载了较重的上下文、缓存、trace、依赖图等状态，那么引入 GraphPool 的收益通常是**明确的**，但前提是：**调用链必须严格保证尾部 `reset()`**，否则复用会放大状态污染风险。
 
 ---
 
-### 2. 代码库详情
+## 2. 代码库详情
 
-#### feeda-mv-grg
+### `feeda-mv-grg`
 
-- 已发现 GraphEngine / GraphPool 相关目标使用点共 3 个文件：
+- 已发现目标库使用点集中在 3 个文件：
+  - `service/grg_service.cpp`
   - `service/grg_http_service.cpp`
-  - `service/grg_service.cpp`
   - `init/global.h`
+- 这组文件的结构很适合做 GraphPool 适配的“标准入口”：
+  - `init/global.h` 适合放全局初始化、池配置、生命周期参数；
+  - `service/grg_service.cpp` 适合承接请求级 Graph 获取、执行和返回；
+  - `service/grg_http_service.cpp` 适合做 HTTP 层路由、异常处理和收尾回收。
+- 现有代码已经有目标技术使用痕迹，可直接作为迁移参考。建议优先把这些文件整理成**“获取-执行-归还”闭环模板**，避免不同入口各自实现一套生命周期逻辑。
 
-- 现有 STL 等价物使用规模：
-  - `std::vector`：1969 次，分布在 356 个文件
-  - `std::string`：2443 次，分布在 425 个文件
-  - `std::unordered_map`：734 次，分布在 205 个文件
+### `feeda-mv-grc`
 
-- 典型代码场景：
-  - `model/model.h`
-    - `predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos)` 以引用方式传递候选集。
-    - 该类接口大概率处于请求处理链路中，需要确认 `candidate_vec` 的生命周期是否只在单次请求内有效。
-  - `model/paddle_model.h`
-    - `predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec, ...) const`
-    - 模型预测侧大量依赖候选集 vector，若这些数据来自 GraphData 或 VertexContext，需要避免在 `graph->reset()` 后继续访问。
-  - `service/grg_service.cpp`
-    - 作为 GRG 服务主入口，应重点检查是否存在与 GRC 一致的调用顺序：
-      - 获取 `GraphEngine`
-      - `try_get(graph_name)`
-      - 注入请求数据
-      - `graph->run(end)`
-      - `closure.get()`
-      - trace / monitor flush
-      - `graph->reset()`
-
-- 初步判断：
-  - `feeda-mv-grg` 已经具备接入 GraphPool 生命周期管理的基础。
-  - 适配重点是对服务入口、模型预测候选集、processor 自定义上下文进行 reset 边界审计，而不是大规模改造容器类型。
-
-#### feeda-mv-grc
-
-- 已发现 GraphEngine / GraphPool 相关目标使用点共 3 个文件：
+- 已发现目标库使用点同样集中在 3 个文件：
   - `service/grc_http_service.cpp`
-  - `service/grc_service.cpp`
   - `initializer/global.h`
-
-- 现有 STL 等价物使用规模：
-  - `std::vector`：8426 次，分布在 1273 个文件
-  - `std::string`：7150 次，分布在 1228 个文件
-  - `std::unordered_map`：2833 次，分布在 638 个文件
-
-- 典型代码场景：
   - `service/grc_service.cpp`
-    - 与技术笔记中的主流程直接对应，是 GraphPool 生命周期的核心适配文件。
-    - 已知关键流程包括：
-      - 通过 `ApplicationContext::get<GraphEngine>("graph_engine")` 获取图引擎。
-      - 按 UA 选择 `graph_name`，如 `default`、`video_immersion`、`searchc_related`、`interest_card` 等。
-      - 调用 `graph_engine->try_get(graph_name)` 获取池化 Graph。
-      - 注入 `REQ_INFO`、`ResultCount`、`ResponseForGrg`、`ResData` 等请求态数据。
-      - `graph->run(end)` 后通过 `Closure::get()` 等待依赖完成。
-      - 在 `graph->reset()` 前执行 trace flush。
-  - `service/grc_http_service.cpp`
-    - 存在对 GraphEngine 图结构的访问，例如：
-      ```cpp
-      std::unordered_map<std::string, std::vector<int>> depend_map;
-      auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
-      ```
-    - 该场景偏图可视化、调试或 HTTP 查询接口，重点要确认 `get_vertexs_message(graph_name)` 返回引用的生命周期是否稳定，以及是否可能被运行态 reset 影响。
-  - `initializer/global.h`
-    - 通常负责全局对象注册或初始化，适合作为 GraphEngine 初始化配置、对象池容量、图配置加载路径的检查入口。
-  - `src/processor/fill_meta.cpp`
-    - 技术笔记中已有 `fill_meta.cpp:691-699` 的 processor reset 示例，可作为业务 processor reset 的参考模式：
-      - 清理自定义上下文中的 map/vector/pb 缓存。
-      - 避免池化 Graph 下一次复用时读到旧状态。
-
-- 初步判断：
-  - `feeda-mv-grc` 是本技术的主要落地点，已经具备较完整的 GraphPool 使用链路。
-  - 迁移潜力主要体现在：
-    - 补齐所有 processor 的 reset 清理。
-    - 统一 `try_get()` 空指针处理。
-    - 固化 trace flush 与 `graph->reset()` 顺序。
-    - 约束 `GraphData::emit()` 返回对象的逃逸行为。
+- 相比 `grg`，`grc` 的 `std` 使用量明显更高，说明请求处理链更复杂、对象更多、状态更重。对于 GraphPool 这类对象池能力来说，`grc` 更像是**高收益候选库**。
+- 现有目标库使用分布说明，`grc` 的入口和初始化层已经具备接入对象池的土壤：
+  - `initializer/global.h` 适合统一配置 pool size、reconstruct、life cycle 等参数；
+  - `service/grc_service.cpp` 和 `service/grc_http_service.cpp` 适合承接 `GraphEngine::get()` / `try_get()` 的实际调用；
+  - 若已有 pool 调用，建议把它们作为“参考实现”，统一成同一种 reset 规范。
 
 ---
 
-### 3. 💡 适用性评估与建议
+## 3. 💡 适用性评估与建议
 
-- **建议 1：以 `service/grc_service.cpp` 作为标准实现，固化 GraphPool 请求生命周期模板**
+- **建议 1：在服务入口统一包装 Graph 获取与归还，保证 `reset()` 不漏执行**
   - 适用文件：
-    - `service/grc_service.cpp`
-    - `service/grg_service.cpp`
-  - 建议内容：
-    - 将 GRC 中已经验证的顺序作为标准：
-      1. 初始化 session context。
-      2. 根据 UA / 场景选择 `graph_name`。
-      3. `ApplicationContext::get<GraphEngine>("graph_engine")`。
-      4. `graph_engine->try_get(graph_name)`。
-      5. 注入 `REQ_INFO`、response、动态超时对象等 GraphData。
-      6. `graph->run(end)`。
-      7. `Closure::get()`。
-      8. GraphMonitor / trace / NEWDAPPER flush。
-      9. `graph->reset()`。
-    - `service/grg_service.cpp` 可对照 `service/grc_service.cpp` 做一致性检查，尤其是 `Closure::get()` 与 `graph->reset()` 的相对顺序。
-  - 预期收益：
-    - 降低 GRG/GRC 两套入口生命周期不一致带来的偶现串包、trace 缺失、脏数据复用问题。
+    - `feeda-mv-grg/service/grg_service.cpp`
+    - `feeda-mv-grg/service/grg_http_service.cpp`
+    - `feeda-mv-grc/service/grc_service.cpp`
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 建议做法：
+    - 将 `GraphEngine::get()` / `GraphEngine::try_get()` 的返回对象封装到 RAII 守卫中；
+    - 在析构或统一收尾路径里触发 `GraphPool::reset()`；
+    - 避免在多个 return 分支里手写归还逻辑。
+  - 价值：
+    - 这是对象池适配最关键的一步，能直接避免“上个请求状态泄漏到下个请求”的串线问题。
 
-- **建议 2：在 `service/grc_http_service.cpp` 中区分“图结构元信息”和“请求态 GraphData”**
+- **建议 2：`try_get()` 用于路由选择，`get()` 用于强依赖路径，别混用**
   - 适用文件：
-    - `service/grc_http_service.cpp`
-  - 已发现代码场景：
-    ```cpp
-    std::unordered_map<std::string, std::vector<int>> depend_map;
-    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
-    ```
-  - 建议内容：
-    - `get_vertexs_message(graph_name)` 返回的 `all_vertex` 如果是图配置/拓扑元信息，可以长期引用，但要避免与单请求 Graph 实例上的 `GraphData`、`VertexContext` 混用。
-    - HTTP 调试接口中构造的 `depend_map`、`colors`、`sub_access_off_vec`、`sub_access_on_vec` 等容器应保持局部变量语义，不要挂到 Graph 或 processor context 上。
-    - 如果后续为了性能将这些结构缓存为静态变量或全局变量，需要确认其是否只包含只读配置，不包含请求态数据。
-  - 预期收益：
-    - 避免调试/可视化接口无意中持有 GraphPool 内部对象引用，降低 reset 后悬挂引用风险。
+    - `feeda-mv-grg/service/grg_http_service.cpp`
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 建议做法：
+    - 对于按 `graph_name`、`product_id`、请求参数选择图实例的逻辑，优先使用 `try_get()`；
+    - 对于确定存在、必须执行的主链路，再使用 `get()`；
+    - 在 HTTP 层把“对象池耗尽”和“路由失败”分开记录日志。
+  - 价值：
+    - 可以避免把容量不足误判成业务配置错误，也能减少排障成本。
 
-- **建议 3：以 `src/processor/fill_meta.cpp` 的 reset 逻辑作为 processor 清理参考，批量审计自定义上下文**
+- **建议 3：在 `global.h` / `initializer/global.h` 里集中管理池配置，不要散落到请求代码中**
   - 适用文件：
-    - `src/processor/fill_meta.cpp`
-    - 其他 processor 目录下持有 `std::vector`、`std::unordered_map`、protobuf、候选集缓存的文件
-  - 参考代码：
-    - `src/processor/fill_meta.cpp:691-699`
-    - 该处已经体现了 processor reset 中清理 `gcms_common_pb_meta_map` 等自定义上下文的模式。
-  - 建议内容：
-    - 搜索 processor 中的以下成员或上下文缓存：
-      - `std::vector`
-      - `std::unordered_map`
-      - `std::map`
-      - `std::string`
-      - protobuf message
-      - `DynamicStruct`
-      - `GraphData*`
-      - `mutable_value<T>()` / `emit<T>()` 返回指针
-    - 对所有会跨 vertex 调用保存的请求态字段补齐 reset 清理。
-    - reset 中优先使用明确语义：
-      ```cpp
-      vec.clear();
-      map.clear();
-      pb.Clear();
-      ptr = nullptr;
-      ```
-    - 对大容量容器谨慎使用 `shrink_to_fit()`，避免每次请求释放内存导致性能抖动。
-  - 预期收益：
-    - 直接降低 GraphPool 复用带来的脏状态残留，是最核心的适配动作。
+    - `feeda-mv-grg/init/global.h`
+    - `feeda-mv-grc/initializer/global.h`
+  - 建议做法：
+    - 统一放置 pool size、reconstruct、life cycle 相关配置；
+    - 初始化阶段完成对象池创建，不要在每次请求里动态配置；
+    - 若存在多环境配置，建议在启动时完成读取和校验。
+  - 价值：
+    - 能让池行为稳定可控，也更方便压测和回滚。
 
-- **建议 4：检查 `model/model.h`、`model/paddle_model.h` 中候选集引用是否会逃逸到 Graph reset 之后**
+- **建议 4：在有 trace flush、异常处理、early return 的 HTTP 分支里，优先保证“先收尾，再退出”**
   - 适用文件：
-    - `model/model.h`
-    - `model/paddle_model.h`
-  - 已发现代码场景：
-    ```cpp
-    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
-    ```
-    ```cpp
-    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
-                                  general_predict::PredictSample* predict_sample = nullptr,
-                                  bool is_from_cube = true) const
-    ```
-  - 建议内容：
-    - 这些接口通过非 const 引用传递候选集，说明模型预测可能直接修改请求态数据。
-    - 需要确认：
-      - `candidate_vec` 是否来自 GraphData 或 VertexContext。
-      - `RidTmpInfoPtr` 指向对象是否由 Graph 生命周期管理。
-      - 模型内部是否异步保存了 `candidate_vec`、`RidTmpInfoPtr` 或 `PredictSample*`。
-    - 若存在异步预测或延迟回调，必须保证回调完成早于 `Closure::get()` 返回，且不得在 `graph->reset()` 后继续访问这些引用。
-  - 预期收益：
-    - 防止模型预测链路持有旧请求候选集，避免召回/排序结果串包。
+    - `feeda-mv-grg/service/grg_http_service.cpp`
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 建议做法：
+    - 任何异常分支、鉴权失败分支、参数校验失败分支，都要确认是否已经完成对象归还；
+    - 如果对象后续还要做 trace flush，建议先把必要数据复制到局部变量，再归还对象。
+  - 价值：
+    - 这类文件通常是最容易漏 `reset()` 的地方，也是池化对象污染最常见的入口。
 
-- **建议 5：在 `initializer/global.h` / `init/global.h` 中补充 GraphEngine 初始化与对象池容量的可观测配置**
+- **建议 5：优先在 `grc` 做收益验证，再回推到 `grg`**
   - 适用文件：
-    - `initializer/global.h`
-    - `init/global.h`
-  - 建议内容：
-    - 检查 GraphEngine 注册名是否统一为 `"graph_engine"`，避免服务入口获取失败。
-    - 检查 graph_name 与配置文件中的图名是否一一对应，例如：
-      - `default`
-      - `video_immersion`
-      - `searchc_related`
-      - `searchc_immersive_related`
-      - `interest_card`
-    - 建议在初始化阶段输出：
-      - 图名列表
-      - 每张图 vertex 数量
-      - GraphPool 初始容量/最大容量
-      - 配置加载失败原因
-    - 对 `try_get()` 失败场景增加按 graph_name 维度的错误计数。
-  - 预期收益：
-    - 提升图配置错误、池耗尽、图名不匹配问题的排查效率。
+    - `feeda-mv-grc/service/grc_service.cpp`
+    - `feeda-mv-grc/service/grc_http_service.cpp`
+  - 建议做法：
+    - 先在 `grc` 的高频请求链路上验证对象池带来的延迟改善、构建次数下降、异常率变化；
+    - 若效果稳定，再把同样的生命周期模板迁移到 `grg`。
+  - 价值：
+    - `grc` 的容器和字符串使用量更高，更适合做对象池收益验证样本。
 
 ---
 
-### 4. ⚠️ 引入风险与限制
+## 4. ⚠️ 引入风险与限制
 
-- **风险 1：`graph->reset()` 顺序错误会导致 trace 丢失或并发访问已清理数据**
-  - 必须保证：
-    - `Closure::get()` 在 `graph->reset()` 前完成。
-    - `print_trace_data`、`print_trace_data_common_adjust`、GraphMonitor、NEWDAPPER 等观测逻辑在 `graph->reset()` 前执行。
-  - 如果先 reset 再打印 trace，会直接清空排障证据；如果异步 vertex 未完成就 reset，可能出现并发访问已清理 GraphData 的问题。
+- **风险 1：`reset()` 漏调用会导致跨请求状态污染**
+  - 这是 GraphPool 最核心的风险。
+  - 一旦异常、提前返回、插件失败分支没有走到 `reset()`，下次复用就可能继承上一次请求的残留状态。
 
-- **风险 2：`GraphData::emit()`、`mutable_value<T>()` 返回对象不能逃逸到 reset 之后**
-  - 高风险场景包括：
-    - 将 `GraphData*` 存入全局变量或静态变量。
-    - 将 `DynamicStruct*`、protobuf 指针、候选集 vector 引用传入异步任务。
-    - processor context 中缓存上一次请求的指针。
-  - 对 `service/grc_service.cpp`、`service/grg_service.cpp`、`model/paddle_model.h` 这类跨模块传递请求态对象的路径要重点检查。
+- **风险 2：对象不能跨越请求边界或异步边界长期持有**
+  - 如果 `GraphPool::PooledObject` 被传到异步回调、跨线程任务或长生命周期缓存里，生命周期就会失控。
+  - 这类用法会破坏“请求结束即归还”的前提。
 
-- **风险 3：STL 容器清理策略不当可能引入性能抖动**
-  - 两个代码库中 STL 使用规模较大，尤其是 `feeda-mv-grc`：
-    - `std::vector` 8426 次
-    - `std::string` 7150 次
-    - `std::unordered_map` 2833 次
-  - reset 时不建议无脑释放容量：
-    - `clear()` 通常足够清理请求态元素，并保留容量供下一次请求复用。
-    - `shrink_to_fit()`、重新构造大 map/vector 可能导致频繁内存分配，影响 P99 延迟。
-  - 对超大临时容器可以单独设计阈值策略，例如容量超过历史均值数倍时再释放。
+- **风险 3：`try_get()` 语义容易被误解为“返回失败就是业务错误”**
+  - 实际上它也可能只是池资源不足或路径选择失败。
+  - 需要在日志和指标上区分“取不到对象”和“路由不命中”。
 
-- **风险 4：GRG 与 GRC 入口相似但终点数据和图名策略可能不同**
-  - `feeda-mv-grc` 已明确存在 UA 到 graph_name 的映射以及不同终点数据：
-    - `GrcResponse`
-    - `ClusterData`
-    - `InterestCardData`
-    - `IsWritePersonalisedCacheSucc`
-  - `feeda-mv-grg` 虽可参考 GRC 生命周期，但不能直接照搬终点数据和业务图名。
-  - 迁移时应只复用生命周期模板，不应复用 GRC 的具体 graph_name、GraphData 名称和 response preset 逻辑。
+- **风险 4：生命周期 / reconstruct 配置不合理会抵消收益**
+  - 如果配置过于激进，可能导致对象频繁重建，失去池化意义；
+  - 如果配置过于宽松，又可能让脏状态在池中停留过久。
+  - 迁移后必须结合压测和 trace 观察结果做校准。
+
+---
+
+如果你愿意，我还可以继续帮你补一版 **“适配落地改造清单”**，直接按 `grg/grc` 两个仓库拆成可执行的修改项。
 
 ---
 *本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
