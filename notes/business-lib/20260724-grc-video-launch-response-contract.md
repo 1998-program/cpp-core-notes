@@ -143,3 +143,253 @@ data
 ## 7. 结论
 
 本周建议把 GRC video_launch 的排查边界从“召回/DataMerge 是否产出候选”后移到“ResponseForGrg 是否完成最终契约写入”。`FillMetaPipelineFunction` 解决内容元数据可用性，`ResponseForGrgFunction` 解决跨服务返回结构可用性；两者中间由 `grg_response.conf` 的 depend/emit 连接。后续如果要做自动化扫描，可以围绕三类规则：graph 配置是否声明依赖、出口函数是否 Clear 后重写关键字段、ext_msg 是否受实验条件遗漏。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-07-25T19:01:50.686964
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+## 业务代码库适配分析报告
+
+### 1. 分析摘要
+
+- 从扫描结果看，目标技术在两个业务代码库中**已经有少量落地**，但整体覆盖率仍然很低。`feeda-mv-grg` 仅发现 1 个文件使用，`feeda-mv-grc` 发现 10 个文件使用；相比之下，两个代码库中 `std::vector`、`std::string`、`std::unordered_map` 的使用规模非常大，说明当前业务主体仍以标准库容器为主，目标技术尚未形成体系化迁移。
+
+- 从迁移潜力看，`feeda-mv-grc` 的收益空间更大：它是召回汇聚服务，存在大量 graph vertex、候选队列、元数据补齐、响应组装和实验特征写入逻辑，`std::vector` 使用达到 8520 次、`std::unordered_map` 使用达到 2860 次。结合本文分析的 `FillMetaPipelineFunction`、`ResponseForGrgFunction` 等热点链路，候选列表、依赖表、ext/attachment 特征缓存等场景都具备进一步优化容器分配、哈希查找和内存复用的潜力。`feeda-mv-grg` 虽然目标技术使用更少，但作为序列生成服务，模型预测、排序、多样性规则中大量使用 `std::vector<RidTmpInfoPtr>`，也适合从低风险的局部热点开始试点。
+
+---
+
+### 2. 代码库详情
+
+#### feeda-mv-grg：序列生成服务
+
+- **目标技术使用现状**
+  - 已发现目标库使用：1 个文件。
+  - 参考文件：
+    - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
+  - 说明该服务中已经存在少量目标技术接入经验，可以作为后续迁移时的代码风格、依赖引入方式、编译兼容性参考。
+
+- **std 等价物使用规模**
+  - `std::vector`：1969 次，分布在 356 个文件。
+  - `std::string`：2443 次，分布在 425 个文件。
+  - `std::unordered_map`：734 次，分布在 205 个文件。
+  - 容器使用分布较广，但数量明显小于 GRC，建议优先选择模型预测、多样性规则、候选列表处理等热点路径做点状优化，而不是全局替换。
+
+- **典型业务场景**
+  - `model/model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+    - `candidate_vec` 是模型预测入口参数，属于典型高频读写候选列表。
+    - 如果目标技术是高性能 vector / small-vector 类容器，需要评估接口兼容性，因为该接口是虚函数，直接改签名会影响所有派生类。
+
+  - `model/paddle_model.h`
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) {
+        return 0;
+    }
+    ```
+    ```cpp
+    int predict_with_tensor_input(std::vector<RidTmpInfoPtr>& candidate_vec,
+                general_predict::PredictSample* predict_sample = nullptr,
+                bool is_from_cube = true) const {
+        return predict<ModelDependInput>(candidate_vec, predict_sample, is_from_cube);
+    }
+    ```
+    - 该路径涉及模型预测与 tensor 输入组装，候选数量较大时，`std::vector` 扩容、拷贝、遍历成本可能成为局部热点。
+    - 由于函数链路较长，建议先通过 perf、火焰图或现有耗时日志确认 `candidate_vec` 的构造与扩容是否显著，再决定是否迁移。
+
+#### feeda-mv-grc：召回汇聚服务
+
+- **目标技术使用现状**
+  - 已发现目标库使用：10 个文件。
+  - 扫描结果中列出的代表文件包括：
+    - `operator/adjuster/sketchy/duanju_adjuster.cpp`
+    - `processor/new_adjust/precise_score_init.cpp`
+    - `operator/adjuster/function_queue/youzhi_queue_adjust.cpp`
+    - `processor/multi_factor/ltr_factor_gen_scene.cpp`
+    - `processor/new_adjust/precise_score_init_first_refresh.cpp`
+  - 这些文件多集中在 adjuster、score init、factor generation 等业务计算路径，说明 GRC 已经有一定目标技术接入基础，可优先复用其封装方式和工程实践。
+
+- **std 等价物使用规模**
+  - `std::vector`：8520 次，分布在 1290 个文件。
+  - `std::string`：7267 次，分布在 1247 个文件。
+  - `std::unordered_map`：2860 次，分布在 646 个文件。
+  - 容器使用规模很大，且 GRC 处于请求主链路，候选聚合、graph depend、metadata fill、response assembly 都存在大量临时容器和哈希映射，迁移收益潜力高于 GRG。
+
+- **典型业务场景**
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
+    for (int i = 0; i < all_vertex.size(); ++i) {
+        for (auto &depend : all_vertex[i].depends) {
+    ```
+    - 该逻辑用于 graph 依赖关系展示或分析，`depend_map` 是字符串到顶点编号列表的映射。
+    - 如果请求频繁或 graph 较大，`std::unordered_map<std::string, std::vector<int>>` 会产生较多小对象分配和哈希查找成本。
+    - 适合评估替换为目标高性能 hash map / flat map 类容器，同时对 `vector<int>` 做 `reserve`。
+
+  - `service/grc_http_service.cpp`
+    ```cpp
+    static std::vector<std::string> colors{"#FFB6C1", "#DC143C", "#DB7093", ...};
+    ```
+    - 这是静态配置型数据，性能问题通常不大。
+    - 更适合保持现状，或者仅在代码规范层面改为 `std::array` / `string_view` 类只读结构，没必要作为目标技术迁移优先级。
+
+  - `service/grc_http_service.cpp`
+    ```cpp
+    std::string resp_str;
+
+    std::vector<std::string> sub_access_off_vec;
+    std::vector<std::string> sub_access_on_vec;
+    const std::string *sub_access_off_vec_str = cntl->http_request().uri().GetQuery("off");
+    const std::string *sub_access_on_vec_str = cntl->http_request().uri().GetQuery("on");
+    ```
+    - 这是 HTTP 调试或控制参数解析场景，涉及 query string 拆分、临时字符串列表。
+    - 如果该接口不是高 QPS 核心链路，迁移优先级不高；如果用于线上频繁访问的 graph debug API，可考虑减少字符串拷贝。
+
+  - `src/processor/video_launch/response_for_grg.cpp`
+    - 虽然扫描片段没有列出该文件中的容器使用细节，但根据技术笔记，该文件是 video_launch 最终响应出口，负责：
+      - 遍历 `_res_content_vec`
+      - 写入 content
+      - 写入 attachment
+      - 写入 ext_msg / dnn_q / average_q
+      - 输出 `_truncated_effect_queue_for_pcs`
+    - 这是 GRC 与 GRG 的跨服务契约最终写口，属于比普通调试接口更值得关注的性能敏感路径。
+    - 如果该文件中存在大量临时 `std::vector`、`std::string`、`std::unordered_map`，建议作为 GRC 侧重点优化对象。
+
+---
+
+### 3. 💡 适用性评估与建议
+
+- **建议 1：优先在 GRC 的响应出口链路做容器分配优化**
+  - 重点文件：
+    - `src/processor/video_launch/response_for_grg.cpp`
+  - 适用场景：
+    - `_res_content_vec` 遍历。
+    - content / attachment / ext_msg 组装。
+    - DNN Q、average_q、cache 标记等诊断字段写入。
+    - `_truncated_effect_queue_for_pcs` 生成。
+  - 建议：
+    - 对结果列表、截断队列、临时特征列表等容器增加明确 `reserve()`。
+    - 对只在函数内部使用、生命周期短的临时 map/list，评估替换为目标高性能容器。
+    - 对字符串 key 的 ext/attachment 写入路径，优先排查是否存在重复构造 `std::string`，可考虑使用 `string_view` 或目标库的轻量字符串视图。
+  - 原因：
+    - `ResponseForGrgFunction` 会 `response->Clear()` 后重新组装响应，是 GRC 到 GRG 的最终契约出口。
+    - 该路径直接影响请求尾延迟和响应字段完整性，优化收益更容易体现在主链路指标上。
+
+- **建议 2：在 GRC 的 graph 依赖构建逻辑中评估替换 hash map**
+  - 重点文件：
+    - `service/grc_http_service.cpp`
+  - 典型代码：
+    ```cpp
+    std::unordered_map<std::string, std::vector<int>> depend_map;
+    ```
+  - 建议：
+    - 如果该接口在生产环境高频调用，可将 `std::unordered_map<std::string, std::vector<int>>` 评估替换为目标高性能 hash map。
+    - 在构建 `depend_map` 前，如果可以获取 vertex 数量，建议增加：
+      ```cpp
+      depend_map.reserve(all_vertex.size());
+      ```
+    - 对 `std::vector<int>` value，如果单个 depend 对应多个 vertex，可按历史统计或平均依赖数预留容量。
+  - 原因：
+    - 该代码存在字符串 hash、map 插入、vector 扩容三类成本。
+    - GRC 中 `std::unordered_map` 使用达到 2860 次，说明类似模式可能广泛存在，适合作为 hash map 迁移样板。
+
+- **建议 3：GRG 侧不要直接修改模型接口签名，先从函数内部临时容器试点**
+  - 重点文件：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 典型代码：
+    ```cpp
+    virtual int predict(std::vector<RidTmpInfoPtr>& candidate_vec, uint32_t pos) = 0;
+    ```
+  - 建议：
+    - 不建议第一阶段把虚函数参数从 `std::vector<RidTmpInfoPtr>&` 改成目标容器类型。
+    - 可优先优化 `predict` 内部派生出的临时列表、特征数组、过滤结果数组。
+    - 如果目标技术支持与 `std::vector` 类似的 view/span，优先使用非 owning view 减少拷贝，而不是修改所有调用方。
+  - 原因：
+    - `model/model.h` 是抽象接口，改签名会造成大范围 ABI/API 变更。
+    - `model/paddle_model.h` 下游调用链较长，涉及模板 `predict<ModelDependInput>`，直接迁移风险高。
+    - GRG 目前目标技术仅发现 1 个文件使用，工程经验较少，应以低侵入方式试点。
+
+- **建议 4：复用 GRC 已有目标技术使用文件作为迁移样板**
+  - 可参考文件：
+    - `operator/adjuster/sketchy/duanju_adjuster.cpp`
+    - `processor/new_adjust/precise_score_init.cpp`
+    - `operator/adjuster/function_queue/youzhi_queue_adjust.cpp`
+    - `processor/multi_factor/ltr_factor_gen_scene.cpp`
+    - `processor/new_adjust/precise_score_init_first_refresh.cpp`
+  - 建议：
+    - 先梳理这些文件中的目标技术引入方式，包括头文件、命名空间、编译依赖、容器初始化方式。
+    - 将其中稳定运行的写法沉淀为迁移模板，再推广到 `response_for_grg.cpp`、`fill_meta_pipeline.cpp` 等核心路径。
+  - 原因：
+    - GRC 已有 10 个文件使用目标技术，说明编译链路和运行环境大概率已经具备基础支持。
+    - 直接复用内部已有实践，比从外部文档重新引入更安全。
+
+- **建议 5：FillMeta 链路优先优化批处理容器和字符串元数据**
+  - 重点文件：
+    - `src/processor/video_launch/fill_meta_pipeline.cpp`
+  - 适用场景：
+    - `RidTmpInfo*` 批量传递。
+    - `ChannelPublisher<RidTmpInfo*>` 发布。
+    - GCMS 返回元数据写入。
+    - card type 过滤，例如当前 `pipeline_card_type` 仅包含 `241`。
+  - 建议：
+    - 对批量候选容器预估容量，避免 pipeline 中反复扩容。
+    - 对 title、media、card metadata 等字段，排查是否存在不必要的 `std::string` 拷贝。
+    - 如果 GCMS 元数据只读透传，可评估使用轻量 string view，避免从外部结果到内部结构的重复构造。
+  - 原因：
+    - FillMeta 是响应前元数据可用性的关键节点。
+    - 元数据字段通常字符串较多，`std::string` 在 GRC 中使用达到 7267 次，是潜在优化重点。
+
+---
+
+### 4. ⚠️ 引入风险与限制
+
+- **风险 1：跨服务 protobuf 契约不能因容器替换改变语义**
+  - `src/processor/video_launch/response_for_grg.cpp` 是 GRC 到 GRG 的最终返回出口。
+  - 迁移时必须保证：
+    - content 顺序不变。
+    - attachment key/value 不变。
+    - ext_msg / dnn_q 写入条件不变。
+    - `_truncated_effect_queue_for_pcs` 截断结果不变。
+  - 容器替换不能引入遍历顺序变化，尤其是从 `std::map` 或有序逻辑迁移到 hash 类容器时要特别谨慎。
+
+- **风险 2：不要盲目全量替换 `std::vector`**
+  - 两个代码库中 `std::vector` 使用量很大：
+    - GRG：1969 次。
+    - GRC：8520 次。
+  - 但并非所有 vector 都是性能瓶颈。
+  - 对静态配置、小规模列表、非主链路调试接口，例如 `service/grc_http_service.cpp` 中的静态颜色数组，迁移收益有限，反而会增加维护成本。
+
+- **风险 3：接口层和虚函数签名迁移成本高**
+  - 例如：
+    - `model/model.h`
+    - `model/paddle_model.h`
+  - 这些文件中的 `std::vector<RidTmpInfoPtr>&` 已经成为模型预测接口的一部分。
+  - 如果直接替换参数类型，会影响所有实现类、调用方和测试代码。
+  - 建议第一阶段只优化函数内部临时容器，接口层保持 `std::vector` 兼容。
+
+- **风险 4：hash 容器替换可能影响内存峰值和调试可读性**
+  - 高性能 hash map 通常通过开放寻址、flat storage 或更高装载策略提升性能，但可能改变：
+    - 内存占用曲线。
+    - rehash 行为。
+    - 迭代器失效规则。
+    - crash dump 中的数据可读性。
+  - 对 `service/grc_http_service.cpp` 这类 graph depend 可视化、debug 相关代码，应优先保证稳定性和可排查性，只有在确认其为高频路径后再迁移。
+
+---
+
+### 5. 结论
+
+- `feeda-mv-grc` 更适合作为目标技术的主要适配代码库，原因是容器使用规模大、主链路中候选聚合和响应组装逻辑重，且已经存在 10 个文件的目标技术使用经验。
+- `feeda-mv-grg` 适合做低侵入试点，优先优化模型预测和多样性规则内部的临时容器，不建议一开始修改 `model/model.h` 这类核心接口。
+- 推荐迁移顺序：
+  - 先参考 `processor/new_adjust/precise_score_init.cpp`、`operator/adjuster/function_queue/youzhi_queue_adjust.cpp` 等已有目标技术使用文件。
+  - 再选择 `src/processor/video_launch/response_for_grg.cpp` 和 `src/processor/video_launch/fill_meta_pipeline.cpp` 中的局部热点做 A/B 验证。
+  - 最后再评估是否推广到更通用的 graph depend、metadata map、模型特征缓存等场景。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
