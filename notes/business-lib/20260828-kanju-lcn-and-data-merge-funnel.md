@@ -131,3 +131,134 @@ data
 
 ## 7. 说明
 本次没有读取 KU 正文，业务背景需人工补充；本笔记只基于本地源码和计划文件整理。
+
+---
+
+## 七、业务代码库适配分析
+> **分析时间**：2026-09-01T19:18:12.372940
+> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+
+# 业务代码库适配分析报告
+
+## 1. 分析摘要
+
+- 从扫描结果看，这套“看剧 / 合集 / 短剧 LCN 与扶持策略”并不是完全陌生的业务能力，而是已经在两个业务库里出现了**相邻的落点**：  
+  - `feeda-mv-grg` 侧已有 `process/cal_kanju_prefer.cpp`、`process/cal_kanju_kezi_prefer.cpp`、`process/get_kanju_novel_vec.cpp` 等看剧相关逻辑；
+  - `feeda-mv-grc` 侧已有 `processor/compute_duanju_explore_lcn_info.cpp`、`processor/filter/duanju_video_filter_operator.cc` 等短剧与 LCN 相关链路。  
+  这说明该策略具备**直接接入的业务基础**，适合做增量改造，而不是从零重建。
+
+- 从工程规模看，两库对 STL 的使用都很重：  
+  - `feeda-mv-grg` 中 `std::vector` / `std::string` / `std::unordered_map` 使用量分别为 1969 / 2443 / 734 次；
+  - `feeda-mv-grc` 中分别为 8520 / 7267 / 2860 次。  
+  这表明代码形态本身已经适合承载“多维特征 + 规则分层 + 漏斗观测”的实现方式。若要迁移 LCN 惩罚、合集识别和漏斗日志能力，**收益主要体现在策略统一、观测补齐、配置化增强**，而不是底层数据结构层面的替换收益。
+
+---
+
+## 2. 代码库详情
+
+### 2.1 `feeda-mv-grg`：序列生成服务
+
+- 扫描到的相关文件有 6 个，说明该库里已经存在较完整的看剧/短剧/合集方向的业务分支：
+  - `operator/diversity/mcv_recpage_tgi_manju_set2setq_rule.cpp`
+  - `operator/diversity/douyin_popular_soft_rule.cpp`
+  - `process/cal_kanju_kezi_prefer.cpp`
+  - `process/get_kanju_novel_vec.cpp`
+  - `process/cal_kanju_prefer.cpp`
+- 这些文件更偏向**候选排序、偏好计算、规则去重、多样性控制**，与技术笔记里的 `KanjuLcnPreciseAdjuster` 很匹配。  
+- 适配潜力：
+  - `cal_kanju_prefer.cpp`、`cal_kanju_kezi_prefer.cpp` 适合承接 **LCN 惩罚因子**；
+  - `mcv_recpage_tgi_manju_set2setq_rule.cpp`、`douyin_popular_soft_rule.cpp` 适合承接 **合集/短剧的多样性与 soft rule 调整**；
+  - `get_kanju_novel_vec.cpp` 可作为**特征向量扩展**的入口，用于挂载 `collection_id`、`is_heji`、`lcn_adjuster_factor` 等字段。
+- 工程特征上，该库 STL 使用非常普遍，说明新增 `q` 值、实验开关、词典参数、分层 factor 等结构不会破坏既有编码风格。
+
+### 2.2 `feeda-mv-grc`：召回汇聚服务
+
+- 扫描到的相关文件有 3 个，命中更直接：
+  - `data/base.h`
+  - `processor/filter/duanju_video_filter_operator.cc`
+  - `processor/compute_duanju_explore_lcn_info.cpp`
+- 其中：
+  - `compute_duanju_explore_lcn_info.cpp` 与笔记中的 LCN 计算链路最贴近，可作为 **LCN 信息计算/汇总** 的直接参考；
+  - `duanju_video_filter_operator.cc` 更适合承接 **短剧过滤、分流、扶持前置条件判断**；
+  - `data/base.h` 适合作为 **公共数据结构扩展点**，例如加入 `collection_id`、`is_heji`、`duanju` 标识、三段 q 值、session 因子、漏斗统计字段。
+- 该库 STL 使用量更大，说明它本身是一个偏数据流处理、聚合、过滤的高频业务仓。对这类库来说，LCN 和漏斗日志的接入成本通常较低，适合先做：
+  - 数据结构补字段
+  - 过滤链路打点
+  - 聚合层输出观测值
+  - 再逐步引入策略开关
+
+---
+
+## 3. 💡 适用性评估与建议
+
+- **优先在 `feeda-mv-grc/processor/compute_duanju_explore_lcn_info.cpp` 落地 LCN 计算逻辑**
+  - 建议把 `collection_id`、`is_heji`、`get_is_duanju()`、long/recent/latest q、session_q 统一封装成一个中间结果结构。
+  - 这个文件最适合做“**LCN 信息生产者**”，后续 `duanju_video_filter_operator.cc` 和汇聚逻辑直接消费。
+  - 如果当前是散落的条件判断，建议整理成一个轻量结构体，避免每个调用点重复解析。
+
+- **在 `feeda-mv-grc/processor/filter/duanju_video_filter_operator.cc` 中把 `lcn_adjuster_factor` 作为过滤/排序因子，而不是最终扶持结果**
+  - 这是最容易产生误解的点：笔记里已经明确 `lcn_adjuster_factor` 是 item 级惩罚结果，不等于扶持配额。
+  - 建议这里只做：
+    - 合集/短剧识别
+    - 低活用户与实验开关判断
+    - 根据 factor 做过滤或降权
+  - 不要把 quota 逻辑塞进过滤器，否则会让职责边界变乱。
+
+- **在 `feeda-mv-grc/data/base.h` 补齐统一数据模型，降低跨文件字段漂移**
+  - 建议增加统一字段承载：
+    - `collection_id`
+    - `is_heji`
+    - `is_duanju`
+    - `lcn_long_q` / `lcn_recent_q` / `lcn_latest_q`
+    - `lcn_session_q`
+    - `lcn_adjuster_factor`
+  - 这样 `grg` 和 `grc` 两侧都能使用一致的数据口径，减少多处拼装字符串或临时 map 的开销。
+  - 由于 STL 使用已经很重，建议优先用结构体 + 小型容器，而不是继续扩散 `unordered_map<string, string>` 这种松散表示。
+
+- **在 `feeda-mv-grg/process/cal_kanju_prefer.cpp` 和 `process/cal_kanju_kezi_prefer.cpp` 中接入 LCN 惩罚因子**
+  - 这两个文件属于看剧偏好计算核心，适合把 `lcn_adjuster_factor` 作为：
+    - 偏好分的乘子
+    - 召回后重排的修正项
+    - 合集/短剧重复消费的抑制项
+  - 如果当前已有基于“历史偏好”或“内容类型”的分数模型，LCN 因子可以作为后处理项接入，改动风险较小。
+  - 可参考 `process/get_kanju_novel_vec.cpp` 的向量组织方式，把因子作为特征维度之一，而不是临时变量。
+
+- **在 `feeda-mv-grg/operator/diversity/mcv_recpage_tgi_manju_set2setq_rule.cpp` 和 `douyin_popular_soft_rule.cpp` 中补充合集/短剧多样性约束**
+  - 如果这两个规则已经负责热门 soft rule 或多样性控制，可以把 `heji` 和 `duanju` 作为独立维度参与分桶。
+  - 这与技术笔记中“保量 / 非保量 / 兜底三层合并”的思路一致：  
+    先保证基础覆盖，再对合集和短剧做软约束，最后再用兜底策略补齐。
+  - 适合做“**扶持配额的分发辅助**”，而不是重写主排序。
+
+---
+
+## 4. ⚠️ 引入风险与限制
+
+- **职责边界容易混淆**
+  - `lcn_adjuster_factor` 是惩罚/调节因子，不是扶持结果。
+  - 如果在 `filter`、`prefer`、`merge` 三层都直接操作 quota，很容易造成重复放大或重复衰减。
+
+- **业务口径未完全闭环**
+  - 技术笔记已说明本次没有成功读取 KU 正文，实验目标、收益口径、扶持定义仍需人工补充。
+  - 如果没有统一口径，`heji`、`duanju`、`LCN` 三者的边界很容易在不同库里实现不一致。
+
+- **漏斗日志必须成对看**
+  - `[fsq_1400]` 有输入和输出两段，`Merge Video Stats` 也需要结合看。
+  - 只看最终输出，容易误判是策略无效；实际上可能是上游输入分布、实验命中率或过滤条件变化导致。
+
+- **热路径性能要控制额外字段与查表开销**
+  - 虽然 STL 使用广泛，但 LCN 逻辑天然会带来更多条件分支、字典读取和字段搬运。
+  - 若在 `compute_duanju_explore_lcn_info.cpp` 或 `cal_kanju_prefer.cpp` 中频繁做字符串 key 查找，可能影响召回/排序链路延迟，建议提前缓存或预计算。
+
+---
+
+## 5. 结论
+
+- 这套策略在 `feeda-mv-grg` 和 `feeda-mv-grc` 中**都有明确的业务落点**，属于适合增量接入的能力。
+- 最优路径不是全局重构，而是：
+  - `grc` 负责 **LCN 识别 + 过滤 + 数据模型补齐**
+  - `grg` 负责 **偏好修正 + 多样性控制 + 候选分发**
+  - 两侧共同补 **输入/输出漏斗日志**
+- 如果后续要推进迁移，建议先从 `processor/compute_duanju_explore_lcn_info.cpp`、`processor/filter/duanju_video_filter_operator.cc`、`process/cal_kanju_prefer.cpp` 三个点做最小闭环。
+
+---
+*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
