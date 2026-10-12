@@ -1,0 +1,18 @@
+# 只保留笔记仓库内容：README.md / ai-tools/ / notes/ / test/ / pushed_history.json
+# /root 同时是家目录，忽略一切非仓库内容
+*
+
+# 白名单：仓库资产
+!README.md
+!ai-tools/
+!ai-tools/**
+!notes/
+!notes/**
+!test/
+!test/**
+!pushed_history.json
+!.gitignore
+
+# 备份/临时
+_backup_cppnotes_20261012/
+.gitignore.tmp
