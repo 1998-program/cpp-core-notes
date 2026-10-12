@@ -19,7 +19,7 @@
 
 入口链路从 `src/main.cpp` 开始：服务初始化日志、实验管理、funnel 后，创建 `baidu::rpc::Server`，再注册 `GenericGRGService` 和 HTTP graph view 服务。
 
-关键证据：
+证据来源：
 
 - `src/main.cpp:60-79`：创建 server，设置协议与线程选项，`AddService(&grg_service)` 注册 RPC 服务。
 - `src/service/grg_service.h:14-21`：`GenericGRGService` 继承 `feed::grc::GRCService`，实现 `query()`。
@@ -115,6 +115,7 @@ stop
 @enduml
 ```
 
+```infographic
 infographic list-grid-badge-card
 data
   title 关键配置节点
@@ -134,9 +135,10 @@ data
       icon mdi/view-grid-plus
     - label GRGResponse
       desc NewResponseFunction 最终响应数据
-      icon mdi/reply-all-outline
+      icon mdi/export
 theme
   palette #3d5a80 #2d6a4f #c2410c
+```
 
 <div class="mvgrg-card">
 <div class="meta">Pitfall Card</div>
