@@ -1,4 +1,8 @@
 ---
+<!-- topic-nav:start -->
+> 主题：`base/bthread-future` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260528-bthread-async-fan-out-future-join-usage-deep-dive.md)
+<!-- topic-nav:end -->
+
 title: bthread 在 feeda-mv-grc 中的窄域用法深挖：bthread_async + Future + bthread::Mutex
 生成时间: 2026-05-21T20:00:47+08:00
 代码库路径:
@@ -150,8 +154,4 @@ Redis 也采用类似模型：`src/plugin/redis.cpp:45-55` 在请求数大于 1 
 - 未展开 brpc/bthread 源码验证 work stealing 的具体实现和当前线上版本差异；如需进一步深挖，应定位第三方依赖中的 `bthread/task_group.*`。
 - 未枚举所有 `bthread_async` 点，只抽取了 feeda-mv-grc 中的代表性路径；后续可用脚本生成完整清单并按“RPC / CPU / 后台循环 / 锁”分类。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T18:22:55.800610
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260521-bthread-usage-deep-dive.md)。

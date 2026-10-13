@@ -1,4 +1,8 @@
 # news_updates_dibar NewDiversityMerge 到 NewResponseFunction 输出链
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 主题来源：未发现显式 daily-plan 文件，按周一兜底主题生成。内网 KU 检索未参与，本篇以代码库检索证据为准，需人工补充线上实验与配置覆盖情况。
 

@@ -1,4 +1,8 @@
 # 2026-06-26 业务库笔记：GRC 保量优先与低活兴趣配额业务链路
+<!-- topic-nav:start -->
+> 主题：`business/quota-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260626-grc-datamerge-baoliang-quota.md)
+<!-- topic-nav:end -->
+
 
 > 今日未发现 daily-plan 文件，按 Friday fallback 选题分析 GRC `DataMergeFunction` / `BaoliangMergeFunction` 的业务语义。内网/KU 补充资料未参与生成，业务背景需人工补充；以下结论来自代码库检索。
 

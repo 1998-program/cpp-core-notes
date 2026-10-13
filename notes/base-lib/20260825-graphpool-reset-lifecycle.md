@@ -1,4 +1,8 @@
 # 2026-08-25 周二代码理解：GraphPool 复用与 reset 生命周期
+<!-- topic-nav:start -->
+> 主题：`base/graphpool-reset` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260827-graphpool-try-get-run-reset-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-25  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的历史候选项；本次没有独立的当日 daily-plan 可直接读取，KU/业务背景需人工补充。  
@@ -125,126 +129,4 @@ list-column-done-list
 
 > 说明：当前运行环境没有直接展开代码仓库源码正文，以上代码路径来自 daily-plan 的候选证据摘要；KU/源码正文需人工补充。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-08-26T19:03:09.891842
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-# 业务代码库适配分析报告
-
-## 1. 分析摘要
-
-- `GraphPool + reset` 这一套机制，适合**“构图/执行成本高、但对象结构可复用、且生命周期边界清晰”**的业务场景。它的核心价值不在于“减少一次 `run()` 的成本”，而在于**避免每次请求重复构造图对象**，并通过 `reset()` 保证复用后不携带脏状态。
-- 结合本次扫描结果，两个业务代码库中**没有发现直接的 `GraphPool` 复用实现**，但 `feeda-mv-grc` 中存在更接近“图选择 + 请求执行”的代码形态，迁移潜力明显高于 `feeda-mv-grg`。  
-  另一方面，两库都大量使用 `std::vector`、`std::string`、`std::unordered_map`，说明**内存分配和临时对象创建很多**，但这类热点更适合做容器优化、对象池分层、局部复用，不一定适合直接套用 GraphPool。
-
----
-
-## 2. 代码库详情
-
-### feeda-mv-grg（序列生成服务）
-
-- 扫描命中目标库的文件较少，仅发现 1 个相关文件：
-  - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-- 代码形态更偏向**规则计算、候选筛选、模型推理接口**，例如：
-  - `model/model.h`
-  - `model/paddle_model.h`
-- 现有 `std` 等价物使用规模：
-  - `std::vector`：1969 次，356 个文件
-  - `std::string`：2443 次，425 个文件
-  - `std::unordered_map`：734 次，205 个文件
-- 结论：
-  - 该库的热点更多是**算法逻辑和模型推理参数流转**，不是图池式对象复用。
-  - 若要迁移 `GraphPool` 思路，优先考虑**推理图/规则链对象**是否存在重复构造场景，而不是对普通容器做池化。
-- 可参考文件：
-  - `model/model.h`：接口较轻，说明模型层更适合保持 stateless 或用独立实例管理
-  - `model/paddle_model.h`：存在 `predict` / `predict_with_tensor_input` 这类执行入口，若未来有重对象复用需求，可作为生命周期边界参考
-
-### feeda-mv-grc（召回汇聚服务）
-
-- 扫描发现 10 个相关文件，覆盖过滤、因子生成、调整器和服务层：
-  - `processor/filter/user_explore_interest_ugc_filter_operator.cc`
-  - `processor/filter/low_agile_goodrate_filter_operator.cc`
-  - `processor/multi_factor/subcate_future_factor_gen.cpp`
-  - `operator/adjuster/sketchy/duanju_adjuster.cpp`
-  - `processor/multi_factor/ltr_factor_gen_scene.cpp`
-  - `service/grc_http_service.cpp`
-  - 以及其他同类处理文件
-- 这里的业务形态更接近“**按场景选择执行链路**”，尤其是：
-  - `service/grc_http_service.cpp` 中存在 `graph_name` 读取、依赖图获取、请求参数拼装等逻辑
-  - 这类结构与 `GraphPool::try_get(graph_name)` 的适配度较高
-- 现有 `std` 等价物使用规模更大：
-  - `std::vector`：8520 次，1290 个文件
-  - `std::string`：7267 次，1247 个文件
-  - `std::unordered_map`：2860 次，646 个文件
-- 结论：
-  - 该库存在明显的**请求级上下文 + 图/场景选择**特征，适合优先评估 `GraphPool` 或类似对象池机制。
-  - 如果 `grc_http_service.cpp`、`ltr_factor_gen_scene.cpp` 一类文件中存在重复构图/重复初始化，迁移收益会比较实在。
-
----
-
-## 3. 💡 适用性评估与建议
-
-- `feeda-mv-grc/service/grc_http_service.cpp`
-  - 如果这里的请求处理每次都会根据 `graph_name` 构造或重建执行图，建议引入**按图名缓存的 `GraphPool`**。
-  - 推荐做法是：
-    - 请求入口先解析场景和图名
-    - 再通过 `try_get(graph_name)` 获取图实例
-    - 执行后统一 `run()` → `reset()`
-  - 这是最接近你技术笔记中 `GraphPool` 生命周期的落地点。
-
-- `feeda-mv-grc/processor/multi_factor/ltr_factor_gen_scene.cpp`
-  - 如果这里存在“场景对象持有临时状态、请求结束后未彻底清理”的情况，建议把场景拆成：
-    - **静态配置部分**：可长期复用
-    - **请求上下文部分**：每次请求单独注入
-  - 这样可以为后续引入池化做准备，避免把请求态塞进复用对象里。
-
-- `feeda-mv-grc/processor/multi_factor/subcate_future_factor_gen.cpp`
-  - 这里更像因子生成链路，通常会有大量中间 `vector/string/map` 临时对象。
-  - 不建议直接做 GraphPool 化；更适合做：
-    - `reserve()` 预分配
-    - 局部对象复用
-    - 线程内 scratch buffer
-  - 也就是说，这类文件优先做**容器级优化**，不要强行套“图池 + reset”。
-
-- `feeda-mv-grg/strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-  - 如果该规则实现是纯函数式、无状态的，建议保持现状，不必上对象池。
-  - 如果内部反复构建辅助上下文或规则缓存，可抽象成一个可复用的 `RuleContext`，并明确提供 `reset()`。
-  - 这比直接池化规则对象更稳妥。
-
-- `feeda-mv-grg/model/model.h`、`feeda-mv-grg/model/paddle_model.h`
-  - 模型推理接口更适合保持“**输入驱动、状态外置**”。
-  - 若存在重型模型实例初始化成本，可考虑**模型实例池**，但不建议把 `PredictSample`、tensor 输入等请求态缓存进池对象。
-  - 这类场景应优先考虑“模型对象复用”，而不是“图池复用”。
-
----
-
-## 4. ⚠️ 引入风险与限制
-
-- **reset 覆盖不全会导致跨请求串值**
-  - `GraphPool` 最容易出问题的不是 `try_get()`，而是 `reset()` 漏清理字段。
-  - 需要重点检查：临时上下文、输出缓存、插件状态、错误标志、重复字段。
-
-- **异常路径和超时路径也必须归还一致状态**
-  - 一旦 `run()` 中途报错、超时或提前返回，图对象仍然必须回到可复用状态。
-  - 如果异常分支没走 `reset()`，池化就会积累脏对象。
-
-- **请求级配置不能被缓存进复用对象**
-  - 技术笔记里提到的 `DynamicTimeOutPlugin` 说明超时策略可能是请求相关的。
-  - 这类配置不应作为对象内部长期状态保存，否则不同请求会互相污染。
-
-- **线程安全和外部引用生命周期要额外验证**
-  - 如果图实例内部还持有外部上下文指针、引用或借用对象，单纯清字段不够。
-  - 需要确认对象复用期间不会发生并发重入，也不会悬挂旧请求的资源句柄。
-
----
-
-## 总体判断
-
-- `feeda-mv-grc`：**适合优先试点**，尤其是 `service/grc_http_service.cpp` 这一类图选择/执行入口。
-- `feeda-mv-grg`：**更适合局部优化**，例如减少临时对象、优化模型/规则上下文复用，不建议直接大范围引入 GraphPool。
-- 如果要做迁移验证，建议先选一个**图名明确、执行链稳定、reset 边界清晰**的链路做小流量灰度。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260825-graphpool-reset-lifecycle.md)。

@@ -1,4 +1,8 @@
 # 2026-06-10 业务库代码理解：Dup Service 去重与 title dup 信号跨层流转
+<!-- topic-nav:start -->
+> 主题：`business/dup-title` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：`daily-plan-20260529.json` 只覆盖 2026-06-01 周，本次按周三推荐主题 fallback：`Dup Service 去重与 title dup 信号跨层流转`。内网 KU 未参与检索，业务策略背景需人工补充；本笔记以 GRC/GRG 代码检索结果为主。
 

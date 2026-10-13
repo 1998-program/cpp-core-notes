@@ -1,4 +1,8 @@
 # 2026-09-10 基础库理解：ApplicationContext 组件注册与依赖获取生命周期
+<!-- topic-nav:start -->
+> 主题：`base/application-context` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-10  
 > 主题选择：未发现当日有效 daily-plan；仓库中的旧计划日期较早，且 GraphPool、MultiStreamEngine、PipelineGraphFunction、Expression 等邻近主题已有覆盖。本次按“邻近未覆盖主题”回退到 `ApplicationContext` 组件注册、初始化、wireup 与运行时依赖获取。KU 正文未读取，企业业务上下文需人工补充；以下结论以代码证据为准。  

@@ -1,4 +1,8 @@
 # 2026-07-30 周四代码理解：TopIntp 榜单查询业务链路与返回契约
+<!-- topic-nav:start -->
+> 主题：`business/top-intp-toplist` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260710-top-intp-toplist-business-flow.md)
+<!-- topic-nav:end -->
+
 
 > 本文基于 `top-intp` 模块代码阅读生成；当前未找到可直接读取的 2026-07-30 daily-plan，KU 背景和业务实验口径需人工补充。
 

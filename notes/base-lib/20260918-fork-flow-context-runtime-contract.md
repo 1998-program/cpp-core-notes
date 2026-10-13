@@ -1,4 +1,8 @@
 # 2026-09-18 基础库理解：fork/framework 的 Flow / Node / Context 运行时合同
+<!-- topic-nav:start -->
+> 主题：`base/fork-context` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-18  
 > 主题选择：未发现本日有效 daily-plan；最近笔记已覆盖 PipelineGraphFunction、GraphPool、ApplicationContext、ExpParam 等主题，因此按邻近未覆盖的回退规则挑选 **`fork/framework` 的配置驱动 Flow 与 FlowContext/RuntimeContext 生命周期合同**。KU 正文未读取，业务背景需人工补充；本文只依据本地代码证据。  

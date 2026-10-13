@@ -1,4 +1,8 @@
 # 2026-10-05 业务库代码理解：GRG 请求关键路径 record 与 GraphMonitor 阶段写入合同
+<!-- topic-nav:start -->
+> 主题：`business/critical-path` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-02-grc-critical-path-latency-attribution.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-10-05（周一）
 > 主题选择：canonical 笔记仓库无 2026-10-05 daily-plan；仓内唯一计划 daily-plan-20260529.json 描述的是旧 MV-GR 路径，且计划候选中 GraphPool / DynamicTimeOut / PipelineGraphFunction 等核心主题近期均有覆盖。本次按同一 DC-GRG 快照回退到业务库侧尚未单独展开的关键路径写入合同：generate_pre_processor.cpp 等业务 processor 在 record(stage) 和 _graph_monitor.add_path_node(...) 上的调用方式，以及 feed_closure.cc 在 state_finish 中的 final_path 收口。KU 正文未读取，业务背景与线上收益需人工补充；以下只陈述可在源码中验证的事实。

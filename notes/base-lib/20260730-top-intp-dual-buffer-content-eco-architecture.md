@@ -1,4 +1,8 @@
 # 2026-07-30 周四代码理解：TopDataComponent 双缓冲内容生态与发布契约
+<!-- topic-nav:start -->
+> 主题：`base/top-data-buffer` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260710-top-intp-dual-buffer-content-eco-architecture.md)
+<!-- topic-nav:end -->
+
 
 > 本文基于 `top-intp` 模块代码阅读生成；当前未找到可直接读取的 2026-07-30 daily-plan，KU 背景也未逐篇取正文，业务口径需人工补充。
 

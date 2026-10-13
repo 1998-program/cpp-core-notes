@@ -1,4 +1,8 @@
 # lite-grc FilterProcessor 与 ExecEngine 过滤算子契约
+<!-- topic-nav:start -->
+> 主题：`base/filter-lifecycle` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-lite-grc-filterprocessor-exec-engine-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 主题来源：本机未发现可用 `daily-plan` 文件，按周二 fallback 主题生成。已设置 `BAIDU_CC_USERNAME=hujiyang`；本次未依赖 KU 正文检索，结论以代码库证据为准，线上策略口径需人工补充。
 

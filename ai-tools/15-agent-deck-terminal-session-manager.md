@@ -1,4 +1,10 @@
 # 15 · Agent Deck — AI Agent 的终端会话管理中心
+<!-- topic-nav:start -->
+> 主题：`ai-tools/agent-deck` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
+
+> 历史资料核对：另一篇 Agent Deck 笔记将实现写成 Ink/React，并使用不同安装命令与配置格式。两版均缺少固定版本验证；本页命令及配置不视为已验证操作指南。
 
 **项目**：[asheshgoplani/agent-deck](https://github.com/asheshgoplani/agent-deck)
 **Stars**：2.5k ⭐ · Go · MIT

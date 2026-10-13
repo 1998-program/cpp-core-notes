@@ -1,4 +1,8 @@
 # GRC/PCS CriticalPath 观测框架：动态图、Dapper 虚拟节点与耗时切片
+<!-- topic-nav:start -->
+> 主题：`base/critical-path` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-02｜类型：基础库笔记｜主题来源：本机未发现可用 `daily-plan` 文件；按周四 fallback 选择 CriticalPath 观测框架主题。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，内网平台规范需人工补充，本文以本地代码库检索为准。
 

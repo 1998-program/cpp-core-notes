@@ -1,4 +1,8 @@
 # 下周代码理解候选选题（2026-05-28）
+<!-- topic-nav:start -->
+> 主题：`planning/weekly-code-understanding-topics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-weekly-code-understanding-topics.md)
+<!-- topic-nav:end -->
+
 
 > 生成时间：2026-05-28 20:02:58  
 > 检索代码库：`/home1/code_read/code-read-mv-grc/baidu/feed-gr/feeda-mv-grc`；`/home1/code_read/code-read-mv-grg/baidu/feed-gr/feeda-mv-grg`  

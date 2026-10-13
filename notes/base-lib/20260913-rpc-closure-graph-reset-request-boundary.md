@@ -1,4 +1,8 @@
 # 2026-09-13 基础库理解：RPC Closure 与 Graph reset 请求边界
+<!-- topic-nav:start -->
+> 主题：`base/rpc-closure` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260828-reusable-rpc-protocol-and-closure-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-13  
 > 主题选择：未发现本日有效 daily-plan；旧计划中的 TraceLog/VIP/HashLog 主题已有覆盖，因此回退到邻近未覆盖的 **ReusableRPCProtocol 响应 Closure、Graph::run 等待与请求级 reset 边界**。KU 正文未读取，业务背景需人工补充；本文只依据代码证据。  

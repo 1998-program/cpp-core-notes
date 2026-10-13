@@ -1,4 +1,8 @@
 # 2026-10-05 基础库代码理解：TraceInfo/MutableFrameworkContext 与请求级关键路径观测合同
+<!-- topic-nav:start -->
+> 主题：`base/critical-path` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-02-critical-path-observability-framework.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-10-05（周一）
 > 主题选择：canonical 笔记仓库无 2026-10-05 daily-plan；仓内唯一计划 daily-plan-20260529.json 描述的是旧 MV-GR 路径，与当前 code-read-dc-grg 快照（DC-GRG new_generator_service.cc + graph_service.cc + feed-general/framework）不一致。近期笔记已覆盖 GraphView（10-04）、GRG 入口 + GraphSession handoff（10-03）、DC-GRG brpc bootstrap（10-02）、Babylon ObjectPool（10-01）。本次按同一 DC-GRG 快照回退到基础框架侧尚未单独展开的两个相邻合同：feed-general/framework 的 TraceInfo / MutableFrameworkContext / print_trace_data_arena 生命周期，以及 GRG CriticalPath::record + GraphMonitor::add_path_node 形成的请求级关键路径写入边界。

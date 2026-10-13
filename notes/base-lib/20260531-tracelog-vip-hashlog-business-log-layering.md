@@ -1,4 +1,8 @@
 # TraceLog / VIP / HashLog 采样与业务日志分层
+<!-- topic-nav:start -->
+> 主题：`base/tracelog` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-05-31  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的 `sun.base_lib` 计划项  
@@ -204,8 +208,4 @@ data
 - `src/service/grg_service.cpp:361-374`：GRG VIP dict 命中逻辑。
 - `src/util/util.cpp:125-158`（GRG）：DEBUG_TRACE 输出与 trace PB 清理。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T18:33:41.034361
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260531-tracelog-vip-hashlog-business-log-layering.md)。

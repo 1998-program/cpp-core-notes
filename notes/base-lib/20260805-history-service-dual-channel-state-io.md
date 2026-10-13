@@ -1,4 +1,8 @@
 # History Service 双通道状态 IO：Redis 与 SNDB 的配置化执行骨架
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 运行说明：2026-08-05 未发现 daily-plan 文件，本篇按历史未覆盖主题 fallback 生成。KU/业务背景检索不可用，需人工补充；当前结论基于 History Service 代码与配置证据。
 

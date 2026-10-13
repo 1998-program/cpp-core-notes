@@ -1,4 +1,10 @@
 # AI 工具推荐 · awesome-llm-apps
+<!-- topic-nav:start -->
+> 主题：`ai-tools/awesome-llm-apps` · 同题补充 / 历史版本 · [主题目录](../../ai-tools/README.md) · [先读主文](../../ai-tools/14-awesome-llm-apps-100-runnable-ai-agents.md)
+<!-- topic-nav:end -->
+
+
+> 同题补充：[统一入口](../../ai-tools/14-awesome-llm-apps-100-runnable-ai-agents.md)。本页保留历史版本的分类或实践示例，不重复计为新项目。
 
 > 项目地址：[Shubhamsaboo/awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps)  
 > 推荐日期：2026-05-12  

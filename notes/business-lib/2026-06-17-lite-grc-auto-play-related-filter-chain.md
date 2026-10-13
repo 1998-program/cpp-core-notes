@@ -1,4 +1,8 @@
 # lite-grc 播后推与相关推荐过滤链路复盘
+<!-- topic-nav:start -->
+> 主题：`business/related-filter` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-ua189-postplay-related-filter-business-chain.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未找到显式 `daily-plan-20260617.json`，按近期双 Markdown 工作流 fallback 到 lite-grc 新增/活跃过滤算子。内网 KU 未提供可检索 URL/doc-id，业务目标需人工补充；本文以代码与配置复盘 UA=189 播后推、相关推荐、pad 场景与内容质量过滤的业务链路。
 

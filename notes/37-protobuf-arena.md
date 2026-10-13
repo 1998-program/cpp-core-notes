@@ -1,42 +1,13 @@
 # protobuf::Arena —— 把 Protobuf 反序列化做成"一次性分配"的内存竞技场
+<!-- topic-nav:start -->
+> 主题：`cpp/protobuf-arena` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](17-protobuf-arena-allocator.md)
+<!-- topic-nav:end -->
+
+
+> 阅读分工：共同原理统一见[主题主文](17-protobuf-arena-allocator.md)；本文保留补充场景与示例。被合并的旧讲解可在[原始版本](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/37-protobuf-arena.md)查阅。
 
 > 2026-06-26 · C++ 核心模块笔记 #37
 > 关键词：`Arena`、`AllocateAligned`、bump-pointer、`Owns`、ng-framework 在线服务、brpc RPC 反序列化
-
----
-
-## 0. 为什么 Arena 是大流量 Protobuf 服务的"命门"
-
-在以 brpc + Protobuf 为骨架的 ng-framework 推荐在线服务里，每条 RPC 请求都会做一次 `request.ParseFromZeroCopyStream()` 或 `request.ParseFromArray()`，紧接着构造一个甚至几个 `response` 协议对象。
-
-朴素 Protobuf 的代价：
-
-- 每个 `Message`、每个嵌套子 message、每个 `string` 字段、每个 `repeated` 元素都是独立 `new`。
-- 一个 1KB 的 PB 包，往往触发 **几十次 malloc/free**。
-- QPS 上万时，jemalloc 也扛不住 —— 锁、page split、free 链表抖动全暴露。
-
-`google::protobuf::Arena` 就是为了把这一切 **合并成一次大块分配** 而生：所有子对象在 Arena 上线性 bump，整个 Message 树释放时只需 `delete arena;` 一次。
-
----
-
-## 1. 核心数据结构（v3.x / v25 行为）
-
-```
-Arena
- ├─ SerialArena * thread_local        // 每线程独立链
- │   ├─ ArenaBlock (head)             // 当前块：[ptr, limit)
- │   ├─ ArenaBlock (prev)             // 已写满，串成链表
- │   └─ cleanup_list                  // 析构回调（非平凡对象）
- └─ ArenaOptions
-     ├─ initial_block_size  (默认 256B → 翻倍至 8KB)
-     ├─ max_block_size      (默认 8KB)
-     └─ block_alloc / block_dealloc   // 可注入 jemalloc / tcmalloc
-```
-
-关键点：
-- **bump-pointer**：`ptr += size; if (ptr > limit) NewBlock();` —— 纯算术，无锁。
-- **SerialArena 走 thread_local**：多线程并发 `Arena::Create<T>()` 完全无竞争；只有 NewBlock 才回 Arena 总池抢一次轻量原子。
-- **块大小指数增长**：避免短消息频繁开块，又给冷请求一个 256B 的友好起点。
 
 ---
 

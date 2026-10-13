@@ -1,4 +1,8 @@
 # ExecEngine MultiStreamEngine：从配置展开到请求级运行时
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-04  
 > 主题来源：未发现本机 daily-plan 文件；按双 Markdown 工作流延续 2026-06-03 主题，今天补齐 `MultiStreamEngineInfoLoader` 如何把配置静态展开为运行时 stream/pip/executor/operator 图，以及请求中如何复用该图。  

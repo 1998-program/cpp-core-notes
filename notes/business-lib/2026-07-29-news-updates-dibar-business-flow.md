@@ -1,4 +1,8 @@
 # news_updates_dibar 业务链路：回召解析、信息补全与多策略 merge
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-29  
 > 类型：业务库笔记  

@@ -1,4 +1,8 @@
 # ExecEngine MultiStreamEngine：按槽位循环、stream 链路与算子成本可观测
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-03  
 > 主题来源：未发现本机 daily-plan 文件；按双 Markdown 工作流补齐基础库主题，选择 `exec-engine` 中可复用的 `MultiStreamEngine` 按槽位循环执行与 Dapper 成本采样链路。  

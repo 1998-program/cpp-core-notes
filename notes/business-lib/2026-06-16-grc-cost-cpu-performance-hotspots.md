@@ -1,4 +1,8 @@
 # GRC 成本/CPU 性能优化热点复盘
+<!-- topic-nav:start -->
+> 主题：`business/cpu-cost` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260707-grc-cpu-cost-optimization-hotspots.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：`daily-plan-20260529.json` 周二业务库主题：`GRC 成本/CPU 性能优化热点复盘`。内网周报/KU 摘要在计划中提到 feeda-mv-grc CPU 3%-5% 优化，但本 cron 环境未读取正文；业务收益与 owner 口径需人工补充。本篇以代码库证据复盘可落地的热点类型：调权参数访问、正排字段拷贝、数据合并循环、响应统计与序列化。
 

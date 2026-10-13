@@ -1,4 +1,8 @@
 # ExecEngine MultiStreamEngine：槽位循环、回退语义与可观测性
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-05  
 > 主题来源：未发现本机 `daily-plan` 文件；按双 Markdown 工作流延续 2026-06-04 的 MultiStreamEngine 主题，今天补齐运行期 `run()` 的槽位循环、`check_output()` 回退、结果上下文更新与 Dapper 成本采样。  

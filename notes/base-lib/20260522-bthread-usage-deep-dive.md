@@ -1,4 +1,8 @@
 ---
+<!-- topic-nav:start -->
+> 主题：`base/bthread-future` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260528-bthread-async-fan-out-future-join-usage-deep-dive.md)
+<!-- topic-nav:end -->
+
 title: bthread 在 Feed 图引擎服务中的窄域用法深挖：并行 RPC / Pipeline 并发 / 轻量同步
 生成时间: 2026-05-22 20:00:10 CST
 代码库路径:
@@ -299,8 +303,4 @@ rg "bthread_async|mutable_|CopyFrom|MergeFrom|Swap\(|set_allocated_" src
 2. `context.concurrents()` 的配置来源未在本次文档中完全追到 graph option / gflags 赋值链路；下一步应继续追 `BaseGraphFunction::setup()` 如何读取 `is_queue`、`batch_size`、`concurrents`。
 3. `GcmsComponent` / IFCS SDK 内部是否也使用 bthread 或异步 closure，本次只看到 `src/plugin/gcms.h:113-131` 的 `MyClosure`，未展开外部 SDK 源码。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T18:24:35.646203
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260522-bthread-usage-deep-dive.md)。

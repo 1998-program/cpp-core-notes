@@ -1,4 +1,8 @@
 ---
+<!-- topic-nav:start -->
+> 主题：`base/bthread-future` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260528-bthread-async-fan-out-future-join-usage-deep-dive.md)
+<!-- topic-nav:end -->
+
 title: bthread 用法深挖：在 Feed 图引擎里的“并行消费”与后台任务
 生成时间: 2026-05-27 20:00:44 CST
 代码库路径:
@@ -201,8 +205,4 @@ rg "mutable_.*\(|Swap\(|set_allocated_" src/processor src/operator
 2. 未验证机器上 libbthread 源码版本，调度细节以 brpc/bthread 常见语义描述为准。
 3. 若后续要做性能归因，应补充 bvar/bthread worker 队列、CPU profile、RPC latency 分位数。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T18:27:07.206442
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260527-bthread-usage-deep-dive.md)。

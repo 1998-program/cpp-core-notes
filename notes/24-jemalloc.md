@@ -1,4 +1,8 @@
 # jemalloc：高性能内存分配器深度解析
+<!-- topic-nav:start -->
+> 主题：`cpp/jemalloc` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > **模块编号**：24  
 > **分类**：内存管理 / 系统库  

@@ -1,4 +1,8 @@
 # 2026-08-28 周五代码理解：GRC fill_meta 的 GCMS 场景路由与小流量筛选
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260601-grc-gcms-ifcs-fill-meta-chain.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-28  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的历史候选项；本次没有独立的当日 daily-plan 可直接读取，KU/业务背景需人工补充。  
@@ -129,87 +133,5 @@ list-column-done-list
 - `notes/business-lib/20260825-grc-fill-meta-request-response-boundary.md`
 
 > 说明：当前运行环境没有独立的当日 daily-plan，可用历史候选项回退；KU/业务背景需人工补充。
----
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-09-01T19:16:42.912407
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-## 1. 分析摘要
-
-- 从本次扫描看，这类“上下文装配 + 场景路由 + 小流量筛选 + 元数据回填”的业务模式，在两个代码库里的落点都不算多，但分布特征很明确：`feeda-mv-grg` 只有 1 个相关文件，`feeda-mv-grc` 有 10 个相关文件，且更贴近“召回汇聚/过滤/调度”链路。  
-- 结合技术笔记里的 `setup()`、`small_flow_list`、`GCMS_SECNE_RECALL`、`card_no_gcms_mark`、`RidTmpInfo` 这些关键点来看，**最适合迁移的不是整条链路复制，而是“路由判定 + 候选集筛选 + 结果回填”的局部能力**。  
-- 从迁移潜力上看：`feeda-mv-grc` 更适合作为主落地库，`feeda-mv-grg` 更适合做轻量试点或复用规则层能力。两个库里 `std::vector` / `std::string` / `std::unordered_map` 的使用都很广，说明基础容器生态成熟，做“map 化回填”和“候选集分流”改造的阻力不大。
-
-## 2. 代码库详情
-
-### feeda-mv-grg（序列生成服务）
-
-- 本次仅发现 1 个与目标主题相关的文件：
-  - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-- 这说明在 grg 中，相关能力更偏“规则式分流/多样性控制”，而不是完整的召回回填链路。
-- 现有 std 容器使用很普遍，迁移基础较好：
-  - `std::vector`：1969 次，356 个文件
-  - `std::string`：2443 次，425 个文件
-  - `std::unordered_map`：734 次，205 个文件
-- 可参考的典型写法：
-  - `model/model.h`
-  - `model/paddle_model.h`
-- 结论：
-  - grg 更适合承接“**轻量规则判断、候选分层、局部标记**”这类改造；
-  - 不太像 fill_meta 那种“完整的场景回填中枢”。
-
-### feeda-mv-grc（召回汇聚服务）
-
-- 本次发现 10 个相关文件，说明这里更接近 fill_meta 的业务语义：
-  - `operator/adjuster/function_queue/youzhi_queue_adjust.cpp`
-  - `processor/multi_factor/ltr_factor_gen_scene.cpp`
-  - `processor/new_adjust/precise_score_init_first_refresh.cpp`
-  - `operator/adjuster/sketchy/ltv_factor_cp_opt.cpp`
-  - `processor/filter/user_explore_interest_ugc_filter_operator.cc`
-- 这些文件覆盖了“调度、场景生成、首刷初始化、过滤、局部优化”等多个环节，和 `setup()` → `process()` → 回填的链路较接近。
-- std 容器使用规模更大，说明 GRC 已有较强的通用数据结构承载能力：
-  - `std::vector`：8520 次，1290 个文件
-  - `std::string`：7267 次，1247 个文件
-  - `std::unordered_map`：2860 次，646 个文件
-- 可参考的典型写法：
-  - `service/grc_http_service.cpp`
-- 结论：
-  - grc 是更合适的主迁移目标；
-  - 这里更容易落地“按场景分流 + 结果 map 回填 + 可观测性增强”的模式。
-
-## 3. 💡 适用性评估与建议
-
-- **优先在 `feeda-mv-grc/processor/new_adjust/precise_score_init_first_refresh.cpp` 做场景化回填改造。**  
-  这个文件从命名上就接近“首刷/初始化”阶段，适合引入类似 `card_no_gcms_mark` 的跳过标记和 `RidTmpInfo` 的回填结构，把“是否进入后续处理”与“是否有可回填数据”分开。
-
-- **在 `feeda-mv-grc/processor/multi_factor/ltr_factor_gen_scene.cpp` 统一场景常量与小流量路由。**  
-  可参考 `GCMS_SECNE_RECALL` 的做法，把场景常量显式化，避免把召回、过滤、调度逻辑散落在多个 if 分支里；同时将 `small_flow_list` 的筛选前置，减少无效计算。
-
-- **在 `feeda-mv-grc/processor/filter/user_explore_interest_ugc_filter_operator.cc` 增加“候选级元数据”承载。**  
-  可以借鉴 `gcms_common_pb_meta_map` 的思路，把过滤原因、命中场景、跳过原因等信息挂到一个 `std::unordered_map<rid, meta>` 上，便于后续 debug 和链路追踪。
-
-- **在 `feeda-mv-grg/strategy/diversity/rule/low_clarity_diversity_rule.cpp` 做轻量试点，而不是直接做全链路迁移。**  
-  该文件更像规则层入口，适合试验“先筛小流量、再做规则决策”的思路；如果效果稳定，再把“路由 + 回填”模式扩展到更高层流程。
-
-- **参考现有 std 容器写法，优先用现成容器承接迁移，不要新造数据结构。**  
-  例如 `model/model.h`、`model/paddle_model.h`、`service/grc_http_service.cpp` 中已经大量使用 `std::vector`、`std::unordered_map`，说明现有代码风格对标准容器兼容良好，适合直接用来承载候选集、场景集和回填结果。
-
-## 4. ⚠️ 引入风险与限制
-
-- **场景常量和分流条件容易出错。**  
-  如果把 `GCMS_SECNE_RECALL`、`small_flow_list` 这类条件翻译到业务代码里时写错，最直接的后果不是编译失败，而是“查不到数据但链路看起来正常”。
-
-- **配置驱动的名单/流量策略会放大灰度风险。**  
-  `small_flow_list` 本质上是依赖配置或手工维护集合的，迁移到 grc/grg 后，如果没有统一配置治理，很容易出现线上线下不一致。
-
-- **回填容器和业务对象生命周期要隔离。**  
-  `RidTmpInfo` 既承载业务状态又承载回填结果，如果直接复用到其他阶段，容易把临时态带到后续处理，形成隐蔽 bug。
-
-- **容器替换不等于行为等价。**  
-  `std::unordered_map`、`std::vector` 的使用虽然成熟，但如果原逻辑隐含了顺序依赖、重复 key 处理或默认值语义，迁移时需要补齐测试，否则容易出现回填结果顺序变化或覆盖问题。
-
-如果你愿意，我还可以进一步把这份内容整理成你笔记里可直接粘贴的“章节版” Markdown。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260828-grc-fill-meta-gcms-scene-routing.md)。

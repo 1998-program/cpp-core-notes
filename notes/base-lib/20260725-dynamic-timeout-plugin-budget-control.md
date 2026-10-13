@@ -1,4 +1,8 @@
 # DynamicTimeOutPlugin：全链路预算控制与并发 stage 裁剪
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-25  
 > 类型：基础库笔记  

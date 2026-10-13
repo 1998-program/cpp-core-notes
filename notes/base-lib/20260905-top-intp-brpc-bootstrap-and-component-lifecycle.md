@@ -1,4 +1,8 @@
 # 2026-09-05 周六基础库理解：TopIntp brpc bootstrap 与组件生命周期
+<!-- topic-nav:start -->
+> 主题：`base/top-intp-bootstrap` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260817-top-intp-brpc-bootstrap-component-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-05  
 > 主题来源：当前 canonical 笔记仓库未找到 2026-09-05 当日 daily-plan；按历史 Friday/Saturday 邻近主题回退到 `TopIntp brpc bootstrap 与组件生命周期`。KU 正文未读取，业务背景需人工补充。  

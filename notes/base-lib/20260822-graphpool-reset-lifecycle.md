@@ -1,4 +1,8 @@
 # 2026-08-22 周六代码理解：GraphPool 复用与 reset 生命周期
+<!-- topic-nav:start -->
+> 主题：`base/graphpool-reset` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260827-graphpool-try-get-run-reset-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-22  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的历史候选项回退；本次 cron 没有可直接执行的当日 daily-plan，KU/业务背景需人工补充。  
@@ -150,122 +154,4 @@ data
 
 > 需人工补充：KU/业务背景未逐篇读取正文，仅使用日计划候选与源码证据。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-08-23T19:05:40.690302
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-# 业务代码库适配分析报告：GraphPool 复用与 reset 生命周期
-
-## 1. 分析摘要
-
-- 这项技术的核心价值不是“多一个池”，而是把**图对象的构造、执行、清理**变成一条可控链路：`try_get -> run -> reset`。从技术笔记看，`DynamicTimeOutPlugin` 也绑定在同一执行链上，说明它更适合**请求驱动、重复执行、对象构造成本较高**的业务场景。
-- 在两个代码库里，`feeda-mv-grc` 的适配潜力明显更高：它已经存在 `grc_service.cpp`、`grc_http_service.cpp` 这类图相关入口，且扫描到 10 个相关文件，说明这条链路更像是“主干能力”。`feeda-mv-grg` 仅发现 1 个相关文件，适合做局部试点，不建议一开始全量迁移。
-
----
-
-## 2. 代码库详情
-
-### feeda-mv-grg
-
-- 扫描到的目标相关文件只有 1 个：
-  - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-- 现有 `std` 等价物使用规模：
-  - `std::vector`：1969 次，356 个文件
-  - `std::string`：2443 次，425 个文件
-  - `std::unordered_map`：734 次，205 个文件
-- 适配判断：
-  - 这个库的代码形态以**策略/规则 + 容器处理**为主，说明业务逻辑分散但不一定有统一的图执行框架。
-  - 仅有 1 个相关文件，意味着这项技术在这里**尚未形成平台级复用模式**，更适合在单文件或单规则链路中做试点。
-- 可作为参考的现有代码：
-  - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-- 结论：
-  - 迁移收益中等偏低，主要看该规则是否存在**重复构图、重复初始化、重复清理**问题。
-  - 如果只是一次性执行，GraphPool 的收益可能不足以覆盖改造成本。
-
-### feeda-mv-grc
-
-- 扫描到的目标相关文件有 10 个，覆盖面明显更广：
-  - `operator/adjuster/sketchy/duanju_adjuster.cpp`
-  - `operator/adjuster/sketchy/ltv_factor_cp_opt.cpp`
-  - `processor/multi_factor/subcate_future_factor_gen.cpp`
-  - `processor/multi_factor/session_ltr_dibar_factor_gen.cpp`
-  - `processor/multi_factor/ltr_factor_gen_scene.cpp`
-  - 以及其他 5 个相关文件
-- 现有 `std` 等价物使用规模：
-  - `std::vector`：8520 次，1290 个文件
-  - `std::string`：7267 次，1247 个文件
-  - `std::unordered_map`：2860 次，646 个文件
-- 适配判断：
-  - 这是一个**高规模、强复用、强数据流**的代码库，且已经存在 `grc_service.cpp` / `grc_http_service.cpp` 这样的服务入口，非常适合引入“图对象池 + reset 生命周期”模式。
-  - 容器使用量很大，说明业务链路中存在大量中间状态和上下文传递；如果图对象构造昂贵，复用收益会比较明显。
-- 可作为参考的现有代码：
-  - `service/grc_http_service.cpp`
-  - `service/grc_service.cpp`（技术笔记中已明确涉及 `graph_name`、`graph->run()`、`graph->reset()`、`DynamicTimeOutPlugin`）
-- 结论：
-  - 迁移潜力高，建议优先在服务入口层和统一执行链路上落地，避免在多个业务模块里重复实现“获取-执行-清理”逻辑。
-
----
-
-## 3. 💡 适用性评估与建议
-
-- **优先在 `feeda-mv-grc/service/grc_service.cpp` 和 `service/grc_http_service.cpp` 做统一封装**
-  - 建议把 `GraphEngine::try_get()`、`graph->run()`、`graph->reset()` 封装成一个 RAII 风格的执行助手，避免调用方手工管理生命周期。
-  - 场景：请求入口根据 `ua` 选择 `graph_name`，再进入执行链路时统一保证 reset。
-  - 价值：减少异常路径漏清理、提前 return 漏 reset 的风险。
-
-- **把 `DynamicTimeOutPlugin` 的获取前置到图执行前的统一上下文装配层**
-  - 建议在 `feeda-mv-grc/service/grc_service.cpp` 中保持“先拿插件、再执行图”的顺序，不要让业务子模块自行临时获取。
-  - 场景：超时策略依赖请求上下文，且会影响整条图链路。
-  - 价值：避免不同调用点出现超时策略不一致的问题。
-
-- **在 `feeda-mv-grc/operator/adjuster/sketchy/duanju_adjuster.cpp`、`ltv_factor_cp_opt.cpp` 中复用同一套图执行生命周期**
-  - 如果这两个 adjuster 里存在重复的初始化/释放逻辑，建议改成从图池取对象，而不是每次新建执行上下文。
-  - 场景：高频调整、反复触发的业务请求。
-  - 价值：降低对象构造和销毁成本，减少碎片化实现。
-
-- **在 `feeda-mv-grc/processor/multi_factor/subcate_future_factor_gen.cpp`、`session_ltr_dibar_factor_gen.cpp`、`ltr_factor_gen_scene.cpp` 中试点“按 scene 复用图实例”**
-  - 这些文件更像是批处理或阶段式生成逻辑，适合按场景维度缓存图实例。
-  - 场景：同一 scene 下多次执行拓扑一致，只更新输入上下文。
-  - 价值：如果图结构稳定，复用收益会比纯函数式重建更高。
-
-- **`feeda-mv-grg/strategy/diversity/rule/low_clarity_diversity_rule.cpp` 适合做局部试点，不建议全局推广**
-  - 这个库只发现 1 个相关文件，说明技术覆盖面很窄。
-  - 建议先观察该规则是否存在重复构图、重复依赖初始化、重复资源释放，再决定是否引入池化。
-  - 价值：先用低风险改造验证“复用 + reset”是否能真正降低成本。
-
----
-
-## 4. ⚠️ 引入风险与限制
-
-- **reset 漏调用会造成跨请求状态污染**
-  - 这是最关键的风险。
-  - 一旦 `graph->run()` 后没有严格执行 `graph->reset()`，上一次请求的上下文、缓存、临时节点都可能污染下一次执行。
-
-- **异常路径和早返回路径最容易破坏生命周期**
-  - 比如 `run()` 抛异常、超时中断、参数校验失败后提前 return。
-  - 如果没有 RAII 或统一收尾，池化对象会留下脏状态。
-
-- **`ua -> graph_name` 映射不是静态配置，迁移时要防止分流逻辑被改坏**
-  - 技术笔记已经明确 `graph_name` 是由请求属性驱动的。
-  - 如果图池 key 设计和路由规则不一致，可能出现“取到错误图”的问题。
-
-- **线程安全和池竞争需要单独评估**
-  - `GraphPool` 如果被多请求共享，必须确认锁粒度、并发访问、对象归还策略。
-  - 在高并发服务里，池本身可能成为瓶颈，抵消部分收益。
-
----
-
-## 总体建议
-
-- **`feeda-mv-grc`：建议优先落地**
-  - 以 `service/grc_service.cpp`、`service/grc_http_service.cpp` 为入口做统一生命周期封装。
-  - 先解决“图复用 + reset 保障 + 超时插件前置”三件事。
-
-- **`feeda-mv-grg`：建议谨慎试点**
-  - 先在 `strategy/diversity/rule/low_clarity_diversity_rule.cpp` 单点验证。
-  - 如果没有明显的重复构图和执行成本，不建议强行引入复杂池化机制。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260822-graphpool-reset-lifecycle.md)。

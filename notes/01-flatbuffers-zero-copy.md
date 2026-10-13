@@ -1,4 +1,8 @@
 # FlatBuffers · 零拷贝序列化设计
+<!-- topic-nav:start -->
+> 主题：`cpp/flatbuffers` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > **库**：[google/flatbuffers](https://github.com/google/flatbuffers) ⭐ 23k+  
 > **日期**：2026-05-02  

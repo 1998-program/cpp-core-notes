@@ -1,4 +1,8 @@
 # 2026-09-19 业务库理解：Dup Service 与 title-dup 信号跨层流转
+<!-- topic-nav:start -->
+> 主题：`business/dup-title` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-10-dup-service-title-dup-flow.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-19  
 > 主题选择：未发现本日有效 daily-plan；历史计划中的 `Dup Service 去重与 title dup 信号跨层流转` 尚未在当前 2026-09 系列形成对应双笔记，因此按邻近未覆盖主题回退。KU 正文未读取，业务背景需人工补充；本文只依据本地代码证据。  

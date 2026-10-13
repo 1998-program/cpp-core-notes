@@ -1,4 +1,8 @@
 # 看剧 / 合集 / 短剧 LCN 与扶持策略
+<!-- topic-nav:start -->
+> 主题：`business/kanju-lcn` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-12  
 > 今日主题来源：`daily-plan-20260529.json` Friday business slot  

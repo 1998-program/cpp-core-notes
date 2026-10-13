@@ -1,4 +1,8 @@
 # common-processor 过滤链与场景切换：FilterProcessor、FilterEndProcessor 与 SceneSwitchProcessor
+<!-- topic-nav:start -->
+> 主题：`base/filter-lifecycle` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-lite-grc-filterprocessor-exec-engine-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 运行说明：2026-08-24 未发现 daily-plan 文件，按历史未覆盖主题 fallback 到 `common-processor` 的过滤链与场景切换生命周期。当前 cron 环境未验证 KU 可用性，KU/业务背景需人工补充；本文只使用本地代码与配置证据。
 

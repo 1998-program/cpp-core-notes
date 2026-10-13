@@ -1,4 +1,8 @@
 # 2026-07-06 基础库代码理解：GRC 队列 Pipeline 主通路与元数据过滤契约
+<!-- topic-nav:start -->
+> 主题：`base/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-06｜类型：基础库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周一 fallback 选择 GRC 主链路中的队列 Pipeline 框架，与业务侧短剧/合集队列主题配对。  

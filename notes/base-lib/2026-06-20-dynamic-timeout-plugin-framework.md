@@ -1,4 +1,8 @@
 # 2026-06-20 基础库代码理解：DynamicTimeOutPlugin 全链路超时分配框架
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-20  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按近期双 Markdown 工作流的周六 fallback，选择基础库 `feed-general/framework` 的 `DynamicTimeOutPlugin` 与 `FullLinkDynamicTimeOut`。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，内网策略背景需人工补充。  

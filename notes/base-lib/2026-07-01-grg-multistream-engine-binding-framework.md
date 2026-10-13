@@ -1,4 +1,8 @@
 # GRG MultiStreamEngine 绑定框架：从插件加载到 Graph 依赖注入
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-01｜类型：基础库笔记｜主题来源：本机未发现可用 `daily-plan` 文件，按周三 fallback 选择 GRG NewDiversityMerge / MultiStreamEngine 框架主题。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，内网策略背景需人工补充，本文以本地代码库检索为准。
 

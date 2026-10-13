@@ -1,4 +1,8 @@
 # MV-GRG DiversityMerge：多队列合并与响应边界
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 运行说明：2026-08-04 未发现 daily-plan 文件，本篇按历史未覆盖主题 fallback 生成。KU/业务背景检索不可用时需人工补充；当前结论基于 MV-GRG 代码和配置证据。
 

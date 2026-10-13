@@ -1,4 +1,8 @@
 # History Service gr_state：展示状态读写与业务语义边界
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 运行说明：2026-08-05 未发现 daily-plan 文件，本篇按历史未覆盖主题 fallback 生成。KU/业务背景检索不可用，需人工补充；当前结论基于 History Service 代码与配置证据。
 

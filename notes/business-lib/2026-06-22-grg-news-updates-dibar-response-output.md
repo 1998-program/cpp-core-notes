@@ -1,4 +1,8 @@
 # GRG news_updates_dibar：NewDiversityMerge 到 NewResponseFunction 的最终出流链路（2026-06-22）
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周一 fallback 选择 `news_updates_dibar` 业务链路，聚焦 GRG 如何把 GRC 返回的 loads/rule/function/effect 队列，经 MultiStreamEngine 多流打散后，由 `NewResponseFunction` 输出最终 `GRGResponse`。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，产品策略口径需人工补充；本篇以代码库检索结果为准。
 

@@ -1,4 +1,8 @@
 # 2026-07-09 周度代码理解：MultiStreamEngine bind_graph_dependency 桥接外层 GraphData
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 今日未获得可直接读取的 KU doc-id；本文以本地 feeda-mv-grg 代码与配置检索为主，历史设计背景需人工补充。
 

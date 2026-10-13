@@ -1,4 +1,8 @@
 # 2026-07-07 周度代码理解：GRC 成本/CPU 性能优化热点复盘
+<!-- topic-nav:start -->
+> 主题：`business/cpu-cost` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本文面向排查 feeda-mv-grc 中调权/过滤热点、Set2Set/PCS 链路、序列化与响应组装导致的 CPU 上涨问题。  
 > 今日 daily-plan 记录的内网周报仅有摘要，未读取 KU 正文；本文以本地代码检索结果为主，业务收益与实验背景需人工补充。

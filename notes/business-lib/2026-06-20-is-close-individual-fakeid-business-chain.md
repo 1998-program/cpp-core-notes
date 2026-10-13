@@ -1,4 +1,8 @@
 # 2026-06-20 业务库代码理解：关闭个性化 is_close_individual 与 fake_id 传递链路
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-20  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按近期双 Markdown 工作流周六 fallback，选择“关闭个性化推荐”业务链路，聚焦 GR/GRG/GRC 间 `is_close_individual` 与 `fake_id` 的传递边界。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，产品口径需人工补充。  

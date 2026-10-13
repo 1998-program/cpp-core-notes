@@ -1,4 +1,8 @@
 # 2026-07-11 基础库代码理解：DynamicTimeOut 跨图注入与 scene 降级边界
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-11｜类型：基础库笔记  
 > 今日主题来源：本机仅发现历史 `daily-plan-20260529.json`；按周六 fallback 继续选择 `DynamicTimeOutPlugin 动态超时注入与场景映射`。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；本次没有 KU URL/doc-id，内网策略背景需人工补充，以下结论来自本地代码库检索。

@@ -1,4 +1,8 @@
 # 2026-08-29 周六代码理解：GR 请求解析中的关闭个性化与 fake_id 注入边界
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-29  
 > 主题来源：当前没有可用的当日 daily-plan，回退到 `notes/weekly-topic-selection/daily-plan-20260529.json` 中的 fake_id / 关闭个性化候选主题；KU/业务背景需人工补充。  
@@ -125,91 +129,4 @@ data
 ## 7. 说明
 当前运行环境未发现 2026-08-29 的 daily-plan 文件，也没有读取 KU 正文；本笔记使用本地代码包与历史候选主题回退生成，业务背景需人工补充。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-09-01T19:19:54.017178
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-## 分析摘要
-
-- 从技术笔记看，这套能力的本质不是单一字段判断，而是**请求归一化链**：`is_close_individual`、`cmode` 派生的 `is_only_browse`、`fake_id`/`fake_cuid` 注入、以及 `from_scene` 和 `SceneInfo` 的同步回填。
-- 结合扫描结果，**feeda-mv-grc（召回汇聚服务）更适合优先落地**：它已经在多个过滤/调整链路里接触用户行为、兴趣和分数初始化，适合接入“关闭个性化”标志做统一下发。**feeda-mv-grg（序列生成服务）目前只有 1 个相关文件命中**，说明直接适配面较小，更像是按需接入。
-- 迁移潜力总体偏高，但重点不在“大面积改造”，而在**在入口统一解析，在下游统一消费**，避免多个模块各自判断真实 uid / fake uid / browse-only 状态。
-
-## 代码库详情
-
-- ### feeda-mv-grg
-  - 扫描到的目标相关文件仅 1 个：`strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-  - 这说明 GRG 侧目前对“关闭个性化 / fake_id”没有形成明显的通用入口，更多可能是某个策略点在消费用户特征。
-  - 现有 STL 使用规模很大：
-    - `std::vector`：1969 次，356 个文件
-    - `std::string`：2443 次，425 个文件
-    - `std::unordered_map`：734 次，205 个文件
-  - 结论：GRG 侧如果引入该能力，建议从**单一策略点或上下文对象**切入，而不是改动整条链路。
-
-- ### feeda-mv-grc
-  - 扫描到的目标相关文件共 10 个，已确认的代表文件包括：
-    - `service/grc_http_service.cpp`
-    - `processor/filter/low_agile_goodrate_filter_operator.cc`
-    - `processor/filter/user_explore_interest_ugc_filter_operator.cc`
-    - `processor/new_adjust/precise_score_init.cpp`
-    - `operator/adjuster/sketchy/duanju_adjuster.cpp`
-    - `operator/adjuster/sketchy/ltv_factor_cp_opt.cpp`
-  - 这类文件分布在**HTTP 服务入口、过滤器、分数初始化、调整器**多个层面，说明 GRC 侧更容易承接“请求字段归一化 + 下游统一消费”的模式。
-  - 现有 STL 使用规模也很大：
-    - `std::vector`：8520 次，1290 个文件
-    - `std::string`：7267 次，1247 个文件
-    - `std::unordered_map`：2860 次，646 个文件
-  - 结论：GRC 侧已有较多业务处理点，适合将 `is_close_individual`、`fake_id`、`from_scene` 作为**上下文字段**向下游透传。
-
-## 💡 适用性评估与建议
-
-- **建议 1：先在入口统一做请求归一化**
-  - 文件建议：`service/grc_http_service.cpp`
-  - 做法：参考笔记里的 `request.cpp` 逻辑，在 HTTP 入口统一解析 `is_close_individual`、`is_only_browse`、`cmode`、`from_scene`，并生成统一的 request context。
-  - 价值：避免 `processor/filter/*`、`operator/adjuster/*` 各自重复判断，减少“只看原始字段导致漏判”的问题。
-
-- **建议 2：在过滤链路里优先屏蔽个性化依赖**
-  - 文件建议：`processor/filter/low_agile_goodrate_filter_operator.cc`、`processor/filter/user_explore_interest_ugc_filter_operator.cc`
-  - 做法：当 `is_close_individual != 0` 或 browse-only 成立时，过滤器不要再依赖真实用户画像、历史偏好或个性化特征。
-  - 价值：这两个文件本身就属于用户兴趣/好率过滤位置，最适合作为关闭个性化的第一落点。
-
-- **建议 3：在分数初始化阶段切换“脱敏用户标识”**
-  - 文件建议：`processor/new_adjust/precise_score_init.cpp`
-  - 做法：如果当前链路会初始化用户相关特征，建议引入 `fake_id` / `fake_cuid` 概念，或者至少使用统一的“匿名用户 key”。
-  - 价值：避免后续 adjuster 仍然拿真实 cuid 做特征拼接，导致关闭个性化失效。
-
-- **建议 4：在调整器中显式支持“只浏览模式”**
-  - 文件建议：`operator/adjuster/sketchy/duanju_adjuster.cpp`、`operator/adjuster/sketchy/ltv_factor_cp_opt.cpp`
-  - 做法：对依赖长期用户价值、历史行为强相关的因子，增加 `is_close_individual` 分支；browse-only 时使用弱个性化或非个性化系数。
-  - 价值：这两个文件从命名上看都属于强策略调整位，适合做最终行为收敛。
-
-- **建议 5：GRG 侧只保留最小必要接入**
-  - 文件建议：`strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-  - 做法：如果 GRG 侧也需要支持关闭个性化，优先在该规则内读取统一上下文，控制多样性/个性化权重，而不是改动生成主流程。
-  - 价值：GRG 当前只命中 1 个相关文件，说明适合“小切口接入”，降低迁移成本。
-
-## ⚠️ 引入风险与限制
-
-- **风险 1：字段只改入口，不改下游，会出现“半生效”**
-  - 如果 `service/grc_http_service.cpp` 解析了 `is_close_individual`，但 `processor/filter/*` 仍读真实用户标识，就会出现部分模块按匿名、部分模块按实名的混乱状态。
-
-- **风险 2：fake_id / fake_cuid 的稳定性要统一**
-  - 笔记里的逻辑依赖 `uid`、`cuid`、`baiduid`、`logid` 组合生成 fake_id。
-  - 如果不同服务或不同线程使用不同生成规则，会导致同一请求在多个模块里“身份不一致”，影响召回、排序和实验统计。
-
-- **风险 3：默认值和 reset 逻辑容易漏配**
-  - 参考笔记中的 `SceneInfo reset + sema 回填` 思路，新增上下文对象时必须明确初始化。
-  - 否则旧请求残留字段可能污染当前请求，尤其是在长生命周期对象或对象池场景中。
-
-- **风险 4：实验与观测口径会变化**
-  - 一旦 `is_close_individual` 生效，线上 A/B 的分组、CTR、停留时长等指标可能被重置或偏移。
-  - 建议在日志和埋点里同时记录：原始字段、归一化结果、是否进入 fake_id 分支，便于排查。
-
-- **风险 5：GRG 侧收益有限，别做过度改造**
-  - GRG 当前只有 `strategy/diversity/rule/low_clarity_diversity_rule.cpp` 命中，说明大范围迁移的 ROI 不高。
-  - 更合适的做法是先在 GRC 落地统一上下文，再按需把同样的上下文字段透传到 GRG。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260829-gr-request-close-personalization-fake-id.md)。

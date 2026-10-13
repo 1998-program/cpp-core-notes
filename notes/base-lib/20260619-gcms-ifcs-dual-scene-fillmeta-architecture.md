@@ -1,4 +1,8 @@
 # GcmsComponent / IFCS 双场景 FillMeta 正排架构（2026-06-19）
+<!-- topic-nav:start -->
+> 主题：`base/gcms-fillmeta` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本次 cron 未发现 `daily-plan-20260619.json`，按缺省主题回退到 GRC 正排补全链路。内网 KU 未提供 URL/doc-id，需人工补充策略背景；本文以代码库证据为准。
 

@@ -1,4 +1,8 @@
 # 2026-06-11 业务库代码理解：GRC 关键路径观测在主请求链路中的落点
+<!-- topic-nav:start -->
+> 主题：`business/critical-path` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-02-grc-critical-path-latency-attribution.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现可用 daily-plan 文件，本次按周四 fallback 选择 `GRC 主链路 CriticalPath 观测与延迟归因`。内网 KU 未参与检索，业务场景与看板规范需人工补充；本笔记以代码库检索结果为准。
 

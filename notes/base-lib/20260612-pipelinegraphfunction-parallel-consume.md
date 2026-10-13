@@ -1,4 +1,8 @@
 # PipelineGraphFunction parallel_consume 批消费框架
+<!-- topic-nav:start -->
+> 主题：`base/pipeline-consume` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-12  
 > 今日主题来源：`daily-plan-20260529.json` Friday base-lib slot  

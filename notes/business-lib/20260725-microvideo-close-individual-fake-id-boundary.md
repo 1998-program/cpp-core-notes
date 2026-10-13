@@ -1,4 +1,8 @@
 # 微视频 close-personalization：fake_id 与 MicroGRC 跨服务边界
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-25  
 > 类型：业务库笔记  

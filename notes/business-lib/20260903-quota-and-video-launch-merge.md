@@ -1,4 +1,8 @@
 # 2026-09-03 周四业务库理解：召回 quota 与 video_launch 数据合并
+<!-- topic-nav:start -->
+> 主题：`business/quota-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260626-grc-datamerge-baoliang-quota.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-03  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 仍停留在旧的周计划，没有 2026-09-03 当日计划；按历史候选回退到 `召回 quota 与 video_launch 数据合并`。KU 正文未读取，业务背景需人工补充。  

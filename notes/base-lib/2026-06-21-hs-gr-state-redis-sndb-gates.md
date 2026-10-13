@@ -1,4 +1,8 @@
 # 2026-06-21 基础库代码理解：HS gr_state Redis/SNDB 双通道门禁与状态透传
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 继续 History Service 点展状态主题，聚焦 `gr_state` 在 Redis 与 SNDB 两条基础设施路径中的写入、读回、门禁和易错点。  
 > 内网 KU：本次任务未提供 KU URL/doc-id；未执行如流知识库查询，线上产品口径需人工补充。本文以代码库证据为准。  

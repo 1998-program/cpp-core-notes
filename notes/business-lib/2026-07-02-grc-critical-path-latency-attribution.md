@@ -1,4 +1,8 @@
 # GRC CriticalPath 业务排障：last_queue、DNN 与 pure_grc 延迟归因
+<!-- topic-nav:start -->
+> 主题：`business/critical-path` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-02｜类型：业务库笔记｜主题来源：本机未发现可用 `daily-plan` 文件；按周四 fallback 选择 GRC 主链路 CriticalPath 观测与延迟归因。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，业务场景口径需人工补充，本文以本地代码库检索结果为准。
 

@@ -110,6 +110,4 @@ theme
 
 <!-- 以下适配分析章节来自 GitHub 侧版本，合并时保留 -->
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-25T19:01:50.686964
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260724-grc-video-launch-response-contract.md)。

@@ -1,4 +1,8 @@
 # 2026-06-13 基础库代码理解：MultiStreamEnginePlugin 依赖绑定与对象池生命周期
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现本机 daily-plan 文件；按周六 fallback 选择 `MultiStreamEnginePlugin` 作为基础库主题，解释配置装载、EngineMgr 对象池、GraphDependency 绑定与业务 vertex 的接入边界。内网 KU 未提供 URL/doc-id，需人工补充平台规范；本笔记以代码库检索结果为准。
 

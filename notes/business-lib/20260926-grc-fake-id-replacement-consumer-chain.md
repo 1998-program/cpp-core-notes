@@ -1,4 +1,8 @@
 # 2026-09-26 业务代码理解：GRC fake_id 替换链路与下游精排消费者
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-26（周六）
 > 主题选择：未发现目标日期有效 daily-plan；仓库中仅保留 2026-05-29 的过期 weekly-plan。本次按 plan 中 `Sat: GRC fake_id 关闭/替换链路` 回退。前一篇基础库笔记已覆盖 `DynamicTimeOutPlugin` 的池化合同；本篇只追踪 `CommonInfo.fake_id` 字段从构造到下游 9 处消费者（`feed_ufs`、`ctr_rank`、`ctr_rerank`、`parallel_ctr_rank`、`sketchy_rpc`、`sketchy_rpc_config`、`sketchy_rpc_pipeline`、`ctr_rank_function`、`ec_sketchy_rank`、`ec_cvr_rank`）的覆盖顺序、`is_fake_user` 状态以及精排时的 cuid/bid 写入。KU 正文未读取，业务背景需人工补充；以下只陈述源码和 graph 配置可验证的行为。

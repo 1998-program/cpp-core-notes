@@ -1,4 +1,8 @@
 # 18. brpc::bthread — M:N 协程调度引擎深度解析
+<!-- topic-nav:start -->
+> 主题：`cpp/bthread` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 ## 1. 核心定位
 

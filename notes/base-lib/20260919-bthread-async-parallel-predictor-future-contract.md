@@ -1,4 +1,8 @@
 # 2026-09-19 基础库理解：bthread_async 并行预测与 Future 汇总合同
+<!-- topic-nav:start -->
+> 主题：`base/bthread-future` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260528-bthread-async-fan-out-future-join-usage-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-19  
 > 主题选择：未发现本日有效 daily-plan；历史计划中的 `bthread_async 批量并行模式与捕获安全` 尚未在当前 2026-09 系列形成对应双笔记，因此按邻近未覆盖主题回退。KU 正文未读取，业务背景需人工补充；本文只依据本地代码证据。  

@@ -1,4 +1,8 @@
 # 2026-08-15 周六代码理解：GRG DiversityMerge 并行合并与闭包安全
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-15  
 > 主题来源：2026-06-01 daily-plan 文件未发现，按历史未覆盖主题 fallback 到 GRG 侧 `DiversityMerge` 并行合并与闭包安全链路；KU/业务背景需人工补充。  
@@ -102,121 +106,5 @@ data
 
 ## 7. 备注
 本次环境未提供可用 KU 文档正文，需人工补充业务背景与外部说明。
----
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-08-27T19:02:13.501755
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-# 业务代码库适配分析报告
-
-## 1. 分析摘要
-
-- 这次技术点对应的是 **GRG DiversityMerge 的并行切片执行模式**：通过 `bthread_async` 将输入按区间拆分、用 `Future` 收集任务、再通过 `closure.wait()` 做收口，适合 **规则计算、候选项批处理、因子/特征并行评估** 这类“输入独立、汇总集中”的场景。
-- 从扫描结果看，**feeda-mv-grg** 仅发现 1 个文件已有目标技术相关使用，说明已有局部实践但覆盖面很小；**feeda-mv-grc** 没有直接使用经验，但 `std::vector` / `std::unordered_map` 等高频遍布大量文件，说明业务代码里存在大量“可切片处理”的循环与聚合逻辑，**迁移潜力主要体现在批量规则、因子生成、调整器计算链路**。
-
----
-
-## 2. 代码库详情
-
-### feeda-mv-grg：序列生成服务
-
-- 已发现目标库使用：
-  - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-- 说明：
-  - 这是当前代码库里**最接近目标模式的参考实现**，可作为并行拆分、闭包生命周期、等待收口的样板。
-  - 由于只命中 1 个文件，说明并行合并类逻辑**尚未形成统一抽象**，后续迁移要优先考虑封装公共并发工具，而不是在各规则文件里散落写法。
-- 现有 std 等价物使用规模：
-  - `std::vector`：1969 次 / 356 文件
-  - `std::string`：2443 次 / 425 文件
-  - `std::unordered_map`：734 次 / 205 文件
-- 解读：
-  - 这类数据结构高频意味着业务里存在大量“列表遍历 + 哈希聚合 + 字符串拼装”的逻辑，具备做 **切片并行** 的基础。
-  - 但是否值得并行，要看单次处理是否足够重、是否存在共享写冲突。
-
-### feeda-mv-grc：召回汇聚服务
-
-- 已发现目标库使用：
-  - `processor/multi_factor/ltr_factor_gen_scene.cpp`
-  - `processor/new_adjust/precise_score_init_first_refresh.cpp`
-  - `operator/adjuster/sketchy/duanju_adjuster.cpp`
-  - `operator/adjuster/sketchy/ltv_factor_cp_opt.cpp`
-  - `operator/adjuster/function_queue/youzhi_queue_adjust.cpp`
-- 说明：
-  - 这些路径集中在 **因子生成、初始化刷新、调整器、队列式调整**，天然更接近“批量规则/因子计算”模型，比纯 I/O 请求链路更适合做并发切片。
-  - 当前扫描结果没有看到该技术的直接落地代码，说明可以优先从 **局部批处理环节** 做试点。
-- 现有 std 等价物使用规模：
-  - `std::vector`：8520 次 / 1290 文件
-  - `std::string`：7267 次 / 1247 文件
-  - `std::unordered_map`：2860 次 / 646 文件
-- 解读：
-  - 这是一个数据遍历和聚合非常重的代码库，若存在“每个候选/特征/因子独立计算”的循环，迁移到 `bthread_async + Future` 这类模式的收益空间更大。
-  - 但如果大部分逻辑是小粒度操作，线程调度开销可能抵消收益。
-
----
-
-## 3. 💡 适用性评估与建议
-
-- **建议 1：优先在 `feeda-mv-grg/strategy/diversity/rule/low_clarity_diversity_rule.cpp` 做并行模式基线**
-  - 该文件已出现目标技术相关使用，适合直接梳理出统一模板：
-    - 输入按区间切片
-    - 子任务只处理局部下标
-    - 用 `Future` 汇总
-    - 在主线程统一 `wait()` 和收口
-  - 建议把这段逻辑抽成公共辅助函数，避免后续其他 diversity rule 重复实现。
-
-- **建议 2：在 `feeda-mv-grc/processor/multi_factor/ltr_factor_gen_scene.cpp` 试点“候选集分片并行”**
-  - 如果该文件里存在按候选、按特征、按场景逐项计算的循环，可将其改造成：
-    - `items_per_thread` 切片
-    - 每个 `bthread_async` 处理一个区间
-    - 子任务返回局部结果，最后主线程合并
-  - 该文件属于多因子场景，通常比单条请求更适合并行化。
-
-- **建议 3：在 `feeda-mv-grc/processor/new_adjust/precise_score_init_first_refresh.cpp` 评估“初始化批处理”并行化**
-  - 若这里有刷新、重算、初始化列表等批量步骤，适合采用和 `DiversityMergeFunction` 类似的并发切片方式。
-  - 重点检查：
-    - 是否依赖共享缓存
-    - 是否有全局计数器或单例状态
-    - 是否需要严格输出顺序
-
-- **建议 4：在 `feeda-mv-grc/operator/adjuster/sketchy/duanju_adjuster.cpp`、`ltv_factor_cp_opt.cpp`、`function_queue/youzhi_queue_adjust.cpp` 这类调整器链路中做“局部独立计算”改造**
-  - 这些文件名称显示它们更像规则/调整器执行点，适合拆成“前处理 + 并发子任务 + 后处理汇总”。
-  - 如果调整逻辑只依赖输入切片，不依赖后续结果顺序，迁移收益通常较高。
-  - 若存在共享容器写入，建议先改为：
-    - 子任务写局部 `vector` / `map`
-    - 主线程再 merge
-
-- **建议 5：对 `feeda-mv-grc` 先做“热路径识别”，不要直接全量替换**
-  - 由于扫描到的是大量 `std::vector` / `std::unordered_map` 的常规使用，不能默认每处都适合并行。
-  - 建议先在热点文件中确认：
-    - 单次处理耗时是否足够高
-    - 是否存在可拆分的独立分支
-    - 是否有稳定的收口逻辑
-  - 只有满足这三点，再引入 `bthread_async` 与 `closure.wait()`。
-
----
-
-## 4. ⚠️ 引入风险与限制
-
-- **风险 1：闭包/引用生命周期问题**
-  - 若像 `bthread_async([this, &effect_input, ...])` 这样捕获引用，必须保证外层对象在所有 `Future` 完成前一直存活。
-  - 在 `feeda-mv-grg/strategy/diversity/rule/low_clarity_diversity_rule.cpp` 这种已有实现旁边扩展时，最容易踩到悬空引用。
-
-- **风险 2：只等 `Future` 不等 `closure.wait()` 会导致误判完成**
-  - 技术笔记里明确提到存在 `closure.wait()` 收口链路。
-  - 如果迁移时只检查任务句柄结束，而忽略闭包完成，可能出现“任务跑完但结果没真正提交”的问题。
-
-- **风险 3：并发度固定不等于性能提升**
-  - `concurrent_num = 8` 只是调度参数，不代表任何场景都能变快。
-  - 对于粒度很小、逻辑很轻的调整器，线程调度和同步成本可能高于收益。
-
-- **风险 4：结果顺序与幂等性**
-  - 并行切片后，子任务完成顺序不再稳定。
-  - 如果 `feeda-mv-grc/operator/adjuster/*` 或 `processor/*` 中依赖“先后顺序”或“累计状态”，需要补充稳定排序或线程局部累积方案。
-
----
-
-如果你愿意，我可以继续把这份报告进一步整理成你笔记里可直接粘贴的版本，或者补一版 **“按代码库分开的迁移优先级表”**。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260815-grg-diversity-merge-async-closure-safety.md)。

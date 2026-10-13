@@ -1,4 +1,8 @@
 # lite-grc FilterProcessor：ExecEngine 过滤链装载、运行与状态边界（2026-06-23）
+<!-- topic-nav:start -->
+> 主题：`base/filter-lifecycle` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周二 fallback 选择 lite-grc 过滤基础库主题，聚焦 `FilterProcessor` 如何把图依赖、`filter_main*.conf`、ExecEngine FilterOperator 和 `MultiQueueResult` 串成可观测过滤链。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前环境 `ku` 不在 PATH 且未提供 KU URL/doc-id，内网背景需人工补充；本文以代码库检索结果为准。
 

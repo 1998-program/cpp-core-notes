@@ -1,4 +1,8 @@
 # UA=189 HejiLb 与 RelatedScene 业务过滤链路
+<!-- topic-nav:start -->
+> 主题：`business/related-filter` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-ua189-postplay-related-filter-business-chain.md)
+<!-- topic-nav:end -->
+
 
 > 主题来源：本机未发现可用 `daily-plan` 文件，按周二兜底主题生成。内网 KU 检索未参与，本篇以代码库检索证据为准，UA=189 线上实验、人群和策略口径需人工补充。
 

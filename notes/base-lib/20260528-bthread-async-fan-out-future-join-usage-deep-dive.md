@@ -1,4 +1,8 @@
 # bthread_async fan-out 与 Future join 深度解析
+<!-- topic-nav:start -->
+> 主题：`base/bthread-future` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 生成时间：2026-05-28  
 > 目标代码库：`feeda-mv-grc`  
@@ -211,8 +215,5 @@ for (auto& future : future_list) {
 
 1. **batch_size 上限**：第 41 行注释 `// batch_size 固定为150`，但第 437 行默认值是 50。需要验证运行时实际值来源（gflag 或 config）。
 2. **future_list 的 Mutex 类型**：代码使用 `Future<int32_t, ::bthread::Mutex>`，需确认 bthread::Mutex 在 bthread_async 中的具体语义（是否会影响并发度）。
----
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T18:28:13.417680
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260528-bthread-async-fan-out-future-join-usage-deep-dive.md)。

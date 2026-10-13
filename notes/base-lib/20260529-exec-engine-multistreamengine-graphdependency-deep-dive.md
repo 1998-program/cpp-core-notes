@@ -1,4 +1,8 @@
 # ExecEngine MultiStreamEngine 绑定 GraphDependency 深入理解（GRG DiversityMerge）
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-05-29  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的 `fri.base_lib` 计划项  
@@ -128,8 +132,5 @@ RPC Request
 1. `multi_stream_engine_plugin` 的实现未在当前 GRG 仓库中直接找到；已确认调用点为 `src/process/diversity_merge.cpp:86-90`，配置入口为 `vertex.conf:930-932`，下一步应在外部依赖 `baidu/feed/general/common-processor/plugin/exec_engine.h` 或 `baidu/feed/gr/exec_engine` 库中继续追踪 `bind_graph_dependency()`。
 2. `ExecType` 数值（如 `exec_type: 1/3`）的枚举定义未在当前代码库中直接找到；已确认配置使用位置为 `multi_stream_diversity.conf:70-75` 与 `multi_stream_diversity.conf:388-393`，下一步应搜索 exec_engine 基础库枚举。
 3. `DiversityRuleOperator`、`RuleSelectOperator`、`DiversityScorePkOperatorV2` 的具体算法实现位于外部 exec_engine/operator 依赖或本仓库其他目录，本文仅基于绑定链路与配置语义分析。
----
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-06-20T18:31:13.835372
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)。

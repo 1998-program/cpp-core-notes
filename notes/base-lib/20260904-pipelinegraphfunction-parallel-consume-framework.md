@@ -1,4 +1,8 @@
 # 2026-09-04 周五基础库理解：PipelineGraphFunction parallel_consume 批消费框架
+<!-- topic-nav:start -->
+> 主题：`base/pipeline-consume` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260612-pipelinegraphfunction-parallel-consume.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-04  
 > 主题来源：当前 canonical 笔记仓库未找到 2026-09-04 当日 daily-plan；按旧计划 `notes/weekly-topic-selection/daily-plan-20260529.json` 的 Friday 配对回退到 `PipelineGraphFunction parallel_consume 批消费框架`。KU 正文未读取，业务背景需人工补充。  

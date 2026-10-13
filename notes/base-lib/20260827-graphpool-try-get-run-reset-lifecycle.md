@@ -1,4 +1,8 @@
 # GraphPool 对象池复用与 reset 生命周期：GRC/GRG 请求图的取用、运行与回收
+<!-- topic-nav:start -->
+> 主题：`base/graphpool-reset` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 运行说明：daily-plan 目录里没有 2026-08-27 对应计划文件；按历史未覆盖主题 fallback 到 GraphPool 生命周期这条基础链路。当前 cron 环境未验证 KU 可用性，KU/业务背景需人工补充；本文只使用本地代码证据。
 

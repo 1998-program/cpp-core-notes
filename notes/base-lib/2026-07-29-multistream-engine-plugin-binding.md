@@ -1,4 +1,8 @@
 # MultiStreamEnginePlugin 绑定链路：配置装载、引擎池初始化与依赖注入
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-29  
 > 类型：基础库笔记  

@@ -1,4 +1,8 @@
 # 2026-09-27 业务代码理解：GRG 个性化推荐入口与 fakeid 兼容边界
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-27（周日）
 > 主题选择：目标日期没有新的 daily-plan；仓内唯一计划 `daily-plan-20260529.json` 已过期。本次读取其周日槽位，选择未覆盖的 **GRG 个性化推荐关闭开关 fakeid 兼容**。基础库侧配对分析 Graph Expression/SelectProcessor 条件门控；本文只分析 GRG service 的 graph 选择、用户身份字段注入、VIP/debug 开关和可见的个性化表达式。KU 正文未读取，业务背景需人工补充；以下只陈述源码和 graph 配置可验证的行为。

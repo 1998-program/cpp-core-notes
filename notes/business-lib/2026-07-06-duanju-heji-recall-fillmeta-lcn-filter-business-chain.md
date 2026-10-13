@@ -1,4 +1,8 @@
 # 2026-07-06 业务库代码理解：短剧/合集队列从召回配置到 LCN 过滤的业务链
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260601-grc-gcms-ifcs-fill-meta-chain.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-06｜类型：业务库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周一 fallback 与基础库 Queue Pipeline 配对，选择短剧/合集 `duanju_explore`、`heji_expand` 队列进入 FillMeta/Filter 后的业务语义。  

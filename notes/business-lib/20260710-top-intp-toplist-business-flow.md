@@ -1,4 +1,8 @@
 # 2026-07-10 周五代码理解：top-intp 置顶干预业务链路与返回组装
+<!-- topic-nav:start -->
+> 主题：`business/top-intp-toplist` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本文基于本地 `top-intp` 代码阅读生成；未获得可直接读取的 KU 背景文档，运营投放规则、城市分层含义和线上实验需人工补充。
 

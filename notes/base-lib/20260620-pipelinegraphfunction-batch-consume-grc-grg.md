@@ -1,4 +1,8 @@
 # 2026-06-20 周度代码理解：PipelineGraphFunction 批消费框架与 GRC/GRG 发布语义
+<!-- topic-nav:start -->
+> 主题：`base/pipeline-consume` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260612-pipelinegraphfunction-parallel-consume.md)
+<!-- topic-nav:end -->
+
 
 > 本文面向排查 GRC/GRG C++ 服务中 Pipeline 型图节点的吞吐下降、下游空数据、SIA 耗时归因异常与 Dapper 长尾断链问题。  
 > 本次未使用 KU 正文检索补充；如需历史设计背景，需人工补充 graph-engine / ChannelConsumer 内部文档。

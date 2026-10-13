@@ -1,4 +1,8 @@
 # 2026-09-26 基础库代码理解：DynamicTimeOutPlugin 与 FullLinkDynamicTimeOutController 池化合同
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-26（周六）
 > 主题选择：未发现目标日期有效 daily-plan；仓库中仅保留 2026-05-29 的过期 weekly-plan。本次按 plan 中 `Sat: DynamicTimeOutPlugin 动态超时注入与场景映射` 回退。代码库入口 `feeda-mv-grc` 的仓内别名 `feed::general::framework::DynamicTimeOutPlugin` 指向上游 `feed-arch` 框架；本文只在 GRC 调用点反推插件对外合同，并对照 `GenericGRCService::run()` 的接入顺序与 `Util::get_dynamic_timeout()` 的 RPC 维度动态预算流程。KU 正文未读取，业务背景需人工补充；以下只陈述源码和 graph 配置可验证的行为。

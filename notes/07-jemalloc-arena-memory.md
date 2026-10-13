@@ -1,4 +1,8 @@
 # 07-jemalloc-arena-memory.md
+<!-- topic-nav:start -->
+> 主题：`cpp/jemalloc` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](24-jemalloc.md)
+<!-- topic-nav:end -->
+
 
 ## jemalloc · Arena 内存管理
 

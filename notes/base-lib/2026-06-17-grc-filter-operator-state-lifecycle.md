@@ -1,4 +1,8 @@
 # GRC FilterOperator 状态生命周期与依赖绑定
+<!-- topic-nav:start -->
+> 主题：`base/filter-lifecycle` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-lite-grc-filterprocessor-exec-engine-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未找到显式 `daily-plan-20260617.json`，按近期双 Markdown 工作流 fallback 到代码库新增/最近活跃的 lite-grc 过滤算子。内网 KU 未提供可检索 URL/doc-id，需人工补充业务背景；本文以 lite-grc 代码与配置为证据，聚焦 `real_prepare → real_process → clear` 的基础库状态模型。
 

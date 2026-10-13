@@ -1,4 +1,8 @@
 # 2026-06-28 基础库代码理解：HS gr_state 通道契约与读写门禁
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 继续 History Service 点展状态主题。  
 > 内网 KU：本次任务未提供 KU URL/doc-id；如流知识库检索需人工补充。本文以代码库证据为准。  

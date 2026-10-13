@@ -1,4 +1,8 @@
 # History Service `gr_state`：Redis/SNDB 双通道一致性与合并边界
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-26  
 > 类型：基础库笔记  
