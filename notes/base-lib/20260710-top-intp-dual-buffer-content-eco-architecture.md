@@ -1,4 +1,8 @@
 # 2026-07-10 周五代码理解：top-intp 双 Buffer 内容干预缓存架构
+<!-- topic-nav:start -->
+> 主题：`base/top-data-buffer` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本文基于本地 `top-intp` 代码阅读生成；未获得可直接读取的 KU 背景文档，运营策略、上线实验和收益口径需人工补充。
 

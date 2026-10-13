@@ -1,4 +1,8 @@
 # Protobuf SerializeToString 热点与 FlatBuffers 替代方向
+<!-- topic-nav:start -->
+> 主题：`base/protobuf-hotspots` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260707-protobuf-serialize-flatbuffers-hotspots.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：`daily-plan-20260529.json` 周二基础库主题：`Protobuf SerializeToString 热点与 FlatBuffers 替代方向`。内网 KU 未提供可检索 URL/doc-id；FlatBuffers 平台落地规范需人工补充。本篇以 GRC/GRG 代码证据为准，聚焦请求透传样本、响应 extmsg 与后续替代方向。
 

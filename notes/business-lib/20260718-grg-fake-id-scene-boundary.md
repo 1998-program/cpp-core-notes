@@ -1,4 +1,8 @@
 # 2026-07-18 周六代码理解：GRG fake_id 与个性化关闭边界
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 本文基于本地 `feed-gr` 代码阅读生成；KU 正文未能逐篇读取，场景背景与业务口径需人工补充。
 

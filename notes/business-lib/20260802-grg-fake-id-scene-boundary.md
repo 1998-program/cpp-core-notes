@@ -1,4 +1,8 @@
 # 2026-08-02 周日代码理解：GRG fake_id 与个性化关闭边界
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-02  
 > 主题来源：2026-08-02 daily-plan 缺失，按历史未覆盖主题 fallback 到 GRG `fake_id` / 个性化关闭边界  
@@ -95,102 +99,4 @@ data
 - `src/request/grg_request.cpp`
 - `conf/grg_scene_mapping.conf`
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-08-04T19:02:57.532536
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-# 业务代码库适配分析：GRG `fake_id` / 个性化关闭边界
-
-## 1. 分析摘要
-
-- 这次适配的核心，不是把 `fake_id` 当成策略开关，而是把它稳定地限制为**请求标识/实验隔离信息**；真正决定是否进入个性化图的，应该是 `is_close_individual` 以及 `scene` 映射结果。
-- 从扫描结果看，`feeda-mv-grg` 中与该边界直接相关的代码命中较少，仅发现 `strategy/diversity/rule/low_clarity_diversity_rule.cpp` 这一处明显关联；但入口层的 `src/service/grg_service.cpp`、`src/request/grg_request.cpp`、`conf/grg_scene_mapping.conf` 已经具备落地该边界的天然位置。
-- `feeda-mv-grc` 侧关联文件更多，覆盖 `service`、`processor`、`filter`、`adjuster` 多层，说明其已有较成熟的分层处理经验，可作为 GRG 的参考实现。
-- 两个代码库里 `std::vector`、`std::string`、`std::unordered_map` 使用都非常密集，说明这次迁移**不需要动容器生态**，收益主要来自**控制流分离、降级可解释性、调试成本下降**，而不是基础类型替换带来的性能收益。
-
-## 2. 代码库详情
-
-- `feeda-mv-grg`
-  - 扫描到的直接相关文件：`strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-  - `std` 使用规模：
-    - `std::vector`：1969 次，356 个文件
-    - `std::string`：2443 次，425 个文件
-    - `std::unordered_map`：734 次，205 个文件
-  - 典型参考代码：
-    - `model/model.h`
-    - `model/paddle_model.h`
-  - 代码库现状判断：
-    - 容器使用非常广，说明新的请求上下文、策略开关、场景映射对象都容易接入
-    - 但从扫描结果看，`fake_id` / `is_close_individual` 的边界语义并未形成大量沉淀，适合先在入口层和策略门控层补齐
-
-- `feeda-mv-grc`
-  - 扫描到的相关文件有 10 个，覆盖面更广：
-    - `processor/new_adjust/precise_score_init.cpp`
-    - `processor/filter/user_explore_interest_ugc_filter_operator.cc`
-    - `processor/filter/low_agile_goodrate_filter_operator.cc`
-    - `processor/multi_factor/ltr_factor_gen_scene.cpp`
-    - `operator/adjuster/sketchy/duanju_adjuster.cpp`
-    - `service/grc_http_service.cpp`
-  - `std` 使用规模：
-    - `std::vector`：8520 次，1290 个文件
-    - `std::string`：7267 次，1247 个文件
-    - `std::unordered_map`：2860 次，646 个文件
-  - 典型参考代码：
-    - `service/grc_http_service.cpp`
-  - 代码库现状判断：
-    - 已有较完整的 HTTP 入参解析、图依赖组织、响应拼装经验
-    - 更适合作为“场景分流 + 输出契约”模式的参考仓库
-
-## 3. 💡 适用性评估与建议
-
-- **建议 1：在 `src/request/grg_request.cpp` 明确区分“标识”和“开关”**
-  - 将 `fake_id` 作为只读请求标识字段保留，不参与任何分支判定
-  - 将 `is_close_individual` 单独封装为策略开关字段，避免后续业务把两者混用
-  - 适合场景：请求解析、实验流量隔离、调试定位
-
-- **建议 2：在 `src/service/grg_service.cpp` 统一做 policy gate，不要把关闭逻辑散到各个策略节点**
-  - 先完成 `scene` 解析，再统一判断 `is_close_individual`
-  - 命中关闭态时，直接走 fallback response，不进入个性化图
-  - 同时补充日志/埋点，记录“为何未进入个性化图”，避免排查时把正常降级误判成异常
-  - 可参考 `service/grc_http_service.cpp` 的请求到响应组织方式
-
-- **建议 3：在 `conf/grg_scene_mapping.conf` 中把 scene 映射和关闭态出口一起维护**
-  - scene 映射变更时，同步检查关闭态是否仍然返回公共内容
-  - 避免“个性化已关闭，但响应出口没变”的错觉
-  - 适合场景：`short_micro_video`、`news_updates_dibar`、`default` 等图的路由维护
-
-- **建议 4：把 `strategy/diversity/rule/low_clarity_diversity_rule.cpp` 作为规则式门控参考，抽出统一的 gate 接口**
-  - 如果后续还有更多“条件进入图/条件绕过图”的逻辑，建议抽一个统一 policy gate
-  - 这样 `fake_id`、实验开关、个性化关闭都能复用同一入口契约
-  - 适合场景：多策略共存、门控逻辑扩张、规则链路需要统一解释
-
-- **建议 5：在 `feeda-mv-grc` 侧借鉴 `processor/multi_factor/ltr_factor_gen_scene.cpp` 和 `service/grc_http_service.cpp` 的分层方式**
-  - `ltr_factor_gen_scene.cpp` 可作为“场景映射”参考
-  - `grc_http_service.cpp` 可作为“请求解析 + 响应拼装”参考
-  - 如果未来 GRC 也要接入类似关闭态，建议把降级判断放在 service 层，而不是下沉到 filter / adjuster 内部
-
-## 4. ⚠️ 引入风险与限制
-
-- **风险 1：把 `fake_id` 误用成策略开关**
-  - 会导致实验标记和业务分支耦合
-  - 后果是排查困难、回放不一致、线上行为不可解释
-
-- **风险 2：关闭个性化却不保留原因码**
-  - 响应看起来像“算法没命中”或“服务异常”
-  - 实际上是业务主动降级，若不记录解释信息，监控和排障都会失真
-
-- **风险 3：scene 映射改动会影响下游链路**
-  - 一旦 `scene` 选择变化，后续的过滤、调整、排序都可能改变
-  - 特别是 `feeda-mv-grc` 里多层 processor/filter/adjuster 串联，联动影响更大
-
-- **风险 4：新增上下文对象时注意不要引入不必要拷贝**
-  - 两个代码库里 `std::vector` 和 `std::string` 都使用极多
-  - 如果把 `fake_id`、scene、开关信息在链路中频繁复制，会放大额外开销
-  - 建议优先使用 `const &` 或轻量上下文传递
-
-如果你愿意，我可以继续把这份内容整理成你学习笔记里的正式小节版本，补上“结论一句话”和“落地改造步骤”。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260802-grg-fake-id-scene-boundary.md)。

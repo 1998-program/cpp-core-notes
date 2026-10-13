@@ -1,4 +1,8 @@
 # 2026-06-09 业务库代码理解：GRG DiversityMerge 与 MultiStream 多队列打散
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未找到 daily-plan 文件，本次按近期 GRG 多流打散链路 fallback 选题。内网 KU 未参与检索，若需业务策略背景需人工补充。
 

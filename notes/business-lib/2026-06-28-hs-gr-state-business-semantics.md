@@ -1,4 +1,8 @@
 # 2026-06-28 业务库代码理解：点展状态 gr_state 解析口径与防误用
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 选择 History Service 点展状态业务语义，与今日基础库 `gr_state` 通道契约配对。  
 > 内网 KU：本次任务未提供 KU URL/doc-id；产品口径、实验策略、线上看板需人工补充。本文以代码库证据和基础库机制为准。  

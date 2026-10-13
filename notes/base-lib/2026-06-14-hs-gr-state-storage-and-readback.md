@@ -1,4 +1,8 @@
 # 2026-06-14 基础库代码理解：HS gr_state 点展状态的存取与透传链路
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现本机 daily-plan 文件；按周日 fallback 选择 History Service 的 `gr_state` 点展状态透传机制。内网 KU 未提供 URL/doc-id，本篇以代码库检索结果为准；平台规范与业务口径需人工补充。
 

@@ -1,4 +1,8 @@
 # 2026-06-09 基础库代码理解：IFCS → GCMS 正排 → FillMeta 注入链路
+<!-- topic-nav:start -->
+> 主题：`base/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未找到 daily-plan 文件，本次按近期 GRC 正排链路 fallback 选题。内网 KU 未参与检索，若需对齐业务背景需人工补充。
 

@@ -1,0 +1,3967 @@
+{
+  "schema_version": 1,
+  "topics": [
+    {
+      "id": "ai-tools/context7-up-to-date-docs-for-llms",
+      "category": "ai-tools",
+      "title": "01 · Context7 — 给 LLM 实时喂最新文档",
+      "canonical": "ai-tools/01-context7-up-to-date-docs-for-llms.md",
+      "documents": [
+        {
+          "path": "ai-tools/01-context7-up-to-date-docs-for-llms.md",
+          "title": "01 · Context7 — 给 LLM 实时喂最新文档",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/serena-ide-level-code-tools-for-ai-agents",
+      "category": "ai-tools",
+      "title": "02 · Serena — 给 AI Coding Agent 装上 IDE 级代码理解能力",
+      "canonical": "ai-tools/02-serena-ide-level-code-tools-for-ai-agents.md",
+      "documents": [
+        {
+          "path": "ai-tools/02-serena-ide-level-code-tools-for-ai-agents.md",
+          "title": "02 · Serena — 给 AI Coding Agent 装上 IDE 级代码理解能力",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/gemini-cli-google-terminal-ai-agent",
+      "category": "ai-tools",
+      "title": "03 · Gemini CLI — Google 的开源终端 AI Agent",
+      "canonical": "ai-tools/03-gemini-cli-google-terminal-ai-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/03-gemini-cli-google-terminal-ai-agent.md",
+          "title": "03 · Gemini CLI — Google 的开源终端 AI Agent",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/github-mcp-server-ai-agent-github-operations",
+      "category": "ai-tools",
+      "title": "04 · GitHub MCP Server — 让 AI Agent 直接操作 GitHub",
+      "canonical": "ai-tools/04-github-mcp-server-ai-agent-github-operations.md",
+      "documents": [
+        {
+          "path": "ai-tools/04-github-mcp-server-ai-agent-github-operations.md",
+          "title": "04 · GitHub MCP Server — 让 AI Agent 直接操作 GitHub",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/litellm-unified-llm-gateway",
+      "category": "ai-tools",
+      "title": "05 · LiteLLM — 100+ LLM 的统一调用网关",
+      "canonical": "ai-tools/05-litellm-unified-llm-gateway.md",
+      "documents": [
+        {
+          "path": "ai-tools/05-litellm-unified-llm-gateway.md",
+          "title": "05 · LiteLLM — 100+ LLM 的统一调用网关",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/vllm-high-throughput-llm-inference",
+      "category": "ai-tools",
+      "title": "06 · vLLM — 高吞吐量 LLM 推理引擎",
+      "canonical": "ai-tools/06-vllm-high-throughput-llm-inference.md",
+      "documents": [
+        {
+          "path": "ai-tools/06-vllm-high-throughput-llm-inference.md",
+          "title": "06 · vLLM — 高吞吐量 LLM 推理引擎",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/chrome-devtools-mcp-ai-browser-debugging",
+      "category": "ai-tools",
+      "title": "07 · Chrome DevTools MCP — 让 AI Agent 控制浏览器调试",
+      "canonical": "ai-tools/07-chrome-devtools-mcp-ai-browser-debugging.md",
+      "documents": [
+        {
+          "path": "ai-tools/07-chrome-devtools-mcp-ai-browser-debugging.md",
+          "title": "07 · Chrome DevTools MCP — 让 AI Agent 控制浏览器调试",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/how-claude-code-works-internals-deep-dive",
+      "category": "ai-tools",
+      "title": "08 · How Claude Code Works — Claude Code 源码深度解析",
+      "canonical": "ai-tools/08-how-claude-code-works-internals-deep-dive.md",
+      "documents": [
+        {
+          "path": "ai-tools/08-how-claude-code-works-internals-deep-dive.md",
+          "title": "08 · How Claude Code Works — Claude Code 源码深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/hermes-agent-self-evolving-ai-agent",
+      "category": "ai-tools",
+      "title": "09 · Hermes Agent — 自我进化的 AI Agent 框架",
+      "canonical": "ai-tools/09-hermes-agent-self-evolving-ai-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/09-hermes-agent-self-evolving-ai-agent.md",
+          "title": "09 · Hermes Agent — 自我进化的 AI Agent 框架",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/claude-code-guide-beginner-to-power-user",
+      "category": "ai-tools",
+      "title": "10 · Claude Code Guide — 从入门到精通的完整指南",
+      "canonical": "ai-tools/10-claude-code-guide-beginner-to-power-user.md",
+      "documents": [
+        {
+          "path": "ai-tools/10-claude-code-guide-beginner-to-power-user.md",
+          "title": "10 · Claude Code Guide — 从入门到精通的完整指南",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/agentscope-production-ready-agent-framework",
+      "category": "ai-tools",
+      "title": "11 · AgentScope — 面向 Agent 时代的生产级框架",
+      "canonical": "ai-tools/11-agentscope-production-ready-agent-framework.md",
+      "documents": [
+        {
+          "path": "ai-tools/11-agentscope-production-ready-agent-framework.md",
+          "title": "11 · AgentScope — 面向 Agent 时代的生产级框架",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/awesome-claude-code-subagents-100-ready-agents",
+      "category": "ai-tools",
+      "title": "12 · Awesome Claude Code Subagents — 100+ 专用 Subagent 集合",
+      "canonical": "ai-tools/12-awesome-claude-code-subagents-100-ready-agents.md",
+      "documents": [
+        {
+          "path": "ai-tools/12-awesome-claude-code-subagents-100-ready-agents.md",
+          "title": "12 · Awesome Claude Code Subagents — 100+ 专用 Subagent 集合",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/deer-flow",
+      "category": "ai-tools",
+      "title": "DeerFlow",
+      "canonical": "ai-tools/13-deer-flow-bytedance-super-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/13-deer-flow-bytedance-super-agent.md",
+          "title": "13 · DeerFlow — 字节跳动开源的超级 Agent 框架",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/ai-tools/ai-deer-flow-super-agent.md",
+          "title": "🦌 DeerFlow 2.0 — 字节跳动开源 SuperAgent 框架深度解析",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/awesome-llm-apps",
+      "category": "ai-tools",
+      "title": "Awesome LLM Apps",
+      "canonical": "ai-tools/14-awesome-llm-apps-100-runnable-ai-agents.md",
+      "documents": [
+        {
+          "path": "ai-tools/14-awesome-llm-apps-100-runnable-ai-agents.md",
+          "title": "14 · Awesome LLM Apps — 100+ 可运行的 AI Agent 实例",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/ai-tools/ai-awesome-llm-apps.md",
+          "title": "AI 工具推荐 · awesome-llm-apps",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/agent-deck",
+      "category": "ai-tools",
+      "title": "Agent Deck",
+      "canonical": "ai-tools/15-agent-deck-terminal-session-manager.md",
+      "documents": [
+        {
+          "path": "ai-tools/15-agent-deck-terminal-session-manager.md",
+          "title": "15 · Agent Deck — AI Agent 的终端会话管理中心",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/ai-tools/ai-agent-deck.md",
+          "title": "🎛️ Agent Deck — AI Coding Agents 统一终端管理器",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/nanobot-ultralight-agent",
+      "category": "ai-tools",
+      "title": "#16 · nanobot — 超轻量个人 AI Agent",
+      "canonical": "ai-tools/16-nanobot-ultralight-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/16-nanobot-ultralight-agent.md",
+          "title": "#16 · nanobot — 超轻量个人 AI Agent",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/openhuman-personal-agent",
+      "category": "ai-tools",
+      "title": "#17 · OpenHuman — 个人 AI 超级智能体",
+      "canonical": "ai-tools/17-openhuman-personal-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/17-openhuman-personal-agent.md",
+          "title": "#17 · OpenHuman — 个人 AI 超级智能体",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/prompts-chat-community",
+      "category": "ai-tools",
+      "title": "#18 · prompts.chat — 社区 Prompt 平台",
+      "canonical": "ai-tools/18-prompts-chat-community.md",
+      "documents": [
+        {
+          "path": "ai-tools/18-prompts-chat-community.md",
+          "title": "#18 · prompts.chat — 社区 Prompt 平台",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/awesome-mcp-servers",
+      "category": "ai-tools",
+      "title": "#19 · awesome-mcp-servers — MCP Server 精选目录",
+      "canonical": "ai-tools/19-awesome-mcp-servers.md",
+      "documents": [
+        {
+          "path": "ai-tools/19-awesome-mcp-servers.md",
+          "title": "#19 · awesome-mcp-servers — MCP Server 精选目录",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/golutra-multi-agent-workspace",
+      "category": "ai-tools",
+      "title": "#19 · golutra — 多 Agent 桌面编排工作台",
+      "canonical": "ai-tools/19-golutra-multi-agent-workspace.md",
+      "documents": [
+        {
+          "path": "ai-tools/19-golutra-multi-agent-workspace.md",
+          "title": "#19 · golutra — 多 Agent 桌面编排工作台",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/turix-cua-computer-use-agent",
+      "category": "ai-tools",
+      "title": "TuriX-CUA：桌面自动化 Computer-Use Agent 深度解析",
+      "canonical": "ai-tools/20-turix-cua-computer-use-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/20-turix-cua-computer-use-agent.md",
+          "title": "TuriX-CUA：桌面自动化 Computer-Use Agent 深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/agent-governance-toolkit",
+      "category": "ai-tools",
+      "title": "Agent Governance Toolkit",
+      "canonical": "ai-tools/2026-06-06-agent-governance-toolkit.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-06-agent-governance-toolkit.md",
+          "title": "Agent Governance Toolkit",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/dograh",
+      "category": "ai-tools",
+      "title": "Dograh",
+      "canonical": "ai-tools/2026-06-06-dograh.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-06-dograh.md",
+          "title": "Dograh",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/understand-anything",
+      "category": "ai-tools",
+      "title": "Understand-Anything",
+      "canonical": "ai-tools/2026-06-06-understand-anything.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-06-understand-anything.md",
+          "title": "Understand-Anything",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/abtop",
+      "category": "ai-tools",
+      "title": "abtop",
+      "canonical": "ai-tools/2026-06-10-abtop.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-10-abtop.md",
+          "title": "abtop",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/antigravity-awesome-skills",
+      "category": "ai-tools",
+      "title": "antigravity-awesome-skills",
+      "canonical": "ai-tools/2026-06-10-antigravity-awesome-skills.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-10-antigravity-awesome-skills.md",
+          "title": "antigravity-awesome-skills",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/autobe",
+      "category": "ai-tools",
+      "title": "AutoBE",
+      "canonical": "ai-tools/2026-06-10-autobe.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-10-autobe.md",
+          "title": "AutoBE",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/headroom",
+      "category": "ai-tools",
+      "title": "Headroom — AI Agent 的上下文压缩层",
+      "canonical": "ai-tools/2026-06-21-headroom.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-21-headroom.md",
+          "title": "Headroom — AI Agent 的上下文压缩层",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/ponytail",
+      "category": "ai-tools",
+      "title": "Ponytail — 让 AI 编码 Agent 像「最懒资深工程师」一样思考",
+      "canonical": "ai-tools/2026-06-22-ponytail.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-22-ponytail.md",
+          "title": "Ponytail — 让 AI 编码 Agent 像「最懒资深工程师」一样思考",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/gptme",
+      "category": "ai-tools",
+      "title": "gptme — 终端里随时召唤的本地 AI Agent",
+      "canonical": "ai-tools/2026-06-23-gptme.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-23-gptme.md",
+          "title": "gptme — 终端里随时召唤的本地 AI Agent",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/agent-reach",
+      "category": "ai-tools",
+      "title": "Agent-Reach — 给 AI Agent 装上互联网的\"眼睛\"",
+      "canonical": "ai-tools/2026-06-24-agent-reach.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-24-agent-reach.md",
+          "title": "Agent-Reach — 给 AI Agent 装上互联网的\"眼睛\"",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/mirage",
+      "category": "ai-tools",
+      "title": "Mirage — 给 AI Agent 的统一虚拟文件系统",
+      "canonical": "ai-tools/2026-06-25-mirage.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-25-mirage.md",
+          "title": "Mirage — 给 AI Agent 的统一虚拟文件系统",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/cua",
+      "category": "ai-tools",
+      "title": "Cua — 给 AI Agent 一台真正能用的电脑",
+      "canonical": "ai-tools/2026-06-26-cua.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-26-cua.md",
+          "title": "Cua — 给 AI Agent 一台真正能用的电脑",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/bifrost",
+      "category": "ai-tools",
+      "title": "Bifrost — 11µs 开销的企业级 AI Gateway（OpenAI 兼容 + 多 Provider 故障转移 + MCP）",
+      "canonical": "ai-tools/2026-06-27-bifrost.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-27-bifrost.md",
+          "title": "Bifrost — 11µs 开销的企业级 AI Gateway（OpenAI 兼容 + 多 Provider 故障转移 + MCP）",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/flashinfer",
+      "category": "ai-tools",
+      "title": "FlashInfer — 大模型推理的「内核工厂」",
+      "canonical": "ai-tools/2026-06-28-flashinfer.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-28-flashinfer.md",
+          "title": "FlashInfer — 大模型推理的「内核工厂」",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/context-mode",
+      "category": "ai-tools",
+      "title": "Context-Mode - AI Coding Agent 上下文优化 MCP 服务器",
+      "canonical": "ai-tools/2026-06-29-context-mode.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-29-context-mode.md",
+          "title": "Context-Mode - AI Coding Agent 上下文优化 MCP 服务器",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/wshobson-agents",
+      "category": "ai-tools",
+      "title": "wshobson/agents — 多 Harness 统一的 AI Agent Plugin Marketplace",
+      "canonical": "ai-tools/2026-06-30-wshobson-agents.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-06-30-wshobson-agents.md",
+          "title": "wshobson/agents — 多 Harness 统一的 AI Agent Plugin Marketplace",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/letta",
+      "category": "ai-tools",
+      "title": "Letta - 状态代理平台：让 AI 拥有高级内存与自我学习能力",
+      "canonical": "ai-tools/2026-07-01-letta.md",
+      "documents": [
+        {
+          "path": "ai-tools/2026-07-01-letta.md",
+          "title": "Letta - 状态代理平台：让 AI 拥有高级内存与自我学习能力",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/gpt-researcher-deep-research-agent",
+      "category": "ai-tools",
+      "title": "GPT Researcher · 首个开源深度研究 Agent",
+      "canonical": "ai-tools/21-gpt-researcher-deep-research-agent.md",
+      "documents": [
+        {
+          "path": "ai-tools/21-gpt-researcher-deep-research-agent.md",
+          "title": "GPT Researcher · 首个开源深度研究 Agent",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/ai-tools-langgraph",
+      "category": "ai-tools",
+      "title": "#22 · LangGraph — 构建有状态、长时运行 Agent 的低级编排框架",
+      "canonical": "ai-tools/ai-tools-langgraph.md",
+      "documents": [
+        {
+          "path": "ai-tools/ai-tools-langgraph.md",
+          "title": "#22 · LangGraph — 构建有状态、长时运行 Agent 的低级编排框架",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/ai-tools-pocketflow",
+      "category": "ai-tools",
+      "title": "PocketFlow：100 行 LLM 框架深度解析",
+      "canonical": "ai-tools/ai-tools-pocketflow.md",
+      "documents": [
+        {
+          "path": "ai-tools/ai-tools-pocketflow.md",
+          "title": "PocketFlow：100 行 LLM 框架深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/axonhub",
+      "category": "ai-tools",
+      "title": "axonhub",
+      "canonical": "ai-tools/axonhub.md",
+      "documents": [
+        {
+          "path": "ai-tools/axonhub.md",
+          "title": "axonhub",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/genericagent",
+      "category": "ai-tools",
+      "title": "GenericAgent",
+      "canonical": "ai-tools/genericagent.md",
+      "documents": [
+        {
+          "path": "ai-tools/genericagent.md",
+          "title": "GenericAgent",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/insforge",
+      "category": "ai-tools",
+      "title": "insforge",
+      "canonical": "ai-tools/insforge.md",
+      "documents": [
+        {
+          "path": "ai-tools/insforge.md",
+          "title": "insforge",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/superpowers",
+      "category": "ai-tools",
+      "title": "superpowers",
+      "canonical": "ai-tools/superpowers.md",
+      "documents": [
+        {
+          "path": "ai-tools/superpowers.md",
+          "title": "superpowers",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "ai-tools/voicebox",
+      "category": "ai-tools",
+      "title": "voicebox",
+      "canonical": "ai-tools/voicebox.md",
+      "documents": [
+        {
+          "path": "ai-tools/voicebox.md",
+          "title": "voicebox",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/flatbuffers",
+      "category": "cpp",
+      "title": "FlatBuffers：零拷贝序列化",
+      "canonical": "notes/01-flatbuffers-zero-copy.md",
+      "documents": [
+        {
+          "path": "notes/01-flatbuffers-zero-copy.md",
+          "title": "FlatBuffers · 零拷贝序列化设计",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/16-flatbuffers-zero-copy.md",
+          "title": "#16 · FlatBuffers — 零拷贝序列化设计解析",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/31-flatbuffers.md",
+          "title": "31 · FlatBuffers 零拷贝序列化引擎",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/36-flatbuffers-prod.md",
+          "title": "FlatBuffers 生产实战：与 Protobuf/brpc/ng-framework 深度对比",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "cpp/swiss-table",
+      "category": "cpp",
+      "title": "absl::flat_hash_map：Swiss Table",
+      "canonical": "notes/41-absl-flat-hash-map.md",
+      "documents": [
+        {
+          "path": "notes/02-absl-flat-hash-map.md",
+          "title": "absl::flat_hash_map · SIMD 哈希探测",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/41-absl-flat-hash-map.md",
+          "title": "absl::flat_hash_map — Swiss Table 高性能哈希表",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/absl-inlined-vector",
+      "category": "cpp",
+      "title": "absl::InlinedVector · 栈上优化小容器",
+      "canonical": "notes/03-absl-inlined-vector.md",
+      "documents": [
+        {
+          "path": "notes/03-absl-inlined-vector.md",
+          "title": "absl::InlinedVector · 栈上优化小容器",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/folly-fbstring",
+      "category": "cpp",
+      "title": "folly::fbstring · SSO 字符串优化深度解析",
+      "canonical": "notes/04-folly-fbstring.md",
+      "documents": [
+        {
+          "path": "notes/04-folly-fbstring.md",
+          "title": "folly::fbstring · SSO 字符串优化深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/folly-f14map",
+      "category": "cpp",
+      "title": "05 - folly::F14Map：向量化哈希表",
+      "canonical": "notes/05-folly-f14map.md",
+      "documents": [
+        {
+          "path": "notes/05-folly-f14map.md",
+          "title": "05 - folly::F14Map：向量化哈希表",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/mimalloc-segmented-allocator",
+      "category": "cpp",
+      "title": "06-mimalloc-segmented-allocator.md",
+      "canonical": "notes/06-mimalloc-segmented-allocator.md",
+      "documents": [
+        {
+          "path": "notes/06-mimalloc-segmented-allocator.md",
+          "title": "06-mimalloc-segmented-allocator.md",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/jemalloc",
+      "category": "cpp",
+      "title": "jemalloc：Arena 与内存管理",
+      "canonical": "notes/24-jemalloc.md",
+      "documents": [
+        {
+          "path": "notes/07-jemalloc-arena-memory.md",
+          "title": "07-jemalloc-arena-memory.md",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/24-jemalloc.md",
+          "title": "jemalloc：高性能内存分配器深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/rocksdb-block-cache",
+      "category": "cpp",
+      "title": "08-rocksdb-block-cache.md",
+      "canonical": "notes/08-rocksdb-block-cache.md",
+      "documents": [
+        {
+          "path": "notes/08-rocksdb-block-cache.md",
+          "title": "08-rocksdb-block-cache.md",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/leveldb-skiplist",
+      "category": "cpp",
+      "title": "09 · LevelDB::SkipList — 无锁跳表实现",
+      "canonical": "notes/09-leveldb-skiplist.md",
+      "documents": [
+        {
+          "path": "notes/09-leveldb-skiplist.md",
+          "title": "09 · LevelDB::SkipList — 无锁跳表实现",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/seastar-future-coroutine",
+      "category": "cpp",
+      "title": "10 · seastar::future — 用户态协程调度",
+      "canonical": "notes/10-seastar-future-coroutine.md",
+      "documents": [
+        {
+          "path": "notes/10-seastar-future-coroutine.md",
+          "title": "10 · seastar::future — 用户态协程调度",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/dpdk-rte-ring",
+      "category": "cpp",
+      "title": "DPDK::rte_ring — 无锁环形队列深度解析",
+      "canonical": "notes/11-dpdk-rte-ring.md",
+      "documents": [
+        {
+          "path": "notes/11-dpdk-rte-ring.md",
+          "title": "DPDK::rte_ring — 无锁环形队列深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/boost-intrusive",
+      "category": "cpp",
+      "title": "Boost::intrusive — 侵入式容器深度解析",
+      "canonical": "notes/12-boost-intrusive.md",
+      "documents": [
+        {
+          "path": "notes/12-boost-intrusive.md",
+          "title": "Boost::intrusive — 侵入式容器深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/abseil-cord-rope",
+      "category": "cpp",
+      "title": "#13 · abseil::Cord — 绳索字符串 (Rope) 设计解析",
+      "canonical": "notes/13-abseil-cord-rope.md",
+      "documents": [
+        {
+          "path": "notes/13-abseil-cord-rope.md",
+          "title": "#13 · abseil::Cord — 绳索字符串 (Rope) 设计解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/folly-atomichashmap",
+      "category": "cpp",
+      "title": "#14 · folly::AtomicHashMap — 无锁哈希表设计解析",
+      "canonical": "notes/14-folly-atomichashmap.md",
+      "documents": [
+        {
+          "path": "notes/14-folly-atomichashmap.md",
+          "title": "#14 · folly::AtomicHashMap — 无锁哈希表设计解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/tcmalloc-threadcache",
+      "category": "cpp",
+      "title": "#15 · tcmalloc::ThreadCache — 线程本地分配缓存",
+      "canonical": "notes/15-tcmalloc-threadcache.md",
+      "documents": [
+        {
+          "path": "notes/15-tcmalloc-threadcache.md",
+          "title": "#15 · tcmalloc::ThreadCache — 线程本地分配缓存",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/protobuf-arena",
+      "category": "cpp",
+      "title": "Protobuf Arena：分配与所有权",
+      "canonical": "notes/17-protobuf-arena-allocator.md",
+      "documents": [
+        {
+          "path": "notes/17-protobuf-arena-allocator.md",
+          "title": "#17 · protobuf Arena — 批量分配与析构跳过",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/37-protobuf-arena.md",
+          "title": "protobuf::Arena —— 把 Protobuf 反序列化做成\"一次性分配\"的内存竞技场",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "cpp/bthread",
+      "category": "cpp",
+      "title": "brpc::bthread：M:N 调度",
+      "canonical": "notes/18-brpc-bthread.md",
+      "documents": [
+        {
+          "path": "notes/18-brpc-bthread.md",
+          "title": "18. brpc::bthread — M:N 协程调度引擎深度解析",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/40-brpc-bthread.md",
+          "title": "brpc::bthread — M:N 协程调度引擎与工作窃取队列",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "cpp/folly-mpmcqueue",
+      "category": "cpp",
+      "title": "folly::MPMCQueue — 多生产者多消费者无锁队列深度解析",
+      "canonical": "notes/19-folly-mpmcqueue.md",
+      "documents": [
+        {
+          "path": "notes/19-folly-mpmcqueue.md",
+          "title": "folly::MPMCQueue — 多生产者多消费者无锁队列深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/tbb-concurrent-queue",
+      "category": "cpp",
+      "title": "tbb::concurrent_queue — Intel oneTBB 无锁并发队列深度解析",
+      "canonical": "notes/20-tbb-concurrent-queue.md",
+      "documents": [
+        {
+          "path": "notes/20-tbb-concurrent-queue.md",
+          "title": "tbb::concurrent_queue — Intel oneTBB 无锁并发队列深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/folly-concurrenthashmap",
+      "category": "cpp",
+      "title": "folly::ConcurrentHashMap —— 分段锁并发哈希表深度解析",
+      "canonical": "notes/21-folly-concurrenthashmap.md",
+      "documents": [
+        {
+          "path": "notes/21-folly-concurrenthashmap.md",
+          "title": "folly::ConcurrentHashMap —— 分段锁并发哈希表深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/hazard-pointer-smr",
+      "category": "cpp",
+      "title": "22. Hazard Pointer：无锁内存安全回收（SMR）机制深度解析",
+      "canonical": "notes/22-hazard-pointer-smr.md",
+      "documents": [
+        {
+          "path": "notes/22-hazard-pointer-smr.md",
+          "title": "22. Hazard Pointer：无锁内存安全回收（SMR）机制深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/std-pmr-memory-resource",
+      "category": "cpp",
+      "title": "std::pmr::memory_resource 深度解析",
+      "canonical": "notes/23-std-pmr-memory-resource.md",
+      "documents": [
+        {
+          "path": "notes/23-std-pmr-memory-resource.md",
+          "title": "std::pmr::memory_resource 深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/boost-asio",
+      "category": "cpp",
+      "title": "boost::asio · 异步 I/O 引擎与推荐在线架构实战",
+      "canonical": "notes/27-boost-asio.md",
+      "documents": [
+        {
+          "path": "notes/27-boost-asio.md",
+          "title": "boost::asio · 异步 I/O 引擎与推荐在线架构实战",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/brpc-butex",
+      "category": "cpp",
+      "title": "34 · brpc::butex —— 用户态 futex 与 bthread 同步原语的灵魂",
+      "canonical": "notes/34-brpc-butex.md",
+      "documents": [
+        {
+          "path": "notes/34-brpc-butex.md",
+          "title": "34 · brpc::butex —— 用户态 futex 与 bthread 同步原语的灵魂",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/brpc-iobuf",
+      "category": "cpp",
+      "title": "brpc::IOBuf 零拷贝缓冲链与 ng-framework 在线服务实战",
+      "canonical": "notes/35-brpc-iobuf.md",
+      "documents": [
+        {
+          "path": "notes/35-brpc-iobuf.md",
+          "title": "brpc::IOBuf 零拷贝缓冲链与 ng-framework 在线服务实战",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/brpc-bvar",
+      "category": "cpp",
+      "title": "brpc::bvar —— 用户态零竞争计数器：在线服务监控的隐形基石",
+      "canonical": "notes/38-brpc-bvar.md",
+      "documents": [
+        {
+          "path": "notes/38-brpc-bvar.md",
+          "title": "brpc::bvar —— 用户态零竞争计数器：在线服务监控的隐形基石",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "cpp/brpc-execution-queue",
+      "category": "cpp",
+      "title": "39-brpc-execution-queue.md",
+      "canonical": "notes/39-brpc-execution-queue.md",
+      "documents": [
+        {
+          "path": "notes/39-brpc-execution-queue.md",
+          "title": "39-brpc-execution-queue.md",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/gcms-fillmeta",
+      "category": "base",
+      "title": "GCMS/IFCS：FillMeta 元数据注入",
+      "canonical": "notes/base-lib/20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-09-ifcs-gcms-fill-meta.md",
+          "title": "2026-06-09 基础库代码理解：IFCS → GCMS 正排 → FillMeta 注入链路",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-18-grc-gcms-ifcs-fillmeta-dual-scene.md",
+          "title": "GRC GCMS/IFCS 正排补全：同一组件支撑视频与图文双场景",
+          "role": "supplement",
+          "scope": "`GcmsComponent::query_common/query_news`、`FillMetaPipelineFunction`、`NewsFillMetaPipelineFunction` 与图配置依赖关系。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-25-grc-gcms-ifcs-fillmeta-contract.md",
+          "title": "GRC FillMeta：GCMS/IFCS 双通道内容元数据契约（2026-06-25）",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-06-grc-queue-pipeline-fillmeta-filter-contract.md",
+          "title": "2026-07-06 基础库代码理解：GRC 队列 Pipeline 主通路与元数据过滤契约",
+          "role": "supplement",
+          "scope": "`queue_vertex.conf` 中 `DsToRidInfoPipelineVertex → FillMetaPipelineFunction → GetVidClkPipelineFunction → FilterPipelineFunction`，以及 `FillMetaPipelineFunction` 对 GCMS PB 正排、合集改写、队列级 ChannelPublisher 的处理。"
+        },
+        {
+          "path": "notes/base-lib/20260608-grc-fillmeta-ifcs-gcms-positive-doc-chain.md",
+          "title": "GRC 基础库：IFCS/GCMS FillMeta 正排补全链路",
+          "role": "supplement",
+          "scope": "`FillMetaBaseProcessor` 的依赖声明、nid 去重、IFCS 请求上下文、场景切换、GCMS pb 写回、缺失正排过滤。"
+        },
+        {
+          "path": "notes/base-lib/20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md",
+          "title": "GcmsComponent / IFCS 双场景 FillMeta 正排架构（2026-06-19）",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/bthread-future",
+      "category": "base",
+      "title": "bthread_async：Future、批量 RPC 与捕获安全",
+      "canonical": "notes/base-lib/20260528-bthread-async-fan-out-future-join-usage-deep-dive.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-10-bthread-async-future-batch-rpc.md",
+          "title": "2026-06-10 基础库代码理解：bthread_async + Future 批量 RPC 模式",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260521-bthread-usage-deep-dive.md",
+          "title": "bthread 在 feeda-mv-grc 中的窄域用法深挖：bthread_async + Future + bthread::Mutex",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260522-bthread-usage-deep-dive.md",
+          "title": "bthread 在 Feed 图引擎服务中的窄域用法深挖：并行 RPC / Pipeline 并发 / 轻量同步",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260527-bthread-usage-deep-dive.md",
+          "title": "bthread 用法深挖：在 Feed 图引擎里的“并行消费”与后台任务",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260528-bthread-async-fan-out-future-join-usage-deep-dive.md",
+          "title": "bthread_async fan-out 与 Future join 深度解析",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/20260813-bthread-async-future-capture-safety.md",
+          "title": "2026-08-13 周四代码理解：bthread_async 批量并行与 Future 捕获安全",
+          "role": "supplement",
+          "scope": "只分析 GRC 侧 `ParallelPredictorPlugin`、`doc_feature_with_cache` 相关路径里的并发发起、Future 汇总、lambda 捕获与容器预分配；本文不扩展到全部 RPC 框架。"
+        },
+        {
+          "path": "notes/base-lib/20260919-bthread-async-parallel-predictor-future-contract.md",
+          "title": "2026-09-19 基础库理解：bthread_async 并行预测与 Future 汇总合同",
+          "role": "supplement",
+          "scope": "GRC `main.cpp` 启动、`ParallelPredictorPlugin::predict/parallel_predict` 的请求过滤与 Future 生命周期、`ParallelCtrRankProcessor` 的 batch 请求构造、结果回填和 SIA 归因。"
+        }
+      ]
+    },
+    {
+      "id": "base/critical-path",
+      "category": "base",
+      "title": "CriticalPath：图执行观测",
+      "canonical": "notes/base-lib/2026-07-02-critical-path-observability-framework.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-11-critical-path-graph-observability.md",
+          "title": "2026-06-11 基础库代码理解：CriticalPath 图执行观测与虚拟节点上报",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-02-critical-path-observability-framework.md",
+          "title": "GRC/PCS CriticalPath 观测框架：动态图、Dapper 虚拟节点与耗时切片",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/2026-10-05-tracelog-mutable-context-and-critical-path-contract.md",
+          "title": "2026-10-05 基础库代码理解：TraceInfo/MutableFrameworkContext 与请求级关键路径观测合同",
+          "role": "supplement",
+          "scope": "feed-general/framework/include/base.h、feed-general/framework/src/log.cpp、feed-general/framework/include/graph_monitor.h、feed-general/framework/src/graph_monitor.cpp、feed-general/framework/include/trace_log/trace_plugin.h、feed-general/framework/src/trace_plugin.cpp、feed-general/framework/conf/trace_log.conf、feeda-dc-grg/src/critical_path/critical_path.h、feeda-dc-grg/src/critical_path/critical_path.cc、feeda-dc-grg/src/service/graph_service.cc、feeda-dc-grg/src/service/new_generator_service.cc、feeda-dc-grg/src/service/new_generator_closure.cc、feeda-dc-grg/src/processor/response_processor.cpp。"
+        }
+      ]
+    },
+    {
+      "id": "base/pipeline-consume",
+      "category": "base",
+      "title": "PipelineGraphFunction：并行消费与发布",
+      "canonical": "notes/base-lib/20260612-pipelinegraphfunction-parallel-consume.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-12-pipeline-parallel-consume.md",
+          "title": "2026-06-12 基础库代码理解：PipelineGraphFunction parallel_consume 批消费框架",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260612-pipelinegraphfunction-parallel-consume.md",
+          "title": "PipelineGraphFunction parallel_consume 批消费框架",
+          "role": "primary",
+          "scope": "GRC `src/processor/base/pipeline_function.*` 与 GRG `src/process/base/pipeline_function.*` 的 Channel 批消费、bthread 并发、QueueContext 聚合与发布语义。"
+        },
+        {
+          "path": "notes/base-lib/20260620-pipelinegraphfunction-batch-consume-grc-grg.md",
+          "title": "2026-06-20 周度代码理解：PipelineGraphFunction 批消费框架与 GRC/GRG 发布语义",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260828-pipelinegraphfunction-parallel-consume.md",
+          "title": "PipelineGraphFunction parallel_consume 批消费框架",
+          "role": "supplement",
+          "scope": "`src/processor/base/pipeline_function.h` 与 `src/process/base/pipeline_function.h` 的批消费、bthread 并发、QueueContext 聚合、发布语义和请求闭环。"
+        },
+        {
+          "path": "notes/base-lib/20260904-pipelinegraphfunction-parallel-consume-framework.md",
+          "title": "2026-09-04 周五基础库理解：PipelineGraphFunction parallel_consume 批消费框架",
+          "role": "supplement",
+          "scope": "`src/processor/base/pipeline_function.h`、`src/processor/base/pipeline_function.cpp`、`src/process/base/pipeline_function.h`、`src/process/base/pipeline_function.hpp`，聚焦 Channel 批消费、bthread 并发、QueueContext 汇总、publisher 发布和 post_process 日志收束。"
+        },
+        {
+          "path": "notes/base-lib/20260908-grc-pipelinegraphfunction-parallel-consume.md",
+          "title": "2026-09-08 周一基础库理解：PipelineGraphFunction 并行消费骨架与队列上下文收敛",
+          "role": "supplement",
+          "scope": "`src/processor/base/pipeline_function.h`，聚焦批消费、`bthread_async` 并行、剩余任务本地兜底与 `QueueContext` 收敛。"
+        },
+        {
+          "path": "notes/base-lib/20260930-pipelinegraphfunction-channel-publish-log-contract.md",
+          "title": "2026-09-30 基础库代码理解：PipelineGraphFunction 并行发布与日志汇总合同",
+          "role": "supplement",
+          "scope": "`baidu/feed-gr/feeda-mv-grg/src/process/base/pipeline_function.h`、`baidu/feed-gr/feeda-mv-grg/src/process/base/pipeline_function.hpp`、`baidu/feed-gr/feeda-mv-grg/conf/plugins/graph/short_micro_video/pipeline.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "base/multistream-binding",
+      "category": "base",
+      "title": "MultiStreamEngine：配置、依赖绑定与执行",
+      "canonical": "notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-13-multistreamengine-plugin-dependency-binding.md",
+          "title": "2026-06-13 基础库代码理解：MultiStreamEnginePlugin 依赖绑定与对象池生命周期",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-24-new-diversitymerge-multistream-framework.md",
+          "title": "NewDiversityMerge：MultiStreamEngine 多队列打散基础框架（2026-06-24）",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-01-grg-multistream-engine-binding-framework.md",
+          "title": "GRG MultiStreamEngine 绑定框架：从插件加载到 Graph 依赖注入",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-08-multistream-engine-config-runtime-assembly.md",
+          "title": "2026-07-08 基础库代码理解：MultiStreamEngine 从配置到运行时装配的执行框架",
+          "role": "supplement",
+          "scope": "`multi_stream_diversity.conf` 的 stream/pip/executor/operator 配置树，`MultiStreamEngineInfoLoader` 对配置的加载、依赖汇总、策略生成器注册，以及 `RuleSelectOperator` 的小流量/条件化算子筛选。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-15-multistream-engine-dependency-binding-and-runtime-closure.md",
+          "title": "2026-07-15 基础库代码理解：MultiStreamEngine 依赖绑定与运行时闭包",
+          "role": "supplement",
+          "scope": "服务入口、图配置、vertex 依赖、strategy queue 结构，以及 MultiStreamEngine 在业务图中的运行时闭包位置。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-16-multistream-engine-plugin-graphdependency-binding.md",
+          "title": "2026-07-16 基础库代码理解：MultiStreamEnginePlugin 的 GraphDependency 绑定边界",
+          "role": "supplement",
+          "scope": "`ExecEnginePlugin` 抽象、`MultiStreamEnginePlugin::bind_graph_dependency()`、GRG `DiversityMerge` 初始化闭包，以及运行期 `merge_pos()` 输出边界。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-23-multistream-engine-runtime-binding.md",
+          "title": "2026-07-23 基础库代码理解：MultiStreamEngine 的运行时绑定与执行闭包",
+          "role": "supplement",
+          "scope": "`MultiStreamEngine` 初始化、`ExecStrategy`/generator 装配、`BaseStreamContext` 生命周期，以及 `bind_graph_dependency()` 将 GraphDependency 注入到 stream context 的边界。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-29-multistream-engine-plugin-binding.md",
+          "title": "MultiStreamEnginePlugin 绑定链路：配置装载、引擎池初始化与依赖注入",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive-enhanced.md",
+          "title": "MultiStreamEngine 绑定 GraphDependency：图解补充",
+          "role": "supplement",
+          "scope": "只分析 GRG 中 `DiversityMergeFunction` 如何把图引擎 GraphData / Channel 依赖绑定到 ExecEngine `MultiStreamEngine`，不泛化到所有 brpc / graph-engine 用法。"
+        },
+        {
+          "path": "notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md",
+          "title": "ExecEngine MultiStreamEngine 绑定 GraphDependency 深入理解（GRG DiversityMerge）",
+          "role": "primary",
+          "scope": "只分析 GRG 中 `DiversityMergeFunction` 如何把图引擎 GraphData / Channel 依赖绑定到 ExecEngine `MultiStreamEngine`，不泛化到所有 brpc / graph-engine 用法。"
+        },
+        {
+          "path": "notes/base-lib/20260603-exec-engine-multistreamengine-loop-observability.md",
+          "title": "ExecEngine MultiStreamEngine：按槽位循环、stream 链路与算子成本可观测",
+          "role": "supplement",
+          "scope": "`MultiStreamEngineInfoLoader` 配置加载、`MultiStreamEngineInfo::create()` 构造 stream、`MultiStreamEngine::run_prepare()` 绑定依赖与 prepare、`MultiStreamEngine::run()` 按 loop/stream 执行、rollback、结果输出与 Dapper 成本上报。"
+        },
+        {
+          "path": "notes/base-lib/20260604-exec-engine-multistreamengine-config-to-runtime.md",
+          "title": "ExecEngine MultiStreamEngine：从配置展开到请求级运行时",
+          "role": "supplement",
+          "scope": "`add_engine_info()`、`create_engine_info()`、`load_pip()`、`load_executor()`、`load_op()`、`wire_up()`、`run_prepare()`、`run()`。"
+        },
+        {
+          "path": "notes/base-lib/20260605-exec-engine-multistreamengine-rollback-observability.md",
+          "title": "ExecEngine MultiStreamEngine：槽位循环、回退语义与可观测性",
+          "role": "supplement",
+          "scope": "`run_prepare()`、`run()`、`generator_input()`、`check_input()`、`check_output()`、`update_context()`、Dapper operator cost 上报。"
+        },
+        {
+          "path": "notes/base-lib/20260709-multistream-bind-graph-dependency.md",
+          "title": "2026-07-09 周度代码理解：MultiStreamEngine bind_graph_dependency 桥接外层 GraphData",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260802-multistreamengine-bind-graph-dependency.md",
+          "title": "2026-08-02 周日代码理解：MultiStreamEngine bind_graph_dependency 绑定外层 GraphDependency",
+          "role": "supplement",
+          "scope": "GRG 侧 `MultiStreamEnginePlugin` / `bind_graph_dependency()` 如何把外层 `GraphDependency`、`GraphVertex` 和引擎对象串起来；本文只讨论这条绑定链路，不扩展到全部业务策略。"
+        },
+        {
+          "path": "notes/base-lib/20260821-multistreamengine-bind-graph-dependency-bridge.md",
+          "title": "2026-08-21 周五代码理解：MultiStreamEngine bind_graph_dependency 桥接外层 GraphData",
+          "role": "supplement",
+          "scope": "只分析 `src/processor/video_launch/diversity_merge.cpp` 与 `src/process/diversity_merge.cpp` 中的 `bind_graph_dependency`、外层 `GraphData` 绑定、`engine_vertex` 取数、以及依赖注入后的执行闭环；不扩展到完整 diversity 规则。"
+        },
+        {
+          "path": "notes/base-lib/20260903-multistreamengine-bind-graph-dependency-bridge.md",
+          "title": "2026-09-03 周四基础库理解：MultiStreamEngine bind_graph_dependency 桥接外层 GraphData",
+          "role": "supplement",
+          "scope": "`src/processor/video_launch/diversity_merge.cpp`、`src/process/diversity_merge.cpp`、`src/service/grc_service.cpp`、`src/service/grg_service.cpp`，聚焦图依赖绑定、GraphPool 获取、场景选择、以及执行前的上下文注入边界。"
+        }
+      ]
+    },
+    {
+      "id": "base/history-state-io",
+      "category": "base",
+      "title": "History Service：gr_state 双通道读写",
+      "canonical": "notes/base-lib/20260726-hs-gr-state-dual-channel-consistency.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-14-hs-gr-state-storage-and-readback.md",
+          "title": "2026-06-14 基础库代码理解：HS gr_state 点展状态的存取与透传链路",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-21-hs-gr-state-redis-sndb-gates.md",
+          "title": "2026-06-21 基础库代码理解：HS gr_state Redis/SNDB 双通道门禁与状态透传",
+          "role": "supplement",
+          "scope": "History Service 入口、`HistoryContent.gr_state` 协议、`RedisHistory::parse_gr_state()`、`RedisHistory::gen_write_command()`、`SndbDao::set_gr_state()` / `get_gr_state()`、读写 tree 与 gflags 配置。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-28-hs-gr-state-channel-contracts.md",
+          "title": "2026-06-28 基础库代码理解：HS gr_state 通道契约与读写门禁",
+          "role": "supplement",
+          "scope": "History Service 入口、`HistoryContent.gr_state` 协议、Redis `gr_state` hash field、SNDB `shoubai_gr_layout_hs` group、读写 gflag 与结果容器。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-05-hs-gr-state-read-negotiation-and-merge-contract.md",
+          "title": "2026-07-05 基础库代码理解：HS gr_state 读请求协商与合并契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-12-hs-gr-state-write-read-merge-contract.md",
+          "title": "2026-07-12 基础库代码理解：HS gr_state 写入、读回与合并契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-19-hs-gr-state-write-read-merge-contract.md",
+          "title": "2026-07-19 周度代码理解：History Service `gr_state` 写入、读取与合并契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260726-hs-gr-state-dual-channel-consistency.md",
+          "title": "History Service `gr_state`：Redis/SNDB 双通道一致性与合并边界",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/20260805-history-service-dual-channel-state-io.md",
+          "title": "History Service 双通道状态 IO：Redis 与 SNDB 的配置化执行骨架",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260806-history-service-gr-state-dual-channel.md",
+          "title": "2026-08-06 周四代码理解：History Service `gr_state` 双通道状态读写",
+          "role": "supplement",
+          "scope": "只分析 History Service 侧 `gr_state` 的客户端配置、请求构造、以及 put/get 通道拆分；本文不展开上层业务语义。"
+        }
+      ]
+    },
+    {
+      "id": "base/gcms-plugin-configurable-parser-and-query",
+      "category": "base",
+      "title": "GcmsPlugin：配置化正排字段、Parser 与查询控制器",
+      "canonical": "notes/base-lib/2026-06-15-gcms-plugin-configurable-parser-and-query.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-15-gcms-plugin-configurable-parser-and-query.md",
+          "title": "GcmsPlugin：配置化正排字段、Parser 与查询控制器",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/protobuf-hotspots",
+      "category": "base",
+      "title": "Protobuf：序列化热点与替代边界",
+      "canonical": "notes/base-lib/20260707-protobuf-serialize-flatbuffers-hotspots.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-16-protobuf-serialization-hotspots-flatbuffers-direction.md",
+          "title": "Protobuf SerializeToString 热点与 FlatBuffers 替代方向",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260707-protobuf-serialize-flatbuffers-hotspots.md",
+          "title": "2026-07-07 周度代码理解：Protobuf SerializeToString 热点与 FlatBuffers 替代方向",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/20260812-protobuf-serialize-flatbuffers-hotspots.md",
+          "title": "2026-08-12 周三代码理解：Protobuf SerializeToString 热点与 FlatBuffers 替代边界",
+          "role": "supplement",
+          "scope": "只分析 GRC/GRG 链路里 `SerializeToString`、`ParseFromString`、`std::vector` 扩容与响应出口的 CPU/延迟热点；本文不展开全部业务策略。"
+        },
+        {
+          "path": "notes/base-lib/20260830-protobuf-serialize-and-pb-boundary.md",
+          "title": "2026-08-30 周日基础库理解：Protobuf SerializeToString/ParseFromString 与字符串边界",
+          "role": "supplement",
+          "scope": "`src/plugin/cache_queue.cpp`、`src/processor/set2set_predict_function.cpp`、`src/process/response_function.cpp`、`src/process/new_response_function.cpp`，聚焦 protobuf 二进制串化、base64 透传、vector 预分配与反序列化边界。"
+        }
+      ]
+    },
+    {
+      "id": "base/filter-lifecycle",
+      "category": "base",
+      "title": "FilterProcessor：过滤链装配与状态生命周期",
+      "canonical": "notes/base-lib/2026-06-23-lite-grc-filterprocessor-exec-engine-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-17-grc-filter-operator-state-lifecycle.md",
+          "title": "GRC FilterOperator 状态生命周期与依赖绑定",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-23-lite-grc-filterprocessor-exec-engine-lifecycle.md",
+          "title": "lite-grc FilterProcessor：ExecEngine 过滤链装载、运行与状态边界（2026-06-23）",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/2026-07-14-lite-grc-filterprocessor-execengine-lifecycle.md",
+          "title": "lite-grc FilterProcessor 与 ExecEngine 过滤生命周期",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-21-lite-grc-filterprocessor-execengine-contract.md",
+          "title": "lite-grc FilterProcessor 与 ExecEngine 过滤算子契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260809-common-processor-filter-lifecycle.md",
+          "title": "Common Processor FilterProcessor：过滤执行生命周期与批处理边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260824-common-processor-filter-scene-switch-lifecycle.md",
+          "title": "common-processor 过滤链与场景切换：FilterProcessor、FilterEndProcessor 与 SceneSwitchProcessor",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "base/dynamic-timeout",
+      "category": "base",
+      "title": "DynamicTimeOut：配置、预算与 Controller 生命周期",
+      "canonical": "notes/base-lib/20260725-dynamic-timeout-plugin-budget-control.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-20-dynamic-timeout-plugin-framework.md",
+          "title": "2026-06-20 基础库代码理解：DynamicTimeOutPlugin 全链路超时分配框架",
+          "role": "supplement",
+          "scope": "插件初始化、scene/stage 配置解析、controller 池化、请求级总超时绑定、RPC 级默认/动态超时获取、耗时回报与分位窗口更新。"
+        },
+        {
+          "path": "notes/base-lib/2026-06-27-dynamic-timeout-percentile-budget-framework.md",
+          "title": "2026-06-27 基础库代码理解：DynamicTimeOut 百分位预算分配与降级边界",
+          "role": "supplement",
+          "scope": "插件初始化、controller 池化、scene/stage/rpc 配置解析、默认值降级、请求剩余预算、stage priority、分位窗口双缓冲更新。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-04-dynamic-timeout-controller-budget-lifecycle.md",
+          "title": "2026-07-04 基础库代码理解：DynamicTimeOut Controller 复用与预算生命周期",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/2026-07-11-dynamic-timeout-cross-graph-scene-boundary.md",
+          "title": "2026-07-11 基础库代码理解：DynamicTimeOut 跨图注入与 scene 降级边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260530-dynamic-timeout-plugin-scene-mapping.md",
+          "title": "DynamicTimeOutPlugin 动态超时注入与场景映射",
+          "role": "supplement",
+          "scope": "GRC/GRG 服务入口中 DynamicTimeOutPlugin 的 controller 获取、上游 timeout 选择、scene 映射、FrameworkContext 注入与请求耗时回报。"
+        },
+        {
+          "path": "notes/base-lib/20260605-dynamic-timeout-plugin-scene-mapping.md",
+          "title": "DynamicTimeOutPlugin 动态超时注入与场景映射",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260606-dynamic-timeout-plugin.md",
+          "title": "DynamicTimeOutPlugin 动态超时注入与场景映射",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260718-dynamic-timeout-plugin-lifecycle.md",
+          "title": "2026-07-18 周六代码理解：DynamicTimeOutPlugin 控制器生命周期与分位超时分配",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260725-dynamic-timeout-plugin-budget-control.md",
+          "title": "DynamicTimeOutPlugin：全链路预算控制与并发 stage 裁剪",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/20260808-dynamic-timeout-plugin-budget-lifecycle.md",
+          "title": "DynamicTimeOutPlugin：从配置到请求预算的全链路生命周期",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260810-dynamic-timeout-plugin-controller-pool.md",
+          "title": "DynamicTimeOutPlugin：配置加载与 Controller 池化边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/base-lib/20260819-dynamic-timeout-plugin-and-controller-lifecycle.md",
+          "title": "2026-08-19 周三代码理解：DynamicTimeOutPlugin 配置注入与控制器生命周期",
+          "role": "supplement",
+          "scope": "只分析 `baidu/feed/general/framework/src/dynamic_timeout_plugin.cpp`、`baidu/feed/general/framework/include/dynamic_timeout_plugin.h`、`baidu/feed/general/framework/src/dynamic_timeout.cpp`、`baidu/feed/general/framework/test/conf/plugins/dynamic_timeout.conf`，关注插件初始化、配置加载、控制器池取还与动态超时参数来源。"
+        },
+        {
+          "path": "notes/base-lib/20260926-grc-dynamic-timeout-plugin-controller-pool.md",
+          "title": "2026-09-26 基础库代码理解：DynamicTimeOutPlugin 与 FullLinkDynamicTimeOutController 池化合同",
+          "role": "supplement",
+          "scope": "`src/service/grc_service.{h,cpp}`（service 入口与 controller 注入）、`src/util/util.{hpp,cpp}`（超时计算/上报）、`src/plugin/{urs,set2set_predictor,feature_service,user_intent_predictor}.h`（DTController 别名与绑定）、`conf/plugins/dict.conf`（`controll_dict.open_dynamic_timeout` 开关）、`conf/plugins/graph/vertex.conf`（`sid_dynamic_timeout`/`sid_rpc_timeout` 键）。"
+        }
+      ]
+    },
+    {
+      "id": "base/grc-responseprocessor-final-assembly",
+      "category": "base",
+      "title": "GRC ResponseProcessor：最终响应组装与观测依赖全景（2026-06-22）",
+      "canonical": "notes/base-lib/2026-06-22-grc-responseprocessor-final-assembly.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-22-grc-responseprocessor-final-assembly.md",
+          "title": "GRC ResponseProcessor：最终响应组装与观测依赖全景（2026-06-22）",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/grc-datamerge-baoliang-framework",
+      "category": "base",
+      "title": "2026-06-26 基础库笔记：GRC DataMerge/BaoliangMerge 配额合流框架",
+      "canonical": "notes/base-lib/2026-06-26-grc-datamerge-baoliang-framework.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-26-grc-datamerge-baoliang-framework.md",
+          "title": "2026-06-26 基础库笔记：GRC DataMerge/BaoliangMerge 配额合流框架",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/grc-rpc-entry-and-graphengine-framework",
+      "category": "base",
+      "title": "2026-06-29 基础库代码理解：GRC RPC 入口与 GraphEngine 驱动框架",
+      "canonical": "notes/base-lib/2026-06-29-grc-rpc-entry-and-graphengine-framework.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-29-grc-rpc-entry-and-graphengine-framework.md",
+          "title": "2026-06-29 基础库代码理解：GRC RPC 入口与 GraphEngine 驱动框架",
+          "role": "primary",
+          "scope": "`main.cpp` 服务启动、`GenericGRCService::query` RPC handler、`GraphPool` 池化管理、`SessionContext` 上下文初始化、动态超时插件、`GraphMonitor` 与 Dapper 上报链路。"
+        }
+      ]
+    },
+    {
+      "id": "base/grc-graph-run-filter-lifecycle",
+      "category": "base",
+      "title": "GRC 图执行与 Filter 生命周期：从请求入口到过滤顶点",
+      "canonical": "notes/base-lib/2026-06-30-grc-graph-run-filter-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-06-30-grc-graph-run-filter-lifecycle.md",
+          "title": "GRC 图执行与 Filter 生命周期：从请求入口到过滤顶点",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/gr-graph-engine-request-observability-framework",
+      "category": "base",
+      "title": "feeda-mv-gr GraphEngine 请求执行与观测框架",
+      "canonical": "notes/base-lib/2026-07-03-gr-graph-engine-request-observability-framework.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-07-03-gr-graph-engine-request-observability-framework.md",
+          "title": "feeda-mv-gr GraphEngine 请求执行与观测框架",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/grc-response-processor-final-assembly",
+      "category": "base",
+      "title": "GRC ResponseProcessor 末端响应装配链路",
+      "canonical": "notes/base-lib/2026-07-13-grc-response-processor-final-assembly.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-07-13-grc-response-processor-final-assembly.md",
+          "title": "GRC ResponseProcessor 末端响应装配链路",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/mv-grg-generic-service-graphengine-boundary",
+      "category": "base",
+      "title": "2026-07-17 周度代码理解：MV-GRG GenericGRGService 请求生命周期与 GraphEngine 调度边界",
+      "canonical": "notes/base-lib/2026-07-17-mv-grg-generic-service-graphengine-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-07-17-mv-grg-generic-service-graphengine-boundary.md",
+          "title": "2026-07-17 周度代码理解：MV-GRG GenericGRGService 请求生命周期与 GraphEngine 调度边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/response-processor-graphdata-emit-boundary",
+      "category": "base",
+      "title": "2026-07-20 周度代码理解：`ResponseProcessor` 的 GraphData 终态发射边界",
+      "canonical": "notes/base-lib/2026-07-20-response-processor-graphdata-emit-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-07-20-response-processor-graphdata-emit-boundary.md",
+          "title": "2026-07-20 周度代码理解：`ResponseProcessor` 的 GraphData 终态发射边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/babylon-objectpool-graph-request-lifecycle",
+      "category": "base",
+      "title": "2026-10-01 基础库代码理解：Babylon ObjectPool 与 Graph 请求生命周期",
+      "canonical": "notes/base-lib/2026-10-01-babylon-objectpool-graph-request-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-01-babylon-objectpool-graph-request-lifecycle.md",
+          "title": "2026-10-01 基础库代码理解：Babylon ObjectPool 与 Graph 请求生命周期",
+          "role": "primary",
+          "scope": "`baidu/feed-gr/feeda-mv-grc/src/service/grc_service.cpp`、`baidu/feed-gr/feeda-mv-grg/src/service/grg_service.cpp`、`baidu/third-party/babylon/src/babylon/concurrent/object_pool.h`。"
+        }
+      ]
+    },
+    {
+      "id": "base/dc-grc-grg-brpc-graph-bootstrap-contract",
+      "category": "base",
+      "title": "2026-10-02 基础库代码理解：DC-GRC / DC-GRG brpc 启动与 Graph 可视化合同",
+      "canonical": "notes/base-lib/2026-10-02-dc-grc-grg-brpc-graph-bootstrap-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-02-dc-grc-grg-brpc-graph-bootstrap-contract.md",
+          "title": "2026-10-02 基础库代码理解：DC-GRC / DC-GRG brpc 启动与 Graph 可视化合同",
+          "role": "primary",
+          "scope": "`feeda-dc-grc/src/main.cc`、`feeda-dc-grc/src/initializer/graph_initializer.h`、`feeda-dc-grg/src/main.cc`、`feeda-dc-grg/src/initializer/graph_initializer.h`。"
+        }
+      ]
+    },
+    {
+      "id": "base/grg-protocol-request-context-contract",
+      "category": "base",
+      "title": "2026-10-03 基础库代码理解：GRGProtocol 请求解析与 GraphSession 上下文合同",
+      "canonical": "notes/base-lib/2026-10-03-grg-protocol-request-context-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-03-grg-protocol-request-context-contract.md",
+          "title": "2026-10-03 基础库代码理解：GRGProtocol 请求解析与 GraphSession 上下文合同",
+          "role": "primary",
+          "scope": "`feeda-dc-grg/src/service/grg_protocol.h`、`feeda-dc-grg/src/service/grg_protocol.cc`、`feeda-dc-grg/src/service/new_generator_service.cc`、`feeda-dc-grg/src/common/session_context.h`。"
+        }
+      ]
+    },
+    {
+      "id": "base/grg-graph-context-reset-handoff",
+      "category": "base",
+      "title": "2026-10-04 基础库代码理解：GRG Graph reset 与 GraphBaseContext 运行时交接",
+      "canonical": "notes/base-lib/2026-10-04-grg-graph-context-reset-handoff.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-04-grg-graph-context-reset-handoff.md",
+          "title": "2026-10-04 基础库代码理解：GRG Graph reset 与 GraphBaseContext 运行时交接",
+          "role": "primary",
+          "scope": "`feeda-dc-grg/src/service/new_generator_closure.cc`、`feeda-dc-grg/src/service/graph_service.cc`、`feeda-dc-grg/src/common/session_context.h`、`feed-general/framework/include/graph_engine.h`。"
+        }
+      ]
+    },
+    {
+      "id": "base/dc-grg-buffer-5stage-framework-contract",
+      "category": "base",
+      "title": "2026-10-06 基础库代码理解：DC-GRG Buffer 二次精排的 5 段式框架合同",
+      "canonical": "notes/base-lib/2026-10-06-dc-grg-buffer-5stage-framework-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-06-dc-grg-buffer-5stage-framework-contract.md",
+          "title": "2026-10-06 基础库代码理解：DC-GRG Buffer 二次精排的 5 段式框架合同",
+          "role": "primary",
+          "scope": "`feeda-dc-grg/src/exec_engine/generator_buffer.h/.cc`、`feeda-dc-grg/src/exec_engine/buffer_*/buffer_*_operator_base.h`、`feeda-dc-grg/src/common/session_context.h` 中的 `buffer_*_engine` 字段、`baidu/feed/gr/exec_engine/filter_operator.h` 算子根接口。"
+        }
+      ]
+    },
+    {
+      "id": "base/feed-gr-parser-framework-contract",
+      "category": "base",
+      "title": "2026-10-08 基础库代码理解：feed-gr/parser 解析器框架合同（AnyParser / Parser / Schema 字段写入）",
+      "canonical": "notes/base-lib/2026-10-08-feed-gr-parser-framework-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-08-feed-gr-parser-framework-contract.md",
+          "title": "2026-10-08 基础库代码理解：feed-gr/parser 解析器框架合同（AnyParser / Parser / Schema 字段写入）",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/flowctl-concurrency-admission-contract",
+      "category": "base",
+      "title": "2026-10-09 基础库代码理解：FlowCtlConcurrency 请求准入与释放合同",
+      "canonical": "notes/base-lib/2026-10-09-flowctl-concurrency-admission-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-09-flowctl-concurrency-admission-contract.md",
+          "title": "2026-10-09 基础库代码理解：FlowCtlConcurrency 请求准入与释放合同",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/grc-protocol-request-contract",
+      "category": "base",
+      "title": "2026-10-10 基础库代码理解：GRCProtocol 请求解析与 RPC 入口合同",
+      "canonical": "notes/base-lib/2026-10-10-grc-protocol-request-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-10-grc-protocol-request-contract.md",
+          "title": "2026-10-10 基础库代码理解：GRCProtocol 请求解析与 RPC 入口合同",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/grg-request-graph-pool-dynamic-timeout-lifecycle",
+      "category": "base",
+      "title": "2026-10-11 基础库代码理解：GenericGRGService 请求到 Graph 执行的合同",
+      "canonical": "notes/base-lib/2026-10-11-grg-request-graph-pool-dynamic-timeout-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/2026-10-11-grg-request-graph-pool-dynamic-timeout-lifecycle.md",
+          "title": "2026-10-11 基础库代码理解：GenericGRGService 请求到 Graph 执行的合同",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/babylon-objectpool-usage",
+      "category": "base",
+      "title": "babylon::ObjectPool 在 feeda-mv-grc 中的使用：连接池复用与内存池化",
+      "canonical": "notes/base-lib/20260523-babylon-objectpool-usage.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260523-babylon-objectpool-usage.md",
+          "title": "babylon::ObjectPool 在 feeda-mv-grc 中的使用：连接池复用与内存池化",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/tracelog",
+      "category": "base",
+      "title": "TraceLog、VIP 与 HashLog 观测",
+      "canonical": "notes/base-lib/20260531-tracelog-vip-hashlog-business-log-layering.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260531-tracelog-vip-hashlog-business-log-layering.md",
+          "title": "TraceLog / VIP / HashLog 采样与业务日志分层",
+          "role": "primary",
+          "scope": "GRC/GRG 服务入口对 `is_debug`、`is_vip_cuid`、`is_hash_log` 的注入，`Util::print_trace_data()` 的 DEBUG_TRACE 输出，以及 GraphMonitor/NEWDAPPER/业务明细日志的分层。"
+        },
+        {
+          "path": "notes/base-lib/20260924-tracelog-vip-hashlog-observability-contract.md",
+          "title": "基础库代码理解：GRC/GRG TraceLog、VIP 与 HashLog 观测契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "base/graphpool-reset",
+      "category": "base",
+      "title": "GraphPool：请求图复用与 reset",
+      "canonical": "notes/base-lib/20260827-graphpool-try-get-run-reset-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260601-graphengine-graphpool-reset-lifecycle.md",
+          "title": "GraphEngine GraphPool 对象池复用与 reset 生命周期",
+          "role": "supplement",
+          "scope": "GRC 服务入口 `GraphEngine::try_get()`、`Graph::run()`、`Closure::get()`、尾部 trace flush 与 `graph->reset()` 的完整生命周期；GRG 同类入口可按相同模式对照。"
+        },
+        {
+          "path": "notes/base-lib/20260815-graphengine-graphpool-reset-lifecycle.md",
+          "title": "2026-08-15 周六代码理解：GraphEngine GraphPool 对象池复用与 reset 生命周期",
+          "role": "supplement",
+          "scope": "只分析 `GraphUnit::get()`、`GraphUnit::try_get()`、`GraphEngine::get()`、`GraphEngine::clear()` 与底层 `GraphPool` 的对象获取、回收、重建链路；不扩展到整个 graph engine。"
+        },
+        {
+          "path": "notes/base-lib/20260822-graphpool-reset-lifecycle.md",
+          "title": "2026-08-22 周六代码理解：GraphPool 复用与 reset 生命周期",
+          "role": "supplement",
+          "scope": "只分析 `src/service/grc_service.cpp` 中的 `GraphPool::try_get`、图名选择、`graph->run()`、`graph->reset()` 与 `DynamicTimeOutPlugin` 获取链路。"
+        },
+        {
+          "path": "notes/base-lib/20260825-graphpool-reset-lifecycle.md",
+          "title": "2026-08-25 周二代码理解：GraphPool 复用与 reset 生命周期",
+          "role": "supplement",
+          "scope": "只看 `src/service/grc_service.cpp` 中 `GraphPool::try_get`、`graph->run()`、`graph->reset()`、图名选择与 `DynamicTimeOutPlugin` 获取链路，外加 `GraphPool` 的复用语义。"
+        },
+        {
+          "path": "notes/base-lib/20260827-graphpool-try-get-run-reset-lifecycle.md",
+          "title": "GraphPool 对象池复用与 reset 生命周期：GRC/GRG 请求图的取用、运行与回收",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/dapper-collector-taskmanager-async-pipeline",
+      "category": "base",
+      "title": "Dapper Collector TaskManager 异步任务管线",
+      "canonical": "notes/base-lib/20260602-dapper-collector-taskmanager-async-pipeline.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260602-dapper-collector-taskmanager-async-pipeline.md",
+          "title": "Dapper Collector TaskManager 异步任务管线",
+          "role": "primary",
+          "scope": "服务启动、两级 buffer、TaskManager 后台线程、PriorityQueue、bthread_async、Calculate/Upload/Download Trigger 的任务流转。"
+        }
+      ]
+    },
+    {
+      "id": "base/dapper-download-longtail-schema-guard",
+      "category": "base",
+      "title": "Dapper Collector 基础库：download_longtail 列契约与行级防护",
+      "canonical": "notes/base-lib/20260607-dapper-download-longtail-schema-guard.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260607-dapper-download-longtail-schema-guard.md",
+          "title": "Dapper Collector 基础库：download_longtail 列契约与行级防护",
+          "role": "primary",
+          "scope": "MySQL 拉取、`columns_num` 校验、长尾 path 行解析、common 分支解析、异常行跳过策略。"
+        }
+      ]
+    },
+    {
+      "id": "base/top-data-buffer",
+      "category": "base",
+      "title": "TopDataComponent：双缓冲发布",
+      "canonical": "notes/base-lib/20260710-top-intp-dual-buffer-content-eco-architecture.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260710-top-intp-dual-buffer-content-eco-architecture.md",
+          "title": "2026-07-10 周五代码理解：top-intp 双 Buffer 内容干预缓存架构",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/20260730-top-intp-dual-buffer-content-eco-architecture.md",
+          "title": "2026-07-30 周四代码理解：TopDataComponent 双缓冲内容生态与发布契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "base/video-launch-fill-meta-pipeline",
+      "category": "base",
+      "title": "2026-07-24 周五代码理解：video_launch FillMetaPipeline 元数据补齐框架",
+      "canonical": "notes/base-lib/20260724-video-launch-fill-meta-pipeline.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260724-video-launch-fill-meta-pipeline.md",
+          "title": "2026-07-24 周五代码理解：video_launch FillMetaPipeline 元数据补齐框架",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/rec-server-gdp-bootstrap-dependency-lifecycle",
+      "category": "base",
+      "title": "rec-server GDP 启动链路：配置装载、依赖初始化与 HTTP Server 生命周期",
+      "canonical": "notes/base-lib/20260728-rec-server-gdp-bootstrap-dependency-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260728-rec-server-gdp-bootstrap-dependency-lifecycle.md",
+          "title": "rec-server GDP 启动链路：配置装载、依赖初始化与 HTTP Server 生命周期",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/pcs-aopprocessor-graph-lifecycle",
+      "category": "base",
+      "title": "PCS AOPProcessor 图算子生命周期：把业务 run() 收敛到 GraphEngine 回调",
+      "canonical": "notes/base-lib/20260731-pcs-aopprocessor-graph-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260731-pcs-aopprocessor-graph-lifecycle.md",
+          "title": "PCS AOPProcessor 图算子生命周期：把业务 run() 收敛到 GraphEngine 回调",
+          "role": "primary",
+          "scope": "feeda-pcs 公共图算子基类、baipai PCS 图配置、processor 参数装配"
+        }
+      ]
+    },
+    {
+      "id": "base/grf-bootstrap-rframe-config-lifecycle",
+      "category": "base",
+      "title": "GRF 前端框架启动链路：从 brpc 服务到 RFrame 节点注册",
+      "canonical": "notes/base-lib/20260801-grf-bootstrap-rframe-config-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260801-grf-bootstrap-rframe-config-lifecycle.md",
+          "title": "GRF 前端框架启动链路：从 brpc 服务到 RFrame 节点注册",
+          "role": "primary",
+          "scope": "GRF gr-front 入口、RFrame IOC 注册、动态 so 装载、配置与 channel 初始化"
+        }
+      ]
+    },
+    {
+      "id": "base/mv-gr-microgrc-recall-routing",
+      "category": "base",
+      "title": "MV-GR 微视频召回框架：`main.cpp` 启动链路与 `MicroVideoGrcRecallProcessor`",
+      "canonical": "notes/base-lib/20260803-mv-gr-microgrc-recall-routing.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260803-mv-gr-microgrc-recall-routing.md",
+          "title": "MV-GR 微视频召回框架：`main.cpp` 启动链路与 `MicroVideoGrcRecallProcessor`",
+          "role": "primary",
+          "scope": "`main.cpp` 启动初始化、RPC 服务挂载、`micro_grc_recall.cpp` 召回处理器上下文绑定、`grc/grg` 分流与降级开关"
+        }
+      ]
+    },
+    {
+      "id": "base/dc-grc-diversity-strategy-lifecycle",
+      "category": "base",
+      "title": "DC-GRC DiversityStrategyNew：召回侧多样性策略生命周期",
+      "canonical": "notes/base-lib/20260804-dc-grc-diversity-strategy-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260804-dc-grc-diversity-strategy-lifecycle.md",
+          "title": "DC-GRC DiversityStrategyNew：召回侧多样性策略生命周期",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/mv-grc-fillmeta-response-contract",
+      "category": "base",
+      "title": "MV-GRC FillMeta 到 ResponseForGrg：元数据补齐与响应契约",
+      "canonical": "notes/base-lib/20260807-mv-grc-fillmeta-response-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260807-mv-grc-fillmeta-response-contract.md",
+          "title": "MV-GRC FillMeta 到 ResponseForGrg：元数据补齐与响应契约",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/lite-grc-recall-graphschedule-lifecycle",
+      "category": "base",
+      "title": "lite-grc Recall GraphSchedule 生命周期：入口、GraphData 与 recall_status",
+      "canonical": "notes/base-lib/20260811-lite-grc-recall-graphschedule-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260811-lite-grc-recall-graphschedule-lifecycle.md",
+          "title": "lite-grc Recall GraphSchedule 生命周期：入口、GraphData 与 recall_status",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/feeda-pcs-request-lifecycle-and-feature-assembly-boundary",
+      "category": "base",
+      "title": "2026-08-14 周五代码理解：feeda-pcs 请求生命周期与特征装配边界",
+      "canonical": "notes/base-lib/20260814-feeda-pcs-request-lifecycle-and-feature-assembly-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260814-feeda-pcs-request-lifecycle-and-feature-assembly-boundary.md",
+          "title": "2026-08-14 周五代码理解：feeda-pcs 请求生命周期与特征装配边界",
+          "role": "primary",
+          "scope": "只分析服务入口、PCS 插件初始化、请求转换与响应回填链路；不展开全部业务策略。"
+        }
+      ]
+    },
+    {
+      "id": "base/feeda-pcs-bootstrap-and-request-dispatch",
+      "category": "base",
+      "title": "2026-08-16 周日代码理解：feeda-pcs 启动引导与请求分发边界",
+      "canonical": "notes/base-lib/20260816-feeda-pcs-bootstrap-and-request-dispatch.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260816-feeda-pcs-bootstrap-and-request-dispatch.md",
+          "title": "2026-08-16 周日代码理解：feeda-pcs 启动引导与请求分发边界",
+          "role": "primary",
+          "scope": "只分析 `main.cpp`、`common_base/service/dispatch.cpp`、`common_base/processor/request_processor.cpp`，关注服务启动、请求解析、图依赖注入与基础特征透传，不展开完整业务策略。"
+        }
+      ]
+    },
+    {
+      "id": "base/top-intp-bootstrap",
+      "category": "base",
+      "title": "top-intp：启动与组件生命周期",
+      "canonical": "notes/base-lib/20260817-top-intp-brpc-bootstrap-component-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260817-top-intp-brpc-bootstrap-component-lifecycle.md",
+          "title": "top-intp brpc 启动与组件生命周期：gflags、日志、组件单例到服务注册",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/base-lib/20260818-top-intp-bootstrap-and-top-data-lifecycle.md",
+          "title": "2026-08-18 周二代码理解：top-intp 启动引导与 TopData 生命周期",
+          "role": "supplement",
+          "scope": "只分析 `src/main.cpp`、`src/component/top_data_component.cc`、`src/component/gcms_component.h`、`src/common/gcms_data.h`、`conf/common_component/gcms_plugin_pb.conf`、`conf/ns_plugin.conf`，关注服务启动、后台拉取、响应转换与 GCMS 结构边界，不展开完整业务策略。"
+        },
+        {
+          "path": "notes/base-lib/20260905-top-intp-brpc-bootstrap-and-component-lifecycle.md",
+          "title": "2026-09-05 周六基础库理解：TopIntp brpc bootstrap 与组件生命周期",
+          "role": "supplement",
+          "scope": "`src/main.cpp`、`src/initializer/global_initializer.h`、`src/component/top_data_component.h`、`src/component/gcms_component.h`、`src/service/top_service.h`、`src/service/top_service_pb.h`，聚焦 server 启动、gflags/comlog 初始化、单例组件装配、双缓冲 TopData 和 RPC 服务注册。"
+        }
+      ]
+    },
+    {
+      "id": "base/graphpool-reset-and-dynamic-timeout-binding",
+      "category": "base",
+      "title": "2026-08-20 周四代码理解：GraphPool 复用与动态超时绑定",
+      "canonical": "notes/base-lib/20260820-graphpool-reset-and-dynamic-timeout-binding.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260820-graphpool-reset-and-dynamic-timeout-binding.md",
+          "title": "2026-08-20 周四代码理解：GraphPool 复用与动态超时绑定",
+          "role": "primary",
+          "scope": "只分析 `src/service/grc_service.cpp`，聚焦 `GraphEngine` 取图、`GraphPool::try_get`、图名映射、动态超时控制器获取、`graph->run()` 与 `graph->reset()` 的生命周期。"
+        }
+      ]
+    },
+    {
+      "id": "base/mv-grc-rpc-entry-graphengine-boundary",
+      "category": "base",
+      "title": "MV-GRC RPC 入口与 GraphEngine 边界",
+      "canonical": "notes/base-lib/20260823-mv-grc-rpc-entry-graphengine-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260823-mv-grc-rpc-entry-graphengine-boundary.md",
+          "title": "MV-GRC RPC 入口与 GraphEngine 边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/dapper-collector-taskmanager-taskunit-scheduling",
+      "category": "base",
+      "title": "dapper-collector 任务调度框架：TaskManager、TaskUnit、TickTaskUnit 与 ChannelsMgr",
+      "canonical": "notes/base-lib/20260826-dapper-collector-taskmanager-taskunit-scheduling.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260826-dapper-collector-taskmanager-taskunit-scheduling.md",
+          "title": "dapper-collector 任务调度框架：TaskManager、TaskUnit、TickTaskUnit 与 ChannelsMgr",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "base/rpc-closure",
+      "category": "base",
+      "title": "RPC Protocol / Closure：请求收尾",
+      "canonical": "notes/base-lib/20260828-reusable-rpc-protocol-and-closure-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260828-reusable-rpc-protocol-and-closure-lifecycle.md",
+          "title": "2026-08-28 周五代码理解：ReusableRPCProtocol 与响应 Closure 生命周期",
+          "role": "primary",
+          "scope": "只看 `src/main.cpp` 的服务启动、`src/service/grc_service.cpp` 的 `GenericGRCService::query()` / `run()` / `print_log()`，以及 `ReusableRPCProtocol`、`closure_done`、`graph->reset()` 这一条请求闭环。"
+        },
+        {
+          "path": "notes/base-lib/20260913-rpc-closure-graph-reset-request-boundary.md",
+          "title": "2026-09-13 基础库理解：RPC Closure 与 Graph reset 请求边界",
+          "role": "supplement",
+          "scope": "GRC/GRG 服务入口、Graph::run 返回的异步 Closure、`ReusableRPCProtocol::Closure::send_response()`、请求结束后的 Graph reset。"
+        }
+      ]
+    },
+    {
+      "id": "base/gr-service-bootstrap-dynamic-timeout-reset",
+      "category": "base",
+      "title": "2026-08-29 周六代码理解：GR 服务入口、动态超时与 Graph reset 生命周期",
+      "canonical": "notes/base-lib/20260829-gr-service-bootstrap-dynamic-timeout-reset.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260829-gr-service-bootstrap-dynamic-timeout-reset.md",
+          "title": "2026-08-29 周六代码理解：GR 服务入口、动态超时与 Graph reset 生命周期",
+          "role": "primary",
+          "scope": "`src/main.cpp`、`src/service/gr_service.cpp` 和 `conf/plugins/dynamic_timeout.conf`，只分析入口装配、请求上下文、动态超时控制器、GraphPool 取图与 reset 顺序。"
+        }
+      ]
+    },
+    {
+      "id": "base/grg-bootstrap-and-exec-engine-assembly",
+      "category": "base",
+      "title": "2026-08-31 周一基础库理解：GRG 启动装配、ReusableRPCProtocol 与 exec_engine 配置边界",
+      "canonical": "notes/base-lib/20260831-grg-bootstrap-and-exec-engine-assembly.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260831-grg-bootstrap-and-exec-engine-assembly.md",
+          "title": "2026-08-31 周一基础库理解：GRG 启动装配、ReusableRPCProtocol 与 exec_engine 配置边界",
+          "role": "primary",
+          "scope": "`src/main.cpp`、`conf/gflags.conf`、`conf/plugins/exec_engine/multi_stream_diversity.conf`、`conf/plugins/graph/news_updates_dibar/vertex.conf`，聚焦启动链、RPC 协议、实验参数、collector worker 和多流执行器配置。"
+        }
+      ]
+    },
+    {
+      "id": "base/set2set-predict-and-pb-boundary",
+      "category": "base",
+      "title": "2026-09-01 周二基础库理解：Set2setPredictFunction 的 protobuf 组包、序列化与调度边界",
+      "canonical": "notes/base-lib/20260901-set2set-predict-and-pb-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260901-set2set-predict-and-pb-boundary.md",
+          "title": "2026-09-01 周二基础库理解：Set2setPredictFunction 的 protobuf 组包、序列化与调度边界",
+          "role": "primary",
+          "scope": "`src/processor/set2set_predict_function.cpp`、`src/operator/adjuster/precise/microvideo_fancate_downrank_adjuster.cpp`，聚焦 sample 组包、请求序列化、RPC 预测调用、参数字典读取和高频 vector 预留。"
+        }
+      ]
+    },
+    {
+      "id": "base/dapper-collector-bootstrap-and-filter-boundary",
+      "category": "base",
+      "title": "2026-09-02 周三基础库理解：dapper-collector 启动初始化、请求过滤与双入口边界",
+      "canonical": "notes/base-lib/20260902-dapper-collector-bootstrap-and-filter-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260902-dapper-collector-bootstrap-and-filter-boundary.md",
+          "title": "2026-09-02 周三基础库理解：dapper-collector 启动初始化、请求过滤与双入口边界",
+          "role": "primary",
+          "scope": "`main.cc`、`src/initializer/global_initializer.cc`、`include/common/request_filter.h`、`include/common/channels.h`、`src/manager/sid_sender_receiver_whitelist_mgr.cc`，聚焦启动顺序、配置加载、pd_ch 白名单与 v1/v2 服务挂载。"
+        }
+      ]
+    },
+    {
+      "id": "base/grc-service-bootstrap-dynamic-timeout-graphpool-reset",
+      "category": "base",
+      "title": "2026-09-06 周日基础库理解：GRC 服务入口、动态超时注入与 GraphPool reset 生命周期",
+      "canonical": "notes/base-lib/20260906-grc-service-bootstrap-dynamic-timeout-graphpool-reset.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260906-grc-service-bootstrap-dynamic-timeout-graphpool-reset.md",
+          "title": "2026-09-06 周日基础库理解：GRC 服务入口、动态超时注入与 GraphPool reset 生命周期",
+          "role": "primary",
+          "scope": "`src/service/grc_service.cpp`、`src/service/grg_service.cpp`，聚焦入口校验、GraphEngine 取图、动态超时写入、图上下文填充与 `reset()` 归还。"
+        }
+      ]
+    },
+    {
+      "id": "base/base-graph-function-framework-contract",
+      "category": "base",
+      "title": "2026-09-07 周一基础库理解：BaseGraphFunction 框架契约",
+      "canonical": "notes/base-lib/20260907-base-graph-function-framework-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260907-base-graph-function-framework-contract.md",
+          "title": "2026-09-07 周一基础库理解：BaseGraphFunction 框架契约",
+          "role": "primary",
+          "scope": "`baidu/feed-general/framework/include/graph_function.h`、`baidu/feed-general/framework/src/graph_function.cpp`、`baidu/feed-general/framework/include/base.h`（VertexContext / TraceLog / TupleLog）、`feeda-mv-grc/baidu/feed-gr/feeda-mv-grc/src/processor/base_function.h`（GRCGraphFunction）、`feeda-mv-grc/baidu/feed-gr/feeda-mv-grc/src/processor/base/pipeline_function.h`（PipelineGraphFunction），聚焦所有 GraphFunction 子类共同遵守的运行契约。"
+        }
+      ]
+    },
+    {
+      "id": "base/expression-routing",
+      "category": "base",
+      "title": "Graph Expression / SelectProcessor：条件路由",
+      "canonical": "notes/base-lib/20260909-expression-condition-routing-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260909-expression-condition-routing-contract.md",
+          "title": "2026-09-09 基础库理解：Expression 条件路由与图输入契约",
+          "role": "primary",
+          "scope": "GRC 图配置中的表达式定义、表达式依赖的数据向量以及业务处理器消费这些命名结果的边界。"
+        },
+        {
+          "path": "notes/base-lib/20260927-graph-expression-select-processor-contract.md",
+          "title": "2026-09-27 基础库代码理解：Graph Expression 与 SelectProcessor 条件门控合同",
+          "role": "supplement",
+          "scope": "`src/plugin/graph_parser.h`、`src/service/grc_service.cpp`、`conf/plugins/graph/expression.conf`、`conf/plugins/graph/common_vertex.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "base/application-context",
+      "category": "base",
+      "title": "ApplicationContext：组件注册与获取",
+      "canonical": "notes/base-lib/20260910-application-context-component-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260910-application-context-component-lifecycle.md",
+          "title": "2026-09-10 基础库理解：ApplicationContext 组件注册与依赖获取生命周期",
+          "role": "primary",
+          "scope": "GRC/GRG 服务入口、Babylon 组件工厂、插件 `initialize`/`wireup`、GraphEngine 与 predictor 依赖获取。"
+        },
+        {
+          "path": "notes/base-lib/20260914-babylon-applicationcontext-component-registry.md",
+          "title": "业务代码库适配分析报告：`babylon::ApplicationContext` 组件注册与获取契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "base/gr-front-rframe-bootstrap-dynamic-so-lifecycle",
+      "category": "base",
+      "title": "2026-09-11 基础库理解：GRF rframe 启动、IOC 注册与动态 SO 生命周期",
+      "canonical": "notes/base-lib/20260911-gr-front-rframe-bootstrap-dynamic-so-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260911-gr-front-rframe-bootstrap-dynamic-so-lifecycle.md",
+          "title": "2026-09-11 基础库理解：GRF rframe 启动、IOC 注册与动态 SO 生命周期",
+          "role": "primary",
+          "scope": "`main.cc`、`global.conf`、执行树配置、`ConfManager`、`Channels` 与 `init_so`/`init_rframe`。"
+        }
+      ]
+    },
+    {
+      "id": "base/babylon-objectpool-graph-rframe-reuse-lifecycle",
+      "category": "base",
+      "title": "2026-09-12 基础库理解：Babylon ObjectPool 与 Graph/rframe 复用生命周期",
+      "canonical": "notes/base-lib/20260912-babylon-objectpool-graph-rframe-reuse-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260912-babylon-objectpool-graph-rframe-reuse-lifecycle.md",
+          "title": "2026-09-12 基础库理解：Babylon ObjectPool 与 Graph/rframe 复用生命周期",
+          "role": "primary",
+          "scope": "`baidu/feed-mlarch/babylon/pool.h`、`pool.hpp`、`baidu/feed-general/framework/include/graph_engine.h`、`graph_engine.cpp`、`baidu/elitefeed/rframe/src/io/io.h`、`nshead_io.h`。"
+        }
+      ]
+    },
+    {
+      "id": "base/sia-bvar-request-performance-attribution",
+      "category": "base",
+      "title": "2026-09-15 基础库理解：SIA/BVAR 请求耗时与性能归因",
+      "canonical": "notes/base-lib/20260915-sia-bvar-request-performance-attribution.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260915-sia-bvar-request-performance-attribution.md",
+          "title": "2026-09-15 基础库理解：SIA/BVAR 请求耗时与性能归因",
+          "role": "primary",
+          "scope": "GRC RPC 服务入口的总耗时、Graph 耗时、请求/响应大小、Graph arena 使用量，以及 video_launch 数据合并节点的 SIA 计数。"
+        }
+      ]
+    },
+    {
+      "id": "base/aef-feature-operator-emission-contract",
+      "category": "base",
+      "title": "2026-09-16 基础库理解：AEF FeatureOperator 的类型发射与 Extractor 编排合同",
+      "canonical": "notes/base-lib/20260916-aef-feature-operator-emission-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260916-aef-feature-operator-emission-contract.md",
+          "title": "2026-09-16 基础库理解：AEF FeatureOperator 的类型发射与 Extractor 编排合同",
+          "role": "primary",
+          "scope": "`Extractor` 初始化与 feature list 编排、`FeatureOperator::Emitter` 的类型发射适配、状态型窗口容器，以及离线 worker 如何消费这些基础合同。"
+        }
+      ]
+    },
+    {
+      "id": "base/exp-param-flatbuffer-combo-builder-contract",
+      "category": "base",
+      "title": "2026-09-17 基础库理解：ExpParam FlatBuffer ComboBuilder 的编码、压缩与校验合同",
+      "canonical": "notes/base-lib/20260917-exp-param-flatbuffer-combo-builder-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260917-exp-param-flatbuffer-combo-builder-contract.md",
+          "title": "2026-09-17 基础库理解：ExpParam FlatBuffer ComboBuilder 的编码、压缩与校验合同",
+          "role": "primary",
+          "scope": "`FlatBufferComboBuilder` 如何把 `feed::ExpParams` 的 protobuf 参数表转成 flatbuffer bytes，如何压缩、写回 MD5 与压缩类型，以及服务端反向解码时如何校验完整性。"
+        }
+      ]
+    },
+    {
+      "id": "base/fork-context",
+      "category": "base",
+      "title": "fork Framework：Flow 与 Context 生命周期",
+      "canonical": "notes/base-lib/20260918-fork-flow-context-runtime-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260918-fork-flow-context-runtime-contract.md",
+          "title": "2026-09-18 基础库理解：fork/framework 的 Flow / Node / Context 运行时合同",
+          "role": "primary",
+          "scope": "`main.cpp` 启动链、`Flow::init/handle`、`FlowContext` 的 reset/done/pack_response、`Node::get_handler` 的 lib/jit/so 三路加载、`FlowContext::compute_non_io_cost_time` 的 DAG 非 IO 关键路径。"
+        },
+        {
+          "path": "notes/base-lib/20260924-fork-framework-flow-context-lifecycle.md",
+          "title": "基础库代码理解：`fork::Framework` 初始化与 `FlowContext` 生命周期契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "base/deepes-inference-pool-batch-contract",
+      "category": "base",
+      "title": "2026-09-20 基础库理解：DeepEs 热加载池与 batch 推理并发合同",
+      "canonical": "notes/base-lib/20260920-deepes-inference-pool-batch-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260920-deepes-inference-pool-batch-contract.md",
+          "title": "2026-09-20 基础库理解：DeepEs 热加载池与 batch 推理并发合同",
+          "role": "primary",
+          "scope": "gr-rank 启动初始化、`DeepEsComponent` reload/pool、`GRRService::predict` 的 model/extractor 校验与图选择、`InferProcessor` 的 batch 消费、`DeepEs::feed_forward` 和 Future join。"
+        }
+      ]
+    },
+    {
+      "id": "base/serialized-response-iobuf-transport-contract",
+      "category": "base",
+      "title": "2026-09-21 基础库理解：SerializedResponse、IOBuf 与 RPC 响应传输合同",
+      "canonical": "notes/base-lib/20260921-serialized-response-iobuf-transport-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260921-serialized-response-iobuf-transport-contract.md",
+          "title": "2026-09-21 基础库理解：SerializedResponse、IOBuf 与 RPC 响应传输合同",
+          "role": "primary",
+          "scope": "`SerializedResponse` 的已序列化 Message 合同、`Controller::response_attachment()` 的生命周期、HTTP/RPC 协议层的 attachment 发送，以及失败/重试时的清理语义。"
+        }
+      ]
+    },
+    {
+      "id": "base/babylon-transient-cache-runtime-contract",
+      "category": "base",
+      "title": "2026-09-22 基础库理解：Babylon `TransientCache` 的加载、过期与生命周期合同",
+      "canonical": "notes/base-lib/20260922-babylon-transient-cache-runtime-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260922-babylon-transient-cache-runtime-contract.md",
+          "title": "2026-09-22 基础库理解：Babylon `TransientCache` 的加载、过期与生命周期合同",
+          "role": "primary",
+          "scope": "`TransientCacheOption` 的三档开关、`LoadCallback` 的 epoch 校验、`Node::set/fail/get/run` 状态迁移、`Slice` epoch 推进、`SafeDestruction` 进出计数、`SyncLoadFunction` 与 Executor 版本、`initialize/get/try_get/set` 的合同面，以及 `expired_cache` 包装层如何把 ttl/容量/jitter 注入 `init/run/stop`。"
+        }
+      ]
+    },
+    {
+      "id": "base/feature-service-plugin-channel-lifecycle",
+      "category": "base",
+      "title": "2026-09-23 基础库理解：FeatureServicePlugin 的组件注册、动态通道与 RPC 生命周期",
+      "canonical": "notes/base-lib/20260923-feature-service-plugin-channel-lifecycle.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260923-feature-service-plugin-channel-lifecycle.md",
+          "title": "2026-09-23 基础库理解：FeatureServicePlugin 的组件注册、动态通道与 RPC 生命周期",
+          "role": "primary",
+          "scope": "Babylon 组件注册、`ApplicationContext` 查找、`ChannelGroup`/`DynamicChannel` wireup、`FeatureService_Stub` 构造、log_id/request_code 注入、RPC 错误归一化与动态通道 feedback。"
+        }
+      ]
+    },
+    {
+      "id": "base/grc-yitu-sample-owner-and-predictor-plugin",
+      "category": "base",
+      "title": "2026-09-25 基础库代码理解：GRC Yitu Sample owner 与 PredictorPlugin 接线",
+      "canonical": "notes/base-lib/20260925-grc-yitu-sample-owner-and-predictor-plugin.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260925-grc-yitu-sample-owner-and-predictor-plugin.md",
+          "title": "2026-09-25 基础库代码理解：GRC Yitu Sample owner 与 PredictorPlugin 接线",
+          "role": "primary",
+          "scope": "`src/processor/doc_feature_with_cache_yitu.cpp`、`src/processor/video_launch/user_intent_predict.cpp`、`src/plugin/user_intent_predictor.cpp`、`src/plugin/user_intent_predictor.h`、`conf/plugins/graph/vertex.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "base/grc-experiment-dict-request-vs-item-boundary",
+      "category": "base",
+      "title": "2026-09-28 基础库代码理解：GRC 实验/词典读取在请求级一次与 item 热循环之间的边界",
+      "canonical": "notes/base-lib/20260928-grc-experiment-dict-request-vs-item-boundary.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260928-grc-experiment-dict-request-vs-item-boundary.md",
+          "title": "2026-09-28 基础库代码理解：GRC 实验/词典读取在请求级一次与 item 热循环之间的边界",
+          "role": "primary",
+          "scope": "`src/processor/request.cpp`、`src/processor/micro_grc_recall.cpp`、`src/processor/gen_response.cpp`、`src/processor/feed_ufs_function.cpp`、`src/processor/common_pcs_rpc.cpp`。"
+        }
+      ]
+    },
+    {
+      "id": "base/graph-engine-pool-hot-reload-contract",
+      "category": "base",
+      "title": "2026-09-29 基础库代码理解：GraphEngine 图池与双缓冲热加载合同",
+      "canonical": "notes/base-lib/20260929-graph-engine-pool-hot-reload-contract.md",
+      "documents": [
+        {
+          "path": "notes/base-lib/20260929-graph-engine-pool-hot-reload-contract.md",
+          "title": "2026-09-29 基础库代码理解：GraphEngine 图池与双缓冲热加载合同",
+          "role": "primary",
+          "scope": "`baidu/feed-general/framework/include/graph_engine.h`、`baidu/feed-general/framework/src/graph_engine.cpp`、`baidu/feed-general/framework/include/graph_manager.h`、`baidu/feed-general/framework/src/graph_manager.cpp`、`baidu/feed-general/framework/include/graph_function.h`。"
+        }
+      ]
+    },
+    {
+      "id": "business/gcms-fillmeta",
+      "category": "business",
+      "title": "GRC FillMeta：正排请求、字段与响应边界",
+      "canonical": "notes/business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md",
+      "documents": [
+        {
+          "path": "notes/business/20260521-gcms-in-feeda-mv-grc.md",
+          "title": "正排（GCMS/IFCS）在 feeda-mv-grc 中的作用：召回结果补元信息、过滤与特征构造",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business/20260527-gcms-in-feeda-mv-grc.md",
+          "title": "正排（GCMS/IFCS）在 feeda-mv-grc 中的作用",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-15-grc-fillmeta-ifcs-business-flow.md",
+          "title": "GRC FillMeta：从召回队列到 IFCS 正排补全的业务链路",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-25-grc-gcms-ifcs-fillmeta-business-semantic.md",
+          "title": "GRC FillMeta：业务内容展示链路中的元数据回填语义（2026-06-25）",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-06-duanju-heji-recall-fillmeta-lcn-filter-business-chain.md",
+          "title": "2026-07-06 业务库代码理解：短剧/合集队列从召回配置到 LCN 过滤的业务链",
+          "role": "supplement",
+          "scope": "`short_micro_default.conf` 中短剧/合集 fork_type、`fill_meta_pipeline.cpp` 中合集正排补齐/AI 合集改写、`queue_filter.cpp` 中 `filter_by_duanju_lcn` 对 LCN 与题材退场的判定。"
+        },
+        {
+          "path": "notes/business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md",
+          "title": "GRC 正排 GCMS / IFCS fill_meta 链路",
+          "role": "primary",
+          "scope": "`FillMetaBaseProcessor` 从召回结果收集 rid，经 `GcmsComponent::query_common()` 查询正排，落到 `RidTmpInfo` 的 `MicroVideoInfo/GcmsData`，并由 IFCS parser/SDK 支撑多级缓存与字段解析。"
+        },
+        {
+          "path": "notes/business-lib/20260821-grc-fill-meta-request-response-boundary.md",
+          "title": "2026-08-21 周五代码理解：GRC fill_meta 请求与响应边界",
+          "role": "supplement",
+          "scope": "只分析 GRC 正排补全链路中 `FillMetaBaseProcessor`、`GcmsComponent::query_common()`、`RidTmpInfo`、`MicroVideoInfo/GcmsData` 的请求封装、字段回填、响应出网边界；不展开完整业务策略。"
+        },
+        {
+          "path": "notes/business-lib/20260822-grc-fill-meta-request-response-boundary.md",
+          "title": "2026-08-22 周六代码理解：GRC 正排 fill_meta 请求与响应边界",
+          "role": "supplement",
+          "scope": "只分析 `src/processor/fill_meta.cpp` 中的 `FillMetaBaseProcessor`、`GcmsComponent::query_common()`、`RidTmpInfo`、`GcmsData` 与响应封装边界，不展开整条策略树。"
+        },
+        {
+          "path": "notes/business-lib/20260825-grc-fill-meta-request-response-boundary.md",
+          "title": "2026-08-25 周二代码理解：GRC 正排 fill_meta 请求与响应边界",
+          "role": "supplement",
+          "scope": "只看 `src/processor/fill_meta.cpp` 的 `FillMetaBaseProcessor`、`GcmsComponent::query_common()`、`RidTmpInfo`、`GcmsData`、IFCS 解析与响应封装边界，不展开完整策略树。"
+        },
+        {
+          "path": "notes/business-lib/20260828-grc-fill-meta-gcms-scene-routing.md",
+          "title": "2026-08-28 周五代码理解：GRC fill_meta 的 GCMS 场景路由与小流量筛选",
+          "role": "supplement",
+          "scope": "只看 `src/processor/fill_meta.cpp` 中的 `FillMetaBaseProcessor::setup()`、`process()`、`small_flow_list`、`GCMS_SECNE_RECALL`、`card_no_gcms_mark` 和 `RidTmpInfo` 填充路径，不展开其它策略树。"
+        }
+      ]
+    },
+    {
+      "id": "business/dup-title",
+      "category": "business",
+      "title": "Dup Service：标题去重与信号传递",
+      "canonical": "notes/business-lib/2026-06-10-dup-service-title-dup-flow.md",
+      "documents": [
+        {
+          "path": "notes/business/20260523-dup-service-in-feeda-mv-grc.md",
+          "title": "Dup Service（去重服务）在 feeda-mv-grc 中的作用：VFS 过滤链路与多策略去重",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-10-dup-service-title-dup-flow.md",
+          "title": "2026-06-10 业务库代码理解：Dup Service 去重与 title dup 信号跨层流转",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/20260919-dup-service-title-dup-cross-layer-boundary.md",
+          "title": "2026-09-19 业务库理解：Dup Service 与 title-dup 信号跨层流转",
+          "role": "supplement",
+          "scope": "GRC `DupServicePlugin` 的 DupClient 初始化/对象池、GRC `response_for_grg` 对 `item_is_title_dup` 的条件写出、GRG `grc_recall_function` 的字段读入、`RkcjDiversityHardRule` 与 `TitleDiversityRule` 的两条消费路径。"
+        }
+      ]
+    },
+    {
+      "id": "business/personalized-recall-grg-call-grc-in-feeda-mv-grg",
+      "category": "business",
+      "title": "个性化召回：GRG 调 GRC 通用召回链路深度解析",
+      "canonical": "notes/business/20260528-personalized-recall-grg-call-grc-in-feeda-mv-grg.md",
+      "documents": [
+        {
+          "path": "notes/business/20260528-personalized-recall-grg-call-grc-in-feeda-mv-grg.md",
+          "title": "个性化召回：GRG 调 GRC 通用召回链路深度解析",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grg-diversity-soft-rules-in-feeda-mv-grg",
+      "category": "business",
+      "title": "GRG 多样性软规则与 MultiStreamEngine 配置链路",
+      "canonical": "notes/business/20260529-grg-diversity-soft-rules-in-feeda-mv-grg.md",
+      "documents": [
+        {
+          "path": "notes/business/20260529-grg-diversity-soft-rules-in-feeda-mv-grg.md",
+          "title": "GRG 多样性软规则与 MultiStreamEngine 配置链路",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/diversity-merge",
+      "category": "business",
+      "title": "GRG DiversityMerge：队列、规则与结果组装",
+      "canonical": "notes/business-lib/20260619-grg-new-diversity-merge-multistream-engine.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-09-grg-diversity-merge-multistream.md",
+          "title": "2026-06-09 业务库代码理解：GRG DiversityMerge 与 MultiStream 多队列打散",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-13-grg-diversitymerge-multistream-engine-closure.md",
+          "title": "2026-06-13 业务库代码理解：GRG DiversityMerge 接入 MultiStreamEngine 的执行闭环",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-24-grg-diversitymerge-four-queue-business-flow.md",
+          "title": "GRG 多样性合并业务链路：loads/rule/function/effect 四队列如何决定最终结果（2026-06-24）",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260603-grg-diversitymerge-multistream-queue-flow.md",
+          "title": "GRG DiversityMerge：多队列输入、MultiStreamEngine 调权与结果归并",
+          "role": "supplement",
+          "scope": "`loads/rule/function/effect` 四类输入队列读取、AB 条件注入、位置无关软打散预处理、`MultiStreamEngine::run()` 执行、结果写回、topn 端重排辅助输出与多维日志指标。"
+        },
+        {
+          "path": "notes/business-lib/20260604-grg-diversitymerge-business-queues-to-multistream.md",
+          "title": "GRG DiversityMerge：业务多队列如何接入 MultiStreamEngine",
+          "role": "supplement",
+          "scope": "`DiversityMergeFunction::init()`、`process()` 中 exec_context 准备、输入队列构造、general_adjust 预处理、`run_prepare()`/`run()`、trace 与 reset。"
+        },
+        {
+          "path": "notes/business-lib/20260605-grg-diversitymerge-output-postprocess-debug.md",
+          "title": "GRG DiversityMerge：结果生成、业务后处理与回退排障",
+          "role": "supplement",
+          "scope": "`DiversityMergeFunction::process()` 中输入容器转换、`run_prepare()`、general_adjust、`set_loop_num()`/`run()`、`output.next_all()`、结果 push、后处理实验、trace/reset。"
+        },
+        {
+          "path": "notes/business-lib/20260619-grg-new-diversity-merge-multistream-engine.md",
+          "title": "GRG NewDiversityMerge / MultiStreamEngine 执行闭环（2026-06-19）",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/20260804-mv-grg-diversity-merge-business-flow.md",
+          "title": "MV-GRG DiversityMerge：多队列合并与响应边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260813-grg-diversity-merge-async-closure-safety.md",
+          "title": "2026-08-13 周四代码理解：GRG DiversityMerge 并行合并与闭包安全",
+          "role": "supplement",
+          "scope": "只分析 `DiversityMerge`、`UserPredictFunction` 以及相关并发调用链里 Future、bthread_async、lambda 捕获和结果汇总；本文不覆盖全部 diversity 规则。"
+        },
+        {
+          "path": "notes/business-lib/20260815-grg-diversity-merge-async-closure-safety.md",
+          "title": "2026-08-15 周六代码理解：GRG DiversityMerge 并行合并与闭包安全",
+          "role": "supplement",
+          "scope": "只分析 `DiversityMergeFunction` 中的并发拆分、`bthread_async`、`Future` 收集、`closure.wait()` 与结果汇总；不展开全部 diversity 规则。"
+        },
+        {
+          "path": "notes/business-lib/20260820-grg-diversity-merge-exec-boundary.md",
+          "title": "2026-08-20 周四代码理解：GRG 散度合并执行边界与结果回收",
+          "role": "supplement",
+          "scope": "只分析 `src/process/diversity_merge.cpp`，聚焦 `process()` 的结果容器准备、执行上下文建立、散度结果输出、以及融合结束时的回收边界。"
+        },
+        {
+          "path": "notes/business-lib/20260906-grg-response-assembly-diversity-merge-future-safety.md",
+          "title": "2026-09-06 周日业务库理解：GRG 响应组装、extmsg 序列化与 DiversityMerge 并行边界",
+          "role": "supplement",
+          "scope": "`src/process/response_function.cpp`、`src/process/diversity_merge.cpp`，聚焦 extmsg 序列化、扩展字段回填、并行软规则、Future 汇聚和结果生成。"
+        },
+        {
+          "path": "notes/business-lib/20260908-grg-diversity-merge-and-response-assembly.md",
+          "title": "2026-09-08 周一业务库理解：DiversityMerge 并行切片、结果汇聚与响应组装边界",
+          "role": "supplement",
+          "scope": "`src/process/diversity_merge.cpp`、`src/process/response_function.cpp`，聚焦 extmsg 回填、并行软规则、Future 汇聚、结果生成与输出约束。"
+        }
+      ]
+    },
+    {
+      "id": "business/critical-path",
+      "category": "business",
+      "title": "GRC：关键路径耗时归因",
+      "canonical": "notes/business-lib/2026-07-02-grc-critical-path-latency-attribution.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-11-grc-critical-path-latency-observability.md",
+          "title": "2026-06-11 业务库代码理解：GRC 关键路径观测在主请求链路中的落点",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-02-grc-critical-path-latency-attribution.md",
+          "title": "GRC CriticalPath 业务排障：last_queue、DNN 与 pure_grc 延迟归因",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/2026-10-05-grg-critical-path-record-and-graphmonitor-stage-contract.md",
+          "title": "2026-10-05 业务库代码理解：GRG 请求关键路径 record 与 GraphMonitor 阶段写入合同",
+          "role": "supplement",
+          "scope": "feeda-dc-grg/src/processor/get_data/generator_init_processor.cpp、feeda-dc-grg/src/processor/get_data/generate_pre_processor.cpp、feeda-dc-grg/src/processor/get_data/finish_processor.cpp、feeda-dc-grg/src/service/feed_closure.cc、feeda-dc-grg/src/service/new_generator_closure.cc、feeda-dc-grg/src/common/session_context.h、feeda-gr/gr-proto/proto/pcs_protocol.proto。"
+        }
+      ]
+    },
+    {
+      "id": "business/kanju-lcn",
+      "category": "business",
+      "title": "看剧 / 合集 / 短剧：LCN 与扶持",
+      "canonical": "notes/business-lib/20260612-kanju-heji-duanju-lcn-fuchi.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-12-kanju-lcn-video-launch.md",
+          "title": "2026-06-12 业务库代码理解：看剧/合集/短剧 LCN 与 video_launch 合流",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260612-kanju-heji-duanju-lcn-fuchi.md",
+          "title": "看剧 / 合集 / 短剧 LCN 与扶持策略",
+          "role": "primary",
+          "scope": "GRC `KanjuLcnPreciseAdjuster` 对合集/剧集 LCN 的调权，以及 `DataMergeFunction` 对短剧、合集、多品类 quota 的合并与日志观测。"
+        },
+        {
+          "path": "notes/business-lib/20260828-kanju-lcn-and-data-merge-funnel.md",
+          "title": "看剧 / 合集 / 短剧 LCN 与扶持策略",
+          "role": "supplement",
+          "scope": "`src/operator/adjuster/precise/kanju_lcn_precise_adjuster.cpp` 的 LCN 惩罚链路，以及 `src/processor/video_launch/data_merge.cpp` 的品类合并和漏斗日志。"
+        },
+        {
+          "path": "notes/business-lib/20260904-kanju-heji-duanju-lcn-fuchi-strategy.md",
+          "title": "2026-09-04 周五业务库理解：看剧/合集/短剧 LCN 与扶持策略",
+          "role": "supplement",
+          "scope": "`src/operator/adjuster/precise/kanju_precise_adjuster.cpp`、`src/operator/adjuster/precise/kanju_days_lt_precise_adjuster.cpp`、`src/operator/adjuster/sketchy/kanju_fuchi_boost_cp.cpp`、`src/processor/video_launch/data_merge.cpp`，聚焦合集 / 短剧 / 漫剧识别、LCN 参数、扶持 boost、q 权重、以及输出漏斗中的 heji / duanju 计数。"
+        }
+      ]
+    },
+    {
+      "id": "business/state-semantics",
+      "category": "business",
+      "title": "gr_state：展示状态、UNKNOWN 与消费口径",
+      "canonical": "notes/business-lib/2026-06-21-hs-state-business-semantics-grstate.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-14-hs-state-array-business-semantics.md",
+          "title": "2026-06-14 业务库代码理解：HS state[] 点展状态语义与 IssuedItem 字段误区",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-21-hs-state-business-semantics-grstate.md",
+          "title": "2026-06-21 业务库代码理解：点展状态消费口径与 gr_state 防误用指南",
+          "role": "primary",
+          "scope": "业务侧如何解释 `NewsMessage.state[]`、如何避免把 `IssuedItem.show_tss/click_tss` 或 `ShowClkState` 误当成同一套状态、以及调试时如何从 HS/IDM 响应 bytes 还原状态。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-28-hs-gr-state-business-semantics.md",
+          "title": "2026-06-28 业务库代码理解：点展状态 gr_state 解析口径与防误用",
+          "role": "supplement",
+          "scope": "业务侧如何从 `gr_state` bytes 解析 `NewsMessage.state[]`，以及如何避免把 `ShowClkState`、`show_tss/click_tss`、普通 Redis protocol 字段误当同一套状态。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-05-gr-state-business-consumption-read-source-fallback-boundary.md",
+          "title": "2026-07-05 业务库代码理解：gr_state 业务消费的读源降级边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-12-gr-state-business-consumption-unknown-fallback.md",
+          "title": "2026-07-12 业务库代码理解：点展状态 gr_state 的消费口径与 UNKNOWN 降级",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-19-gr-state-business-consumption-unknown-fallback.md",
+          "title": "2026-07-19 业务代码理解：`gr_state` 业务消费与 `UNKNOWN` 回退语义",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260726-dc-grg-show-state-unknown-dedup-boundary.md",
+          "title": "DC-GRG show-state 消费：`UNKNOWN` 兜底与关注频道去重边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260805-history-service-gr-state-business-semantics.md",
+          "title": "History Service gr_state：展示状态读写与业务语义边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260806-history-service-gr-state-business-semantics.md",
+          "title": "2026-08-06 周四代码理解：`gr_state` 业务语义与展现状态边界",
+          "role": "supplement",
+          "scope": "分析 `ShowStateInfo` / `CardShowStateInfo` 的状态枚举、历史传递逻辑与业务过滤条件；本文不展开 History Service 存储实现。"
+        },
+        {
+          "path": "notes/business-lib/20260810-history-service-gr-state-contract.md",
+          "title": "History Service：gr_state 透传与读写契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "business/cpu-cost",
+      "category": "business",
+      "title": "GRC：CPU 成本与热点复盘",
+      "canonical": "notes/business-lib/20260707-grc-cpu-cost-optimization-hotspots.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-16-grc-cost-cpu-performance-hotspots.md",
+          "title": "GRC 成本/CPU 性能优化热点复盘",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260707-grc-cpu-cost-optimization-hotspots.md",
+          "title": "2026-07-07 周度代码理解：GRC 成本/CPU 性能优化热点复盘",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/20260812-grc-cpu-cost-optimization-hotspots.md",
+          "title": "2026-08-12 周三代码理解：GRC 成本/CPU 性能优化热点复盘",
+          "role": "supplement",
+          "scope": "分析调权、过滤、响应组装、序列化和回写阶段的 CPU 热点，重点看 `Set2Set`、`cache_queue`、响应出口和业务解释边界。"
+        },
+        {
+          "path": "notes/business-lib/20260901-grc-cost-hotspots-and-fan-cate-downrank.md",
+          "title": "2026-09-01 周二业务库理解：GRC 成本热点、Set2set 调权与 FanCate DownRank 边界",
+          "role": "supplement",
+          "scope": "`src/processor/set2set_predict_function.cpp`、`src/operator/adjuster/precise/microvideo_fancate_downrank_adjuster.cpp`，聚焦请求链上的成本热点、实验参数分流、PCS 特征回灌和 fan cate 调权。"
+        }
+      ]
+    },
+    {
+      "id": "business/related-filter",
+      "category": "business",
+      "title": "相关场景 / UA189：过滤链与合集边界",
+      "canonical": "notes/business-lib/2026-06-23-ua189-postplay-related-filter-business-chain.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-17-lite-grc-auto-play-related-filter-chain.md",
+          "title": "lite-grc 播后推与相关推荐过滤链路复盘",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-23-ua189-postplay-related-filter-business-chain.md",
+          "title": "UA=189 播后推/相关推荐：入口资源驱动的过滤业务链路（2026-06-23）",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/2026-06-30-related-rec-heji-topic-filter-business-chain.md",
+          "title": "Related 场景过滤链：合集/题材信号与队列配置的业务语义",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-14-ua189-hejilb-relatedscene-filtering.md",
+          "title": "UA=189 HejiLb 与 RelatedScene 业务过滤链路",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-21-ua189-heji-relatedscene-filter-contract.md",
+          "title": "UA=189 合集/相关推荐过滤：入口资源与场景边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260809-mv-gr-filter-scene-related-heji-boundary.md",
+          "title": "MV-GR 过滤入口：SceneSwitch、UA_189 与 related/heji 条件边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "business/news-dibar",
+      "category": "business",
+      "title": "news_updates_dibar：多队列融合与响应",
+      "canonical": "notes/business-lib/2026-06-18-news-updates-dibar-dual-content-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-18-news-updates-dibar-dual-content-flow.md",
+          "title": "news_updates_dibar：图文速读底 bar 的召回、正排与排序闭环",
+          "role": "primary",
+          "scope": "`news_updates_dibar_graph.conf` include 拓扑、场景队列配置、图文正排补全、过滤、粗排、merge、保量、VFS 与精排准备。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-22-grg-news-updates-dibar-response-output.md",
+          "title": "GRG news_updates_dibar：NewDiversityMerge 到 NewResponseFunction 的最终出流链路（2026-06-22）",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-01-news-updates-dibar-four-queue-diversity-flow.md",
+          "title": "news_updates_dibar 四队列业务流：loads / rule / function / effect 如何进入 NewDiversityMerge",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-08-news-updates-dibar-new-diversity-merge-flow.md",
+          "title": "2026-07-08 业务库代码理解：news_updates_dibar 的 NewDiversityMerge 多队列合并链路",
+          "role": "supplement",
+          "scope": "`news_updates_dibar/vertex.conf` 中 NewDiversityMergeFunction 的依赖、`news_diversity.conf` 引入的 MultiStreamEngine 配置、`new_diversity_merge.cpp` 中输入映射、GRC 顺序还原、engine 调用、输出截断和日志。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-13-news-updates-dibar-new-diversity-response-chain.md",
+          "title": "news_updates_dibar NewDiversityMerge 到 NewResponseFunction 输出链",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-15-news-updates-dibar-multiqueue-merge-response-boundary.md",
+          "title": "2026-07-15 业务库代码理解：news_updates_dibar 多队列合并与响应输出边界",
+          "role": "supplement",
+          "scope": "`news_updates_dibar` graph/vertex/strategy 配置，重点关注候选队列如何进入 merge 结果，以及 `_merge_result`、`_for_attract_result` 如何成为后续业务响应链的边界数据。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-17-news-updates-dibar-query-recall-response-chain.md",
+          "title": "2026-07-17 业务代码理解：news_updates_dibar 场景到 query_recall 响应链",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-20-news-updates-dibar-merge-response-output-chain.md",
+          "title": "2026-07-20 业务代码理解：`news_updates_dibar` 多队列合并到响应输出链",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-29-news-updates-dibar-business-flow.md",
+          "title": "news_updates_dibar 业务链路：回召解析、信息补全与多策略 merge",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260608-grc-news-updates-dibar-graph-strategy-flow.md",
+          "title": "GRC 业务库：news_updates_dibar 图文速读融合链路",
+          "role": "supplement",
+          "scope": "`news_updates_dibar` strategy、graph include、queue/baoliang/diversity/response 配置、与基础 FillMeta/IFCS 正排链路的衔接点。"
+        },
+        {
+          "path": "notes/business-lib/20260807-mv-grg-news-updates-dibar-response-boundary.md",
+          "title": "MV-GRG news_updates_dibar：NewDiversityMerge 到 ResponseFunction 的业务响应边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "business/personalization-id",
+      "category": "business",
+      "title": "个性化关闭：fake_id 跨服务传递与消费",
+      "canonical": "notes/business-lib/2026-07-04-close-individual-fakeid-cross-service-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-20-is-close-individual-fakeid-business-chain.md",
+          "title": "2026-06-20 业务库代码理解：关闭个性化 is_close_individual 与 fake_id 传递链路",
+          "role": "supplement",
+          "scope": "GR 请求解析与 fake_id 生成、GR→GRC/GRG 请求透传、UMS/Fork/GRC 下游身份替换、GRG 中间层缺口、动态超时 scene 映射的旁路影响。"
+        },
+        {
+          "path": "notes/business-lib/2026-06-27-close-individual-fakeid-boundary-business-chain.md",
+          "title": "2026-06-27 业务库代码理解：关闭个性化 fake_id 边界与动态超时旁路",
+          "role": "supplement",
+          "scope": "GR 请求解析、fake_id 生成、GR 本地 UMS 使用、GR→GRC/GRG 请求字段透传、GRG 图入口身份注入、`news_updates_dibar` 动态超时 scene 映射。"
+        },
+        {
+          "path": "notes/business-lib/2026-07-04-close-individual-fakeid-cross-service-boundary.md",
+          "title": "2026-07-04 业务库代码理解：关闭个性化 fake_id 跨服务责任边界",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/2026-07-11-close-individual-fakeid-gr-grc-grg-boundary.md",
+          "title": "2026-07-11 业务库代码理解：关闭个性化 fake_id 从 GR 到 GRC/GRG 的责任切分",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260530-grc-fake-id-disable-replacement.md",
+          "title": "GRC fake_id 关闭/替换链路",
+          "role": "supplement",
+          "scope": "`CommonInfo::fake_id` 在 UFS、粗排/精排/二跳 rank 请求中的用户标识覆盖逻辑；结合代码检索说明“关闭/替换链路”的可观测边界。"
+        },
+        {
+          "path": "notes/business-lib/20260531-grg-close-individual-fakeid-compat.md",
+          "title": "GRG 个性化推荐关闭开关 fakeid 兼容",
+          "role": "supplement",
+          "scope": "最近提交 `feed-arch-37111` 在 GRG 服务入口识别 `CommonInfo::is_close_individual()` 后，用 `fake_id` 替换 `uid/cuid/baiduid`，并把替换后的请求贯穿 GraphData、召回、融合、日志链路。"
+        },
+        {
+          "path": "notes/business-lib/20260606-grc-fake-id.md",
+          "title": "GRC fake_id 关闭/替换链路",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260718-grg-fake-id-scene-boundary.md",
+          "title": "2026-07-18 周六代码理解：GRG fake_id 与个性化关闭边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260725-microvideo-close-individual-fake-id-boundary.md",
+          "title": "微视频 close-personalization：fake_id 与 MicroGRC 跨服务边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260802-grg-fake-id-scene-boundary.md",
+          "title": "2026-08-02 周日代码理解：GRG fake_id 与个性化关闭边界",
+          "role": "supplement",
+          "scope": "分析 `fake_id`、`is_close_individual`、scene 映射与图执行边界之间的联动；本文只聚焦请求分流和输出约束，不展开全部推荐策略。"
+        },
+        {
+          "path": "notes/business-lib/20260808-mv-gr-fake-id-close-individual-boundary.md",
+          "title": "MV-GR 关闭个性化：fake_id 生成与 MicroGRC 透传边界",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260819-grg-close-personalization-fake-id-boundary.md",
+          "title": "2026-08-19 周三代码理解：GRG 个性化关闭开关与 fake_id 兼容边界",
+          "role": "supplement",
+          "scope": "只分析 `baidu/feed-gr/feeda-mv-grg/src/service/grg_service.cpp`、`baidu/feed-gr/feeda-mv-grg/src/process/diversity_merge.cpp`、`baidu/feed-gr/feeda-mv-grg/src/operator/diversity/scatter_context.cpp`，关注基础请求信息、个性化开关注入、散度合并入口与关闭策略的出网边界。"
+        },
+        {
+          "path": "notes/business-lib/20260829-gr-request-close-personalization-fake-id.md",
+          "title": "2026-08-29 周六代码理解：GR 请求解析中的关闭个性化与 fake_id 注入边界",
+          "role": "supplement",
+          "scope": "`src/processor/request.cpp` 的请求字段解析、`is_close_individual` 覆盖、`fake_user.fake_cuid` 写入、`from_scene` 分支与 `SceneInfo` 地理字段回填。"
+        },
+        {
+          "path": "notes/business-lib/20260926-grc-fake-id-replacement-consumer-chain.md",
+          "title": "2026-09-26 业务代码理解：GRC fake_id 替换链路与下游精排消费者",
+          "role": "supplement",
+          "scope": "`src/plugin/feed_ufs_plugin.cpp`、`src/processor/ctr_rank.{cpp,h}`、`src/processor/sketchy_rpc.cpp`、`src/processor/parallel_ctr_rank.cpp`、`src/processor/{ctr_rerank,ec_sketchy_rank,ec_cvr_rank}.cpp`、`src/processor/video_launch/{ctr_rank_function,sketchy_rpc_pipeline,sketchy_rpc_config}.cpp`、`src/data/base.h`、`src/util/util.hpp`、`conf/plugins/graph/vertex.conf`。"
+        },
+        {
+          "path": "notes/business-lib/20260927-grg-personalized-fakeid-compatibility-boundary.md",
+          "title": "2026-09-27 业务代码理解：GRG 个性化推荐入口与 fakeid 兼容边界",
+          "role": "supplement",
+          "scope": "`src/service/grg_service.cpp`、`src/plugin/graph_parser.h`、`conf/plugins/graph/short_micro_video/expression.conf`、`conf/plugins/graph/short_micro_video/showlist.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "business/quota-merge",
+      "category": "business",
+      "title": "召回 DataMerge：保量配额与多品类合并",
+      "canonical": "notes/business-lib/20260626-grc-datamerge-baoliang-quota.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-26-grc-baoliang-interest-quota-business-chain.md",
+          "title": "2026-06-26 业务库笔记：GRC 保量优先与低活兴趣配额业务链路",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260626-grc-datamerge-baoliang-quota.md",
+          "title": "2026-06-26 周度代码理解：GRC DataMerge/BaoliangMerge 召回配额与保量合流",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/20260709-video-launch-quota-data-merge.md",
+          "title": "2026-07-09 周度代码理解：召回 quota 与 video_launch 数据合并",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        },
+        {
+          "path": "notes/business-lib/20260903-quota-and-video-launch-merge.md",
+          "title": "2026-09-03 周四业务库理解：召回 quota 与 video_launch 数据合并",
+          "role": "supplement",
+          "scope": "`src/processor/video_launch/data_merge.cpp`、`src/processor/video_launch/diversity_merge.cpp`、`src/service/grc_service.cpp`，聚焦保量 / 非保量 / 兜底三层合并、漏斗日志、以及桥接后的数据汇聚边界。"
+        }
+      ]
+    },
+    {
+      "id": "business/ua-routing-and-graph-selection-business-mapping",
+      "category": "business",
+      "title": "2026-06-29 业务库代码理解：UA 路由决策与 Graph 选择业务映射",
+      "canonical": "notes/business-lib/2026-06-29-ua-routing-and-graph-selection-business-mapping.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-06-29-ua-routing-and-graph-selection-business-mapping.md",
+          "title": "2026-06-29 业务库代码理解：UA 路由决策与 Graph 选择业务映射",
+          "role": "primary",
+          "scope": "UA 值与 Graph 名称的硬编码映射、UA=85 沉浸式视频与 UA=102 二跳底bar 的业务语义差异、End Data 多态路由（GrcResponse/ResponseForGrg/ResData/ClusterData）、SessionContext 关键字段与日志打印。"
+        }
+      ]
+    },
+    {
+      "id": "business/feeda-mv-gr-business-recall-merge-response-flow",
+      "category": "business",
+      "title": "feeda-mv-gr 业务链路：GRC/GRG 召回、融合与响应生成",
+      "canonical": "notes/business-lib/2026-07-03-feeda-mv-gr-business-recall-merge-response-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-07-03-feeda-mv-gr-business-recall-merge-response-flow.md",
+          "title": "feeda-mv-gr 业务链路：GRC/GRG 召回、融合与响应生成",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/video-launch-micro-grc-recall-datamerge-flow",
+      "category": "business",
+      "title": "2026-07-16 业务库代码理解：video_launch 的 MicroGRC 召回与 DataMerge 响应链路",
+      "canonical": "notes/business-lib/2026-07-16-video-launch-micro-grc-recall-datamerge-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-07-16-video-launch-micro-grc-recall-datamerge-flow.md",
+          "title": "2026-07-16 业务库代码理解：video_launch 的 MicroGRC 召回与 DataMerge 响应链路",
+          "role": "primary",
+          "scope": "服务入口、请求归一化、fake_id 透传、MicroVideoGrcRecallProcessor、graph vertex 串联，以及响应处理边界。"
+        }
+      ]
+    },
+    {
+      "id": "business/video-launch-microgrc-recall-response",
+      "category": "business",
+      "title": "2026-07-23 业务库代码理解：video_launch 的 MicroGRC 召回与响应合流",
+      "canonical": "notes/business-lib/2026-07-23-video-launch-microgrc-recall-response.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-07-23-video-launch-microgrc-recall-response.md",
+          "title": "2026-07-23 业务库代码理解：video_launch 的 MicroGRC 召回与响应合流",
+          "role": "primary",
+          "scope": "`MicroVideoGrcRecallProcessor` 的 GraphDependency 输入、`micro_video.conf` 顶点声明、health stage 中 `parallel_recall_micro_grc` 分组，以及召回结果进入后续 merge/response 的业务边界。"
+        }
+      ]
+    },
+    {
+      "id": "business/grg-gene-recomm-cube-sia-contract",
+      "category": "business",
+      "title": "2026-10-01 业务代码理解：GRG gene_recomm Cube 特征生成与 SIA 观测边界",
+      "canonical": "notes/business-lib/2026-10-01-grg-gene-recomm-cube-sia-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-01-grg-gene-recomm-cube-sia-contract.md",
+          "title": "2026-10-01 业务代码理解：GRG gene_recomm Cube 特征生成与 SIA 观测边界",
+          "role": "primary",
+          "scope": "`baidu/feed-gr/feeda-mv-grg/src/process/gene_recomm_function.cpp`、`baidu/feed-gr/feeda-mv-grg/src/common/common.h`。"
+        }
+      ]
+    },
+    {
+      "id": "business/dc-grc-dispatcher-and-grg-generator-closure",
+      "category": "business",
+      "title": "2026-10-02 业务库代码理解：DC-GRC Dispatcher 与 DC-GRG NewGeneratorClosure 请求执行边界",
+      "canonical": "notes/business-lib/2026-10-02-dc-grc-dispatcher-and-grg-generator-closure.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-02-dc-grc-dispatcher-and-grg-generator-closure.md",
+          "title": "2026-10-02 业务库代码理解：DC-GRC Dispatcher 与 DC-GRG NewGeneratorClosure 请求执行边界",
+          "role": "primary",
+          "scope": "`feeda-dc-grc/src/service/grc_service.cc`、`feeda-dc-grc/src/service/dispatcher.cc`、`feeda-dc-grc/src/service/feed.cc`、`feeda-dc-grg/src/service/new_generator_service.cc`、`feeda-dc-grg/src/service/new_generator_closure.cc`、`feeda-dc-grg/src/service/graph_service.cc`。"
+        }
+      ]
+    },
+    {
+      "id": "business/grg-response-processor-finish-contract",
+      "category": "business",
+      "title": "2026-10-03 业务库代码理解：GRG ResponseProcessor 与 FinishFinish 响应收口合同",
+      "canonical": "notes/business-lib/2026-10-03-grg-response-processor-finish-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-03-grg-response-processor-finish-contract.md",
+          "title": "2026-10-03 业务库代码理解：GRG ResponseProcessor 与 FinishFinish 响应收口合同",
+          "role": "primary",
+          "scope": "`feeda-dc-grg/src/processor/response_processor.cpp`、`feeda-dc-grg/src/service/graph_service.cc`、`feeda-dc-grg/src/service/new_generator_closure.cc`、`feeda-dc-grg/conf/graph/new_path.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "business/grg-graph-view-observability-service",
+      "category": "business",
+      "title": "2026-10-04 业务库代码理解：GRG GraphView 静态图与动态图观测服务",
+      "canonical": "notes/business-lib/2026-10-04-grg-graph-view-observability-service.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-04-grg-graph-view-observability-service.md",
+          "title": "2026-10-04 业务库代码理解：GRG GraphView 静态图与动态图观测服务",
+          "role": "primary",
+          "scope": "`feeda-dc-grg/src/initializer/graph_initializer.h`、`feed-general/framework/include/graph_view.h`、`feed-general/framework/src/graph_view.cpp`、`feed-general/framework/include/graph_view_service.h`、`feed-general/framework/src/graph_view_service.cpp`、`feeda-dc-grg/src/critical_path/critical_path.cc`。"
+        }
+      ]
+    },
+    {
+      "id": "business/dc-grg-buffer-5stage-business-pipeline",
+      "category": "business",
+      "title": "2026-10-06 业务库代码理解：DC-GRG Buffer 二次精排业务流水线（displace → dup → filter → filler → sort → sort_*）",
+      "canonical": "notes/business-lib/2026-10-06-dc-grg-buffer-5stage-business-pipeline.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-06-dc-grg-buffer-5stage-business-pipeline.md",
+          "title": "2026-10-06 业务库代码理解：DC-GRG Buffer 二次精排业务流水线（displace → dup → filter → filler → sort → sort_*）",
+          "role": "primary",
+          "scope": "`feeda-dc-grg/src/exec_engine/generator_buffer.h` 中 `run_buffer:867-1015` 与 `run_displace/dup/filter/sort/sort_*:3770-4393`、5 个 Buffer*Operatorbase、5 个真实算子（`buffer_group_key_displace`、`buffer_dedup`、`new_huafeng_filter`、`buffer_common_operator`、`buffer_contentq_order` 等）、`feeda-dc-grg/src/preprocessor/pre_strategy.cc` 等调用 run_buffer 的入口。"
+        }
+      ]
+    },
+    {
+      "id": "business/gcms-ums-redis-parser-assembly-pipeline",
+      "category": "business",
+      "title": "2026-10-08 业务库代码理解：GCMS / UMS / Redis 业务侧的 parser 配置装配与热路径写入",
+      "canonical": "notes/business-lib/2026-10-08-gcms-ums-redis-parser-assembly-pipeline.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-08-gcms-ums-redis-parser-assembly-pipeline.md",
+          "title": "2026-10-08 业务库代码理解：GCMS / UMS / Redis 业务侧的 parser 配置装配与热路径写入",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grg-pcs-response-conversion-contract",
+      "category": "business",
+      "title": "2026-10-09 业务库代码理解：GRG PCS 响应转换与实验分叉合同",
+      "canonical": "notes/business-lib/2026-10-09-grg-pcs-response-conversion-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-09-grg-pcs-response-conversion-contract.md",
+          "title": "2026-10-09 业务库代码理解：GRG PCS 响应转换与实验分叉合同",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grc-quota-multitarget-merge-contract",
+      "category": "business",
+      "title": "2026-10-10 业务库代码理解：Quota 配置到多目标 Merge 的结果合同",
+      "canonical": "notes/business-lib/2026-10-10-grc-quota-multitarget-merge-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-10-grc-quota-multitarget-merge-contract.md",
+          "title": "2026-10-10 业务库代码理解：Quota 配置到多目标 Merge 的结果合同",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/diversity-mgr-abtest-cache-and-low-clarity-rule",
+      "category": "business",
+      "title": "2026-10-11 业务库代码理解：DiversityMgr 实验缓存与低清晰度规则合同",
+      "canonical": "notes/business-lib/2026-10-11-diversity-mgr-abtest-cache-and-low-clarity-rule.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/2026-10-11-diversity-mgr-abtest-cache-and-low-clarity-rule.md",
+          "title": "2026-10-11 业务库代码理解：DiversityMgr 实验缓存与低清晰度规则合同",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/multistreamengine-bind-graph-dependency",
+      "category": "business",
+      "title": "MultiStreamEngine bind_graph_dependency 桥接 GraphDependency 深入理解",
+      "canonical": "notes/business-lib/20260601-multistreamengine-bind-graph-dependency.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260601-multistreamengine-bind-graph-dependency.md",
+          "title": "MultiStreamEngine bind_graph_dependency 桥接 GraphDependency 深入理解",
+          "role": "primary",
+          "scope": "分析 GRG 侧 `MultiStreamEnginePlugin` / `bind_graph_dependency()` 如何把外层 `GraphDependency`、`GraphVertex` 和引擎对象串起来；本文只讨论这条绑定链路，不扩展到全部业务策略。"
+        }
+      ]
+    },
+    {
+      "id": "business/gr-dapper-newdapper-channelcollector-chain",
+      "category": "business",
+      "title": "feeda-mv-gr 到 Dapper Collector 的 NEWDAPPER / ChannelCollector 链路",
+      "canonical": "notes/business-lib/20260602-gr-dapper-newdapper-channelcollector-chain.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260602-gr-dapper-newdapper-channelcollector-chain.md",
+          "title": "feeda-mv-gr 到 Dapper Collector 的 NEWDAPPER / ChannelCollector 链路",
+          "role": "primary",
+          "scope": "GR 请求收尾阶段生成 graph path、按 UA 85/87 上报 dapper、写 NEWDAPPER 日志，并由 collector 接入/汇聚/落库。"
+        }
+      ]
+    },
+    {
+      "id": "business/dapper-daily-longtail-config-contract-core-review",
+      "category": "business",
+      "title": "Dapper Collector 业务库：天级长尾 path 汇聚的配置契约与 core 复盘",
+      "canonical": "notes/business-lib/20260607-dapper-daily-longtail-config-contract-core-review.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260607-dapper-daily-longtail-config-contract-core-review.md",
+          "title": "Dapper Collector 业务库：天级长尾 path 汇聚的配置契约与 core 复盘",
+          "role": "primary",
+          "scope": "`long_tail_path_` / `long_tail_path_sid_` 下载配置、上传配置、`conv_duration_aggregate_path_data()` 合并逻辑、sid 与非 sid 的业务语义差异。"
+        }
+      ]
+    },
+    {
+      "id": "business/top-intp-toplist",
+      "category": "business",
+      "title": "top-intp：置顶榜单业务链路",
+      "canonical": "notes/business-lib/20260710-top-intp-toplist-business-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260710-top-intp-toplist-business-flow.md",
+          "title": "2026-07-10 周五代码理解：top-intp 置顶干预业务链路与返回组装",
+          "role": "primary",
+          "scope": ""
+        },
+        {
+          "path": "notes/business-lib/20260730-top-intp-toplist-business-flow.md",
+          "title": "2026-07-30 周四代码理解：TopIntp 榜单查询业务链路与返回契约",
+          "role": "supplement",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "business/grc-video-launch-response-contract",
+      "category": "business",
+      "title": "2026-07-24 周五代码理解：GRC video_launch 响应出口与 GRG 返回契约",
+      "canonical": "notes/business-lib/20260724-grc-video-launch-response-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260724-grc-video-launch-response-contract.md",
+          "title": "2026-07-24 周五代码理解：GRC video_launch 响应出口与 GRG 返回契约",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/rec-server-launch-review-business-flow",
+      "category": "business",
+      "title": "rec-server `launch_review`：AI 分析、反馈写入与业务处理边界",
+      "canonical": "notes/business-lib/20260728-rec-server-launch-review-business-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260728-rec-server-launch-review-business-flow.md",
+          "title": "rec-server `launch_review`：AI 分析、反馈写入与业务处理边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/feeda-pcs-microvideo-recall-merge-routing",
+      "category": "business",
+      "title": "feeda-pcs MicroVideo 业务链路：从 grc_micro_video_predictor 到召回/融合算子",
+      "canonical": "notes/business-lib/20260731-feeda-pcs-microvideo-recall-merge-routing.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260731-feeda-pcs-microvideo-recall-merge-routing.md",
+          "title": "feeda-pcs MicroVideo 业务链路：从 grc_micro_video_predictor 到召回/融合算子",
+          "role": "primary",
+          "scope": "feeda-pcs 的 MicroVideo client 分支、BaipaiExplorationInterestVideo 顶点、MicroVideo processor 实现"
+        }
+      ]
+    },
+    {
+      "id": "business/grf-front-business-routing-sample-interleaving",
+      "category": "business",
+      "title": "GRF 前端业务路由：Nshead 请求到 SampleServer 与 Interleaving 后端",
+      "canonical": "notes/business-lib/20260801-grf-front-business-routing-sample-interleaving.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260801-grf-front-business-routing-sample-interleaving.md",
+          "title": "GRF 前端业务路由：Nshead 请求到 SampleServer 与 Interleaving 后端",
+          "role": "primary",
+          "scope": "GRF gr-front 请求解析、channel/origin_channel_id 归一、CommandDispatcher 分发、SampleServer/Interleaving DAO 后端调用"
+        }
+      ]
+    },
+    {
+      "id": "business/mv-gr-video-launch-grc-grg-routing",
+      "category": "business",
+      "title": "MV-GR 业务路由：`video_launch` 场景下的 GRC / GRG 选择",
+      "canonical": "notes/business-lib/20260803-mv-gr-video-launch-grc-grg-routing.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260803-mv-gr-video-launch-grc-grg-routing.md",
+          "title": "MV-GR 业务路由：`video_launch` 场景下的 GRC / GRG 选择",
+          "role": "primary",
+          "scope": "`video_launch` / `short_micro_video` 场景，`MicroVideoGrcRecallProcessor` 的 GRC/GRG 分流，sid 与 channel 规则联动"
+        }
+      ]
+    },
+    {
+      "id": "business/grc-response-for-grg-contract",
+      "category": "business",
+      "title": "2026-08-07 周五代码理解：GRC `ResponseForGrg` 响应出口契约",
+      "canonical": "notes/business-lib/20260807-grc-response-for-grg-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260807-grc-response-for-grg-contract.md",
+          "title": "2026-08-07 周五代码理解：GRC `ResponseForGrg` 响应出口契约",
+          "role": "primary",
+          "scope": "分析 brpc 查询入口、GraphEngine 执行边界、`ResponseForGrgFunction` 的响应产出与 graph 配置绑定；本文不展开 History Service `gr_state` 存储与业务枚举。"
+        }
+      ]
+    },
+    {
+      "id": "business/lite-grc-recall-output-boundary",
+      "category": "business",
+      "title": "lite-grc 召回输出边界：fast/pass/slow 分支与业务可观测信号",
+      "canonical": "notes/business-lib/20260811-lite-grc-recall-output-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260811-lite-grc-recall-output-boundary.md",
+          "title": "lite-grc 召回输出边界：fast/pass/slow 分支与业务可观测信号",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/feeda-pcs-feature-routing-and-response-assembly",
+      "category": "business",
+      "title": "2026-08-14 周五代码理解：feeda-pcs 特征路由与响应装配边界",
+      "canonical": "notes/business-lib/20260814-feeda-pcs-feature-routing-and-response-assembly.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260814-feeda-pcs-feature-routing-and-response-assembly.md",
+          "title": "2026-08-14 周五代码理解：feeda-pcs 特征路由与响应装配边界",
+          "role": "primary",
+          "scope": "只分析 `client_tag` 驱动的请求分支、特征字段装配、响应参数回填与日志出口；不展开全部 PCS 协议。"
+        }
+      ]
+    },
+    {
+      "id": "business/feeda-pcs-processor-branches-and-feature-assembly",
+      "category": "business",
+      "title": "2026-08-16 周日代码理解：feeda-pcs 业务分支与特征装配",
+      "canonical": "notes/business-lib/20260816-feeda-pcs-processor-branches-and-feature-assembly.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260816-feeda-pcs-processor-branches-and-feature-assembly.md",
+          "title": "2026-08-16 周日代码理解：feeda-pcs 业务分支与特征装配",
+          "role": "primary",
+          "scope": "只分析 `shoubai/processor/diver_feature_sample_processor.cpp` 与 `microvideo/processor/mv_diver_xgb_feature_processor.cpp`，关注业务分支、GCMS/DeepES 依赖、mid_data 绑定与结果装配，不扩展到全部 recall/merge 逻辑。"
+        }
+      ]
+    },
+    {
+      "id": "business/top-intp-gcms-content-eco-business-boundary",
+      "category": "business",
+      "title": "top-intp 内容生态业务边界：protobuf 入口、SessionContext 与 GCMS 数据装配",
+      "canonical": "notes/business-lib/20260817-top-intp-gcms-content-eco-business-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260817-top-intp-gcms-content-eco-business-boundary.md",
+          "title": "top-intp 内容生态业务边界：protobuf 入口、SessionContext 与 GCMS 数据装配",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/top-intp-gcms-request-and-response-boundary",
+      "category": "business",
+      "title": "2026-08-18 周二代码理解：top-intp GCMS 请求与响应边界",
+      "canonical": "notes/business-lib/20260818-top-intp-gcms-request-and-response-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260818-top-intp-gcms-request-and-response-boundary.md",
+          "title": "2026-08-18 周二代码理解：top-intp GCMS 请求与响应边界",
+          "role": "primary",
+          "scope": "只分析 `src/service/top_service.cc`、`src/strategy/top_data_strategy.cc`、`src/component/top_data_component.cc`、`src/component/gcms_component.h`、`src/common/gcms_data.h`、`conf/common_component/gcms_plugin_pb.conf`，关注请求封装、策略分发、GCMS 响应回填和结果出网，不展开服务启动。"
+        }
+      ]
+    },
+    {
+      "id": "business/mv-grg-responseforgrg-request-boundary",
+      "category": "business",
+      "title": "MV-GRG ResponseForGrg：请求准备、响应拼装与业务边界",
+      "canonical": "notes/business-lib/20260823-mv-grg-responseforgrg-request-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260823-mv-grg-responseforgrg-request-boundary.md",
+          "title": "MV-GRG ResponseForGrg：请求准备、响应拼装与业务边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/feeda-mv-grc-request-parse-response-boundary",
+      "category": "business",
+      "title": "feeda-mv-grc 请求入口、解析器与响应边界",
+      "canonical": "notes/business-lib/20260824-feeda-mv-grc-request-parse-response-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260824-feeda-mv-grc-request-parse-response-boundary.md",
+          "title": "feeda-mv-grc 请求入口、解析器与响应边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/dapper-collector-assemble-converge-conv-business-flow",
+      "category": "business",
+      "title": "dapper-collector 业务聚合：CollctorAssemble → CollectorConverge → Conv/ExecEngineConv 写入闭环",
+      "canonical": "notes/business-lib/20260826-dapper-collector-assemble-converge-conv-business-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260826-dapper-collector-assemble-converge-conv-business-flow.md",
+          "title": "dapper-collector 业务聚合：CollctorAssemble → CollectorConverge → Conv/ExecEngineConv 写入闭环",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grg-request-basic-info-routing-actual-reqnum-boundary",
+      "category": "business",
+      "title": "GRG 请求基础信息注入、图路由与 actual_reqnum 回传边界",
+      "canonical": "notes/business-lib/20260827-grg-request-basic-info-routing-actual-reqnum-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260827-grg-request-basic-info-routing-actual-reqnum-boundary.md",
+          "title": "GRG 请求基础信息注入、图路由与 actual_reqnum 回传边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grc-grg-response-extmsg-roundtrip",
+      "category": "business",
+      "title": "2026-08-30 周日业务代码库理解：GRC/GRG 响应装配中的 extmsg 回传与再装配",
+      "canonical": "notes/business-lib/20260830-grc-grg-response-extmsg-roundtrip.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260830-grc-grg-response-extmsg-roundtrip.md",
+          "title": "2026-08-30 周日业务代码库理解：GRC/GRG 响应装配中的 extmsg 回传与再装配",
+          "role": "primary",
+          "scope": "`src/processor/response.cpp`、`src/processor/video_launch/response_for_grg.cpp`、`src/process/response_function.cpp`、`src/process/new_response_function.cpp`，聚焦响应体装配、`predictor_extmsg` 透传、SIA 打点和二次解码。"
+        }
+      ]
+    },
+    {
+      "id": "business/grg-response-decorate-and-first-extmsg-merge",
+      "category": "business",
+      "title": "2026-08-31 周一业务代码库理解：NewResponseFunction 装饰器链与 first_ext_msg 合并边界",
+      "canonical": "notes/business-lib/20260831-grg-response-decorate-and-first-extmsg-merge.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260831-grg-response-decorate-and-first-extmsg-merge.md",
+          "title": "2026-08-31 周一业务代码库理解：NewResponseFunction 装饰器链与 first_ext_msg 合并边界",
+          "role": "primary",
+          "scope": "`src/process/response_function.cpp`、`src/process/new_response_function.cpp`、`conf/plugins/graph/news_updates_dibar/vertex.conf`，聚焦响应装饰策略、`predictor_extmsg` 的 bytes/base64 双路径、首条响应合并和 SIA 收束。"
+        }
+      ]
+    },
+    {
+      "id": "business/dapper-collector-v2-request-routing-and-permission-boundary",
+      "category": "business",
+      "title": "2026-09-02 周三业务库理解：dapper-collector v2 请求路由、权限校验与 bucket 分发边界",
+      "canonical": "notes/business-lib/20260902-dapper-collector-v2-request-routing-and-permission-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260902-dapper-collector-v2-request-routing-and-permission-boundary.md",
+          "title": "2026-09-02 周三业务库理解：dapper-collector v2 请求路由、权限校验与 bucket 分发边界",
+          "role": "primary",
+          "scope": "`src/service/collector_v2.cc`、`src/service/collector_service.cc`、`include/common/request_filter.h`、`conf/request_filter.conf`、`src/manager/sid_sender_receiver_whitelist_mgr.cc`，聚焦 BNS 准入、pd_ch 过滤、channel 分桶和 v1/v2 请求语义差异。"
+        }
+      ]
+    },
+    {
+      "id": "business/top-intp-request-assembly-and-gcms-content-shaping",
+      "category": "business",
+      "title": "2026-09-05 周六业务库理解：TopIntp 请求装配与 GCMS 内容成形",
+      "canonical": "notes/business-lib/20260905-top-intp-request-assembly-and-gcms-content-shaping.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260905-top-intp-request-assembly-and-gcms-content-shaping.md",
+          "title": "2026-09-05 周六业务库理解：TopIntp 请求装配与 GCMS 内容成形",
+          "role": "primary",
+          "scope": "`src/service/top_service.h`、`src/service/top_service_pb.h`、`src/common/session_context.h`、`src/component/top_data_component.h`、`src/component/gcms_component.h`、`src/common/gcms_data.h`，聚焦请求解析、置顶数量、展示策略、双缓冲内容读取和 GCMS 响应项结构。"
+        }
+      ]
+    },
+    {
+      "id": "business/multi-factor-generation-pipeline",
+      "category": "business",
+      "title": "2026-09-07 周一业务库理解：多因子生成（multi_factor）业务流水线",
+      "canonical": "notes/business-lib/20260907-multi-factor-generation-pipeline.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260907-multi-factor-generation-pipeline.md",
+          "title": "2026-09-07 周一业务库理解：多因子生成（multi_factor）业务流水线",
+          "role": "primary",
+          "scope": "`feeda-mv-grc/baidu/feed-gr/feeda-mv-grc/src/processor/multi_factor/` 24 个 `*_factor_gen.cpp`（attract、attraction、bq_future、cp_ltr、cp_ltv、cp_playtime_efficient、playtime_efficient、playtime_q_depolarize、satisfy、session_ltr、session_ltr_dibar、subcate_future、surprise、slide、sonar_interaction、emo_future、author_future_v2、author_subsequent_value、adc_ltr、adc_rank、minjie_ltr、ltr、ltr_scene、gcf_sim_score），以及 `src/data/rid_tmp_info.h` 中的多因子字段、`src/processor/base_function.h` 的 GRCGraphFunction 契约。"
+        }
+      ]
+    },
+    {
+      "id": "business/hudong-v5-interaction-adjustment",
+      "category": "business",
+      "title": "2026-09-09 业务库理解：hudong_v5 互动信号调权",
+      "canonical": "notes/business-lib/20260909-hudong-v5-interaction-adjustment.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260909-hudong-v5-interaction-adjustment.md",
+          "title": "2026-09-09 业务库理解：hudong_v5 互动信号调权",
+          "role": "primary",
+          "scope": "GRC precise adjuster 的基类契约、互动 v5 实现、GCMS/NewsInfo 字段读取、实验参数与采样日志。"
+        }
+      ]
+    },
+    {
+      "id": "business/parameter-dictionary-experiment-boundary",
+      "category": "business",
+      "title": "2026-09-10 业务库理解：字典与实验参数读取边界",
+      "canonical": "notes/business-lib/20260910-parameter-dictionary-experiment-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260910-parameter-dictionary-experiment-boundary.md",
+          "title": "2026-09-10 业务库理解：字典与实验参数读取边界",
+          "role": "primary",
+          "scope": "Set2set predictor/function、fan-cate downrank adjuster、predictor plugin，以及 GRC/GRG 中参数访问的静态分布。"
+        }
+      ]
+    },
+    {
+      "id": "business/gr-front-degrade-discard-request-boundary",
+      "category": "business",
+      "title": "2026-09-11 业务库理解：GRF Degrade/Discard 控制面与请求分发边界",
+      "canonical": "notes/business-lib/20260911-gr-front-degrade-discard-request-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260911-gr-front-degrade-discard-request-boundary.md",
+          "title": "2026-09-11 业务库理解：GRF Degrade/Discard 控制面与请求分发边界",
+          "role": "primary",
+          "scope": "`service/http_service.cc`、`service/discard_service.cc`、`service/nshead_service.cc`、`dict/flowstrategy.cc`、`dispatch/command_dispatcher.cc`、`dispatch/feed.cc` 与 `flow_strategy.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "business/grc-deepes-quota-multicategory-recall-allocation",
+      "category": "business",
+      "title": "2026-09-12 业务库理解：GRC 多品类 quota 调整与精排请求分配",
+      "canonical": "notes/business-lib/20260912-grc-deepes-quota-multicategory-recall-allocation.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260912-grc-deepes-quota-multicategory-recall-allocation.md",
+          "title": "2026-09-12 业务库理解：GRC 多品类 quota 调整与精排请求分配",
+          "role": "primary",
+          "scope": "`gr-convergence/src/common/session_context.cc`、`data_framework/processor/ums_processor.cpp`、`recall_framework/processor/jp_processor/new_predictor_processor.cpp`，聚焦历史行为统计、实验参数、品类权重、资源浪费再分配和 Predictor 请求构造。"
+        }
+      ]
+    },
+    {
+      "id": "business/grg-cache-protobuf-response-extmsg-boundary",
+      "category": "business",
+      "title": "2026-09-13 业务库理解：GRG 缓存代理 Protobuf 解析与 predictor_extmsg 回写边界",
+      "canonical": "notes/business-lib/20260913-grg-cache-protobuf-response-extmsg-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260913-grg-cache-protobuf-response-extmsg-boundary.md",
+          "title": "2026-09-13 业务库理解：GRG 缓存代理 Protobuf 解析与 predictor_extmsg 回写边界",
+          "role": "primary",
+          "scope": "`src/strategy/cache_proxy/newhot_cache_proxy.cpp`、`src/process/response_function.cpp`，并对照 GRC `src/processor/response.cpp` 的同一 extmsg 透传边界。"
+        }
+      ]
+    },
+    {
+      "id": "business/grc-actual-reqnum-gr-grc-gr-closure",
+      "category": "business",
+      "title": "业务代码库适配分析报告：`actual_reqnum` 跨服务透传 —— GR→GRC→GR 结果数闭环",
+      "canonical": "notes/business-lib/20260914-grc-actual-reqnum-gr-grc-gr-closure.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260914-grc-actual-reqnum-gr-grc-gr-closure.md",
+          "title": "业务代码库适配分析报告：`actual_reqnum` 跨服务透传 —— GR→GRC→GR 结果数闭环",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grg-diversity-reqnum-truncation-boundary",
+      "category": "business",
+      "title": "2026-09-15 业务库理解：GRG DiversityMerge 的 reqnum 截断与多流执行边界",
+      "canonical": "notes/business-lib/20260915-grg-diversity-reqnum-truncation-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260915-grg-diversity-reqnum-truncation-boundary.md",
+          "title": "2026-09-15 业务库理解：GRG DiversityMerge 的 reqnum 截断与多流执行边界",
+          "role": "primary",
+          "scope": "旧版 `DiversityMergeFunction`、新版 `NewDiversityMergeFunction`、四类输入队列和 `multi_stream_diversity.conf` 的 stream/executor 合同。"
+        }
+      ]
+    },
+    {
+      "id": "business/feature-extractor-offline-sample-to-lego",
+      "category": "business",
+      "title": "2026-09-16 业务库理解：Feature Extractor 离线样本到 Lego 训练样本的生成边界",
+      "canonical": "notes/business-lib/20260916-feature-extractor-offline-sample-to-lego.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260916-feature-extractor-offline-sample-to-lego.md",
+          "title": "2026-09-16 业务库理解：Feature Extractor 离线样本到 Lego 训练样本的生成边界",
+          "role": "primary",
+          "scope": "二进制样本读取、`GRSample` 包装、user/item/context/rule 五段抽取、过滤分支、label 构造、字典映射和 lego 输出。"
+        }
+      ]
+    },
+    {
+      "id": "business/exp-param-config-to-manager",
+      "category": "business",
+      "title": "2026-09-17 业务库理解：Exp-param 配置到实验 Manager 生成的业务边界",
+      "canonical": "notes/business-lib/20260917-exp-param-config-to-manager.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260917-exp-param-config-to-manager.md",
+          "title": "2026-09-17 业务库理解：Exp-param 配置到实验 Manager 生成的业务边界",
+          "role": "primary",
+          "scope": "`mv_exp_params.conf` 的参数声明、`ExpConfigParser` 的类型/default 解析、代码生成器的多配置合并、生成 manager 的 reset/get/hit 语义和自定义类型回退。"
+        }
+      ]
+    },
+    {
+      "id": "business/gr-rank-context-inference-pipeline",
+      "category": "business",
+      "title": "2026-09-18 业务库理解：gr-rank 从 RPC 到 ContextData 与 ContextDNN 并行推理的业务边界",
+      "canonical": "notes/business-lib/20260918-gr-rank-context-inference-pipeline.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260918-gr-rank-context-inference-pipeline.md",
+          "title": "2026-09-18 业务库理解：gr-rank 从 RPC 到 ContextData 与 ContextDNN 并行推理的业务边界",
+          "role": "primary",
+          "scope": "`main.cc` 启动、`GRRService::predict`、`GRRServiceImpl::predict` 的请求路由/图选择、ContextDataProcessor 上下文特征抽取与 embedding、InferProcessor 的 InputChannel + bthread_async 并行、`GRRServiceImpl::generate_log` 的响应汇总。"
+        }
+      ]
+    },
+    {
+      "id": "business/video-launch-response-assembly-contract",
+      "category": "business",
+      "title": "2026-09-20 业务库理解：video_launch 合并结果到 GRG 响应与 ExtMsg 透传",
+      "canonical": "notes/business-lib/20260920-video-launch-response-assembly-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260920-video-launch-response-assembly-contract.md",
+          "title": "2026-09-20 业务库理解：video_launch 合并结果到 GRG 响应与 ExtMsg 透传",
+          "role": "primary",
+          "scope": "`DataMergeFunction` 的输出 ownership/去重/兜底、`ResponseForGrgFunction` 的依赖图与 attachment/ExtMsg 编码、`NewsResponseFunction` 的 rule/function/effect content 组装、`grg_response.conf` 的条件依赖。"
+        }
+      ]
+    },
+    {
+      "id": "business/mv-grg-new-response-extmsg-contract",
+      "category": "business",
+      "title": "2026-09-21 业务库理解：MV-GRG NewResponseFunction 的 Content 组装与 ExtMsg 回写合同",
+      "canonical": "notes/business-lib/20260921-mv-grg-new-response-extmsg-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260921-mv-grg-new-response-extmsg-contract.md",
+          "title": "2026-09-21 业务库理解：MV-GRG NewResponseFunction 的 Content 组装与 ExtMsg 回写合同",
+          "role": "primary",
+          "scope": "`NewResponseFunction` 的输入依赖、`reqnum` 截断、`ResponseDecorateStrategy` 两类装饰、压缩/普通 ExtMsg 解码、sample DNN Q 合并、not-show 信息回写与 `response.conf` 配置。"
+        }
+      ]
+    },
+    {
+      "id": "business/mv-grc-queue-cache-and-personalised-cache-flow",
+      "category": "business",
+      "title": "2026-09-22 业务库理解：MV-GRC 队列缓存读/写回与个性化缓存异步落库边界",
+      "canonical": "notes/business-lib/20260922-mv-grc-queue-cache-and-personalised-cache-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260922-mv-grc-queue-cache-and-personalised-cache-flow.md",
+          "title": "2026-09-22 业务库理解：MV-GRC 队列缓存读/写回与个性化缓存异步落库边界",
+          "role": "primary",
+          "scope": "`CacheQueuePlugin::get/set/gen_query_cache_key/parse_cache_data`、`QueueCacheProcessor` 的 mark/重命名规则和召回替换、`DibarReddotCacheData` 的兜底写回路径、`WritePersonalisedCacheProcessor` 的 Gzip + base64 + DaltonClient 写入以及与 `personalize_cache_limit / personalize_cache_max / ttl` 的协作。"
+        }
+      ]
+    },
+    {
+      "id": "business/feature-service-request-user-doc-flow",
+      "category": "business",
+      "title": "2026-09-23 业务库理解：MV-GRC/GRG 特征请求分流与 DocFeature 样本组装边界",
+      "canonical": "notes/business-lib/20260923-feature-service-request-user-doc-flow.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260923-feature-service-request-user-doc-flow.md",
+          "title": "2026-09-23 业务库理解：MV-GRC/GRG 特征请求分流与 DocFeature 样本组装边界",
+          "role": "primary",
+          "scope": "request/user feature 请求构造、pass_through 兜底、`is_open_dnn_soft_rule` 短路、doc feature pipeline 的 batch 输入、sample/context_sample 组装、candidate channel 分发、Yitu 并行 batch 与 SampleContext 生命周期。"
+        }
+      ]
+    },
+    {
+      "id": "business/grc-yitu-doc-feature-batch-contract",
+      "category": "business",
+      "title": "业务代码理解：GRC Yitu 文档特征缓存与用户意图分支",
+      "canonical": "notes/business-lib/20260924-grc-yitu-doc-feature-batch-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260924-grc-yitu-doc-feature-batch-contract.md",
+          "title": "业务代码理解：GRC Yitu 文档特征缓存与用户意图分支",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grg-deepes-quota-pcs-boundary",
+      "category": "business",
+      "title": "业务代码理解：GRG `DeepesQuotaPcsFunction` 配额生成与 Graph 数据边界",
+      "canonical": "notes/business-lib/20260924-grg-deepes-quota-pcs-boundary.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260924-grg-deepes-quota-pcs-boundary.md",
+          "title": "业务代码理解：GRG `DeepesQuotaPcsFunction` 配额生成与 Graph 数据边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    },
+    {
+      "id": "business/grc-yitu-user-intent-predictor-contract",
+      "category": "business",
+      "title": "2026-09-25 业务代码理解：GRC Yitu 样本所有权到 UserIntent Predictor 的推理闭环",
+      "canonical": "notes/business-lib/20260925-grc-yitu-user-intent-predictor-contract.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260925-grc-yitu-user-intent-predictor-contract.md",
+          "title": "2026-09-25 业务代码理解：GRC Yitu 样本所有权到 UserIntent Predictor 的推理闭环",
+          "role": "primary",
+          "scope": "`src/processor/doc_feature_with_cache_yitu.cpp`、`src/processor/video_launch/user_intent_predict.cpp`、`src/plugin/user_intent_predictor.cpp`、`src/processor/video_launch/user_intent_score.cpp`、`src/operator/adjuster/precise/user_intent_pre_adjuster.cpp`、`conf/plugins/graph/vertex.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "business/grg-aigc-hardrule-and-low-clarity-diversity-chain",
+      "category": "business",
+      "title": "2026-09-28 业务代码理解：GRG AIGC 硬规则与低清策略链（规则注册 / 正排字段 / HistoryInterest 依赖）",
+      "canonical": "notes/business-lib/20260928-grg-aigc-hardrule-and-low-clarity-diversity-chain.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260928-grg-aigc-hardrule-and-low-clarity-diversity-chain.md",
+          "title": "2026-09-28 业务代码理解：GRG AIGC 硬规则与低清策略链（规则注册 / 正排字段 / HistoryInterest 依赖）",
+          "role": "primary",
+          "scope": "`src/operator/diversity/aigc_hard_rule.cpp`、`src/strategy/diversity/rule/low_clarity_diversity_rule.cpp`、`src/process/history_interest_info_function.cpp`、`src/plugin/gcms_parser.cpp`、`src/data/video_info.h`、`conf/plugins/exec_engine/multi_stream_select_hard_rule.conf`、`conf/plugins/exec_engine/multi_stream_select_soft_rule.conf`、`conf/common_component/gcms_common_pb_plugin.conf`、`conf/exp_params.conf`、`conf/sid.conf`。"
+        }
+      ]
+    },
+    {
+      "id": "business/generator-service-graphprocessor-request-to-response-chain",
+      "category": "business",
+      "title": "2026-09-29 业务代码理解：generator-service GraphProcessor 请求到响应链",
+      "canonical": "notes/business-lib/20260929-generator-service-graphprocessor-request-to-response-chain.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260929-generator-service-graphprocessor-request-to-response-chain.md",
+          "title": "2026-09-29 业务代码理解：generator-service GraphProcessor 请求到响应链",
+          "role": "primary",
+          "scope": "`baidu/feed-gr/generator-service/src/processor/generator_recall_request_processor.cpp`、`generator_recall_processer.cpp`、`generator_processor.cpp`、`get_data/multi_init_processor.cpp`、`get_data/finish_processor.cpp`、`response_processor.cpp`。"
+        }
+      ]
+    },
+    {
+      "id": "business/fillmeta-gcms-hit-delete-decision-gate",
+      "category": "business",
+      "title": "2026-09-30 业务库代码理解：GRC FillMeta 的 GCMS 命中与候选删除决策门",
+      "canonical": "notes/business-lib/20260930-fillmeta-gcms-hit-delete-decision-gate.md",
+      "documents": [
+        {
+          "path": "notes/business-lib/20260930-fillmeta-gcms-hit-delete-decision-gate.md",
+          "title": "2026-09-30 业务库代码理解：GRC FillMeta 的 GCMS 命中与候选删除决策门",
+          "role": "primary",
+          "scope": "`baidu/feed-gr/feeda-mv-gr/src/processor/fill_meta.cpp`，以及其 `gcms_common_pb_plugin.conf` 组件接线和 `FillMetaProcessor` 注册。"
+        }
+      ]
+    },
+    {
+      "id": "planning/weekly-code-understanding-topics",
+      "category": "planning",
+      "title": "历史周度选题（2026 年 5 月）",
+      "canonical": "notes/weekly-topic-selection/20260529-weekly-code-understanding-topics.md",
+      "documents": [
+        {
+          "path": "notes/weekly-topic-selection/20260522-weekly-code-understanding-topics.md",
+          "title": "下周代码理解候选选题（2026-05-22）",
+          "role": "supplement",
+          "scope": "历史候选记录；不得自动回退为当日日计划。"
+        },
+        {
+          "path": "notes/weekly-topic-selection/20260527-weekly-code-understanding-topics.md",
+          "title": "下周代码理解候选选题（2026-05-27）",
+          "role": "supplement",
+          "scope": "历史候选记录；不得自动回退为当日日计划。"
+        },
+        {
+          "path": "notes/weekly-topic-selection/20260528-weekly-code-understanding-topics.md",
+          "title": "下周代码理解候选选题（2026-05-28）",
+          "role": "supplement",
+          "scope": "历史候选记录；不得自动回退为当日日计划。"
+        },
+        {
+          "path": "notes/weekly-topic-selection/20260529-weekly-code-understanding-topics.md",
+          "title": "20260529 下周代码理解候选选题与每日计划",
+          "role": "primary",
+          "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
+        }
+      ]
+    },
+    {
+      "id": "planning/weekly-feeda-pcs-service-architecture-ku",
+      "category": "planning",
+      "title": "2026-08-14 周五代码理解选题：feeda-pcs 请求生命周期与特征装配边界",
+      "canonical": "notes/weekly-topic-selection/20260814-weekly-feeda-pcs-service-architecture-ku.md",
+      "documents": [
+        {
+          "path": "notes/weekly-topic-selection/20260814-weekly-feeda-pcs-service-architecture-ku.md",
+          "title": "2026-08-14 周五代码理解选题：feeda-pcs 请求生命周期与特征装配边界",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,8 @@
 # GRG DiversityMerge：结果生成、业务后处理与回退排障
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-05  
 > 主题来源：未发现本机 `daily-plan` 文件；按双 Markdown 工作流延续 2026-06-04 的 GRG DiversityMerge 主题，今天补齐 MultiStreamEngine 执行后的结果生成、业务实验后处理、trace/reset 与回退排障口径。  

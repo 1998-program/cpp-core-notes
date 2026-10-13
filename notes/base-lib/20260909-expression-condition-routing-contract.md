@@ -1,4 +1,8 @@
 # 2026-09-09 基础库理解：Expression 条件路由与图输入契约
+<!-- topic-nav:start -->
+> 主题：`base/expression-routing` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-09  
 > 主题选择：未发现当日有效 daily-plan；旧计划文件已过期，且候选中的 GraphPool、MultiStreamEngine、PipelineGraphFunction、BaseGraphFunction 等主题已有覆盖。本次按“邻近未覆盖主题”回退到 `expression.conf` 条件表达式与图输入路由契约。KU 正文未读取，企业业务上下文需人工补充；以下结论以代码和配置证据为准。  

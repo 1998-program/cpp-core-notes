@@ -1,4 +1,8 @@
 # absl::flat_hash_map — Swiss Table 高性能哈希表
+<!-- topic-nav:start -->
+> 主题：`cpp/swiss-table` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > **编号**: 41  
 > **日期**: 2026-07-01  

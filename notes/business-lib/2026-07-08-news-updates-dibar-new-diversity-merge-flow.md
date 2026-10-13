@@ -1,4 +1,8 @@
 # 2026-07-08 业务库代码理解：news_updates_dibar 的 NewDiversityMerge 多队列合并链路
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-08｜类型：业务库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周三 fallback 与基础库 MultiStreamEngine 主题配对，选择 `news_updates_dibar` 场景下 NewDiversityMerge 的 loads/rule/function/effect 多队列合并链路。  

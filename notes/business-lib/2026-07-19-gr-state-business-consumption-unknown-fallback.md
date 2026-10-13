@@ -1,4 +1,8 @@
 # 2026-07-19 业务代码理解：`gr_state` 业务消费与 `UNKNOWN` 回退语义
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 本文补齐业务侧链路：新闻/历史卡片如何在构造 `NewsMessage` 时读取 show-state，并在缺失状态时回退到 `ShowStateInfo::UNKNOWN`。重点不是单点字段，而是“业务可消费状态”如何从 history 层透传出来并在召回/下发链路中保持可解释。
 

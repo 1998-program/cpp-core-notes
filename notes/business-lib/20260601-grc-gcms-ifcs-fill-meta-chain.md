@@ -1,4 +1,8 @@
 # GRC 正排 GCMS / IFCS fill_meta 链路
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-01  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的 `mon.business` 计划项  
@@ -214,8 +218,4 @@ data
 - `src/plugin/ifcs_component.cpp:827-835`：IFCS parser 组件注册。
 - `conf/ifcs_sdk.conf:6-154`：recall/search/news accessor、shard、freq_update_queue、hot_cache 配置。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-20T19:24:33.356914
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md)。

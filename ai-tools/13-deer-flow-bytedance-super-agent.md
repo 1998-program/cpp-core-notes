@@ -1,4 +1,8 @@
 # 13 · DeerFlow — 字节跳动开源的超级 Agent 框架
+<!-- topic-nav:start -->
+> 主题：`ai-tools/deer-flow` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 **项目**：[bytedance/deer-flow](https://github.com/bytedance/deer-flow)
 **Stars**：69.8k ⭐ · Python · MIT

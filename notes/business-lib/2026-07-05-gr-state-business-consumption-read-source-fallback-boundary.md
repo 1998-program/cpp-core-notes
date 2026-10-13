@@ -1,4 +1,8 @@
 # 2026-07-05 业务库代码理解：gr_state 业务消费的读源降级边界
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-05｜类型：业务库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 继续 History Service 点展状态主题，与今日基础库“`gr_state_read_sndb` 读源协商”配对。本篇聚焦业务侧消费 `gr_state` 时的降级边界：本地检索未发现 GRC/小视频 GRC 直接设置 `gr_state_read_sndb`，因此业务规则不能默认 SNDB 状态已被拉取。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，业务策略口径需人工补充，本文以本地代码库检索结果为准。

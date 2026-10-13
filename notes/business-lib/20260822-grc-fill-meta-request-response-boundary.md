@@ -1,4 +1,8 @@
 # 2026-08-22 周六代码理解：GRC 正排 fill_meta 请求与响应边界
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260601-grc-gcms-ifcs-fill-meta-chain.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-22  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的历史候选项回退；本次 cron 没有可直接执行的当日 daily-plan，KU/业务背景需人工补充。  

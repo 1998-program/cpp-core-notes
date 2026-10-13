@@ -1,4 +1,8 @@
 # 2026-06-10 基础库代码理解：bthread_async + Future 批量 RPC 模式
+<!-- topic-nav:start -->
+> 主题：`base/bthread-future` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260528-bthread-async-fan-out-future-join-usage-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：`daily-plan-20260529.json` 只覆盖 2026-06-01 周，本次按周三推荐主题 fallback：`bthread_async 批量并行模式与捕获安全`。内网 KU 未参与检索，需人工补充相关规范文档；本笔记以代码库检索结果为准。
 

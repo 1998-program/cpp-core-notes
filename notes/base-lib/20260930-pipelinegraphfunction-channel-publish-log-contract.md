@@ -1,4 +1,8 @@
 # 2026-09-30 基础库代码理解：PipelineGraphFunction 并行发布与日志汇总合同
+<!-- topic-nav:start -->
+> 主题：`base/pipeline-consume` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260612-pipelinegraphfunction-parallel-consume.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-30（周三）
 > 主题选择：canonical 笔记仓库未发现今日 daily-plan；本地仅找到过期的 `daily-plan-20260529.json`。该计划的周三推荐项已在近期被覆盖，本次按相邻未充分展开的框架边界回退到 **GRG PipelineGraphFunction 的 Channel 发布、Future join、_pipeline_done 与线程日志汇总合同**。

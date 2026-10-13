@@ -1,4 +1,8 @@
 # GRC 业务库：news_updates_dibar 图文速读融合链路
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-08  
 > 主题来源：未发现本机 `daily-plan` 文件；按双 Markdown 工作流选择 `news_updates_dibar` 场景作为业务库主题，覆盖策略配置、图 include、召回/保量/多样性/响应链路。  

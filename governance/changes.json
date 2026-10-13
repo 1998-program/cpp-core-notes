@@ -1,0 +1,576 @@
+{
+  "baseline_revision": "5738832bab4b13ba26356af0a37a0a32e477b675",
+  "date": "2026-10-13",
+  "changes": [
+    {
+      "path": "notes/base-lib/20260521-bthread-usage-deep-dive.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "e7e3f0c68c0f2485b63091fe5d8ede911a451428b59469655ab7ff750c2a9437",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260521-bthread-usage-deep-dive.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260522-bthread-usage-deep-dive.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "a0d928df03cd1058b567b89cafe3b0439efc0bda45ecf6494cc5aeb03fb78513",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260522-bthread-usage-deep-dive.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260527-bthread-usage-deep-dive.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "2825716261928f2eea887954bd6d8135dc47a53dd8d7298044b923c4a82803ae",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260527-bthread-usage-deep-dive.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260528-bthread-async-fan-out-future-join-usage-deep-dive.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "a80ed455758f9e4a40d29825a106744ecac67dd066f0e35b7bc35cf7841fc2f8",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260528-bthread-async-fan-out-future-join-usage-deep-dive.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive-enhanced.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "a3eb546c39f32a954561c92cff430fb0da1fb692637efaa487ba32dedd795a2e",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive-enhanced.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "9a6e171eca209793d9edb78d95550b44c00de7523ca46258f4dc845a9f32cf45",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260530-dynamic-timeout-plugin-scene-mapping.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "86c4ead5d8cd02b0875e73fbb07fe8650305d24589ccd2ddb5b8801fa5de7a76",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260530-dynamic-timeout-plugin-scene-mapping.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260531-tracelog-vip-hashlog-business-log-layering.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "e270fdb1c3fb6f0a4d13780ca845edf96fee2b9c0c9ed86ed96f00e49f79bc5a",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260531-tracelog-vip-hashlog-business-log-layering.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260601-graphengine-graphpool-reset-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "a82d9d48a2f2dff0b14f32f7b6e895b71abe63d395b8b07326de1c062d5a3da7",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260601-graphengine-graphpool-reset-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260802-multistreamengine-bind-graph-dependency.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "6a578ac0b08c9d78466b8d8416c956bedd98c9b207f4898536b25ae97ea5fdb5",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260802-multistreamengine-bind-graph-dependency.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260806-history-service-gr-state-dual-channel.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "69353d8c12d27862daaca21ef29e8ebb9ad972c91ef059a49a351bb4dc70f7b1",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260806-history-service-gr-state-dual-channel.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260812-protobuf-serialize-flatbuffers-hotspots.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "08cd40531215c58dff8b77a2b5c87ae6853cd2991c1b94337d7f078993992ae3",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260812-protobuf-serialize-flatbuffers-hotspots.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260813-bthread-async-future-capture-safety.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "c5100deaa45f20b5df232c1719383263524e9c80617db269f05307a2ea1d3385",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260813-bthread-async-future-capture-safety.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260814-feeda-pcs-request-lifecycle-and-feature-assembly-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "5252a5f923a96384089bcf1b8a5ec7dae8d8e017f24b72b6d9253f6698391a10",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260814-feeda-pcs-request-lifecycle-and-feature-assembly-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260815-graphengine-graphpool-reset-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "57e9f1859782150a079b629daeabebb928f0c605db61f58440cbde33ef0fa336",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260815-graphengine-graphpool-reset-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260816-feeda-pcs-bootstrap-and-request-dispatch.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "47db6054f70a52678fb0f237a12f075c63d739c2b2b53062e04e160bbcd329a4",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260816-feeda-pcs-bootstrap-and-request-dispatch.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260818-top-intp-bootstrap-and-top-data-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "b55c9f2fac872fa1d24de44857293a302ceb867811c8c018937fde969d15f336",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260818-top-intp-bootstrap-and-top-data-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260819-dynamic-timeout-plugin-and-controller-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "e115cc72c196d126cb615bb42bc3e9c5a6e424b27ad3433052ea19b93de7667e",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260819-dynamic-timeout-plugin-and-controller-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260820-graphpool-reset-and-dynamic-timeout-binding.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "bd6c6b341a83ff91d7fa30c45a462f63daec4ad0d02c806b0c61c3c2414ef8cf",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260820-graphpool-reset-and-dynamic-timeout-binding.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260821-multistreamengine-bind-graph-dependency-bridge.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "f0d70686b851e6c864994bad92f78841f727e908ff2df524b3df09b6f37bcc15",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260821-multistreamengine-bind-graph-dependency-bridge.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260822-graphpool-reset-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "80e23f4ca7a776faf212d95a2bf4cdb0308670a4bc55e4c0d0c55ae2140fa2bb",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260822-graphpool-reset-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260825-graphpool-reset-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "8acec79fe4013dc6ce480c54612f138f284aab44da7ffe3a5206dcfdbd0978c4",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260825-graphpool-reset-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260828-pipelinegraphfunction-parallel-consume.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "c8b5310a32f91f254389fc80fe1e1fa9d820f7c1a74623d6e196eb899e77d842",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260828-pipelinegraphfunction-parallel-consume.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260828-reusable-rpc-protocol-and-closure-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "5544ec71516452feacac17034991e23370e2dc02437d3f493f299fda0ec73b76",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260828-reusable-rpc-protocol-and-closure-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260829-gr-service-bootstrap-dynamic-timeout-reset.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "80f67a3fb7e5b103fd77b0a19b412d13d20a7b7dd52e5afd760c89b3a039e10c",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260829-gr-service-bootstrap-dynamic-timeout-reset.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260830-protobuf-serialize-and-pb-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "0c55d7c948d1975be9b44e1e16514cbfce37f769b48e831fff7e0a1650b12214",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260830-protobuf-serialize-and-pb-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260831-grg-bootstrap-and-exec-engine-assembly.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "ac594118a283f7f773c7d8942284c579386b074f2d32732b5bdb081afe8c2ca1",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260831-grg-bootstrap-and-exec-engine-assembly.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260901-set2set-predict-and-pb-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "e05a75565d5d2fc1588d49ee3d7f8ca90b12d53b3c251ae012d316c281554bf2",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260901-set2set-predict-and-pb-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260906-grc-service-bootstrap-dynamic-timeout-graphpool-reset.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "febcd8268461f32a5f375c84ad49ad7081954c6619d9c35da6eb8cddc41c1dd7",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260906-grc-service-bootstrap-dynamic-timeout-graphpool-reset.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260908-grc-pipelinegraphfunction-parallel-consume.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "081048d4f8a06e1cafd72e8cba622df80e98bec43875e9a0b5eea26ba0cdd429",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260908-grc-pipelinegraphfunction-parallel-consume.md",
+      "sections": []
+    },
+    {
+      "path": "notes/base-lib/20260924-fork-framework-flow-context-lifecycle.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "c6f668b5929b52eece564e825b68f79969b45b38d69ce83d2f6efd98d6f1945a",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260924-fork-framework-flow-context-lifecycle.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business/20260521-gcms-in-feeda-mv-grc.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "5fed4981ee6e3431aad6fef3b2a19ed27dbf6a2403dd157675b9fa9cb8d61e86",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260521-gcms-in-feeda-mv-grc.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business/20260523-dup-service-in-feeda-mv-grc.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "a8b2edee243bb3acc59a82423fd1a4549441cc42b2c7b960d2640049eaea50d4",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260523-dup-service-in-feeda-mv-grc.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business/20260527-gcms-in-feeda-mv-grc.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "73b4a802a845ead971ed475e1594271ea5864c1c1c41a54e3183dc48267639e6",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260527-gcms-in-feeda-mv-grc.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business/20260529-grg-diversity-soft-rules-in-feeda-mv-grg.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "70e462df8380dc13d8f24cfde4d1f5feae41a726ecb7df596df288eb11f94590",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260529-grg-diversity-soft-rules-in-feeda-mv-grg.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260530-grc-fake-id-disable-replacement.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "17a1ccb570349a399948171cdb87f810bb2b3d1135949e9181e3f22f914373b0",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260530-grc-fake-id-disable-replacement.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260531-grg-close-individual-fakeid-compat.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "478bbbb8836646264e132d233aafa038ea0a7a5b7e8d7484f4144fb8d174fea5",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260531-grg-close-individual-fakeid-compat.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "0a7905ebc8a87158c698ce46e02fb7782604cf5999121876156dea369f53accd",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260601-multistreamengine-bind-graph-dependency.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "8915d9ae7760528d4101d6672e4a1060f0cb1efe459aa4365f2cf1a3a20c9b24",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260601-multistreamengine-bind-graph-dependency.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260724-grc-video-launch-response-contract.md",
+      "kind": "retired-appendix",
+      "reason": "仅有分析时间与目标库信息的空附录",
+      "original_sha256": "ff5b61b196397b340171872bdfa903efc1dde89de6ad2ff8fe2d3e54e354ca62",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260724-grc-video-launch-response-contract.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260802-grg-fake-id-scene-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "b308bdf67453160675e6e05e1ea544f08b43b44aa83c846c505fb973c799b20b",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260802-grg-fake-id-scene-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260806-history-service-gr-state-business-semantics.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "a6db7f5ece3a75f7547cde13fab13ee0ca809f878e03b0c73062276016139ea6",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260806-history-service-gr-state-business-semantics.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260807-grc-response-for-grg-contract.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "e3a3576acaecda93559744cfd71c9993fd36620e542af028857204d3435f4d8f",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260807-grc-response-for-grg-contract.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260812-grc-cpu-cost-optimization-hotspots.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "66641303f45ad9885d01787abe9e99d99553aa25cec8f2fe7ad9a2234eec37b2",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260812-grc-cpu-cost-optimization-hotspots.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260813-grg-diversity-merge-async-closure-safety.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "c57e81e8e2a0aa82a9c6aa703eeda57d9aec9ceef3410a3ac501b80ae2d42f4c",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260813-grg-diversity-merge-async-closure-safety.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260814-feeda-pcs-feature-routing-and-response-assembly.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "bd2124fc1627ad1895ffc593528aeab0c862f30a26003b3b06fd6d1e49d3a3e8",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260814-feeda-pcs-feature-routing-and-response-assembly.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260815-grg-diversity-merge-async-closure-safety.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "7b1611db66c876d1a478e358bba906a6867541fc92625c533f3cf2d398c65dbe",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260815-grg-diversity-merge-async-closure-safety.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260816-feeda-pcs-processor-branches-and-feature-assembly.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "ffec86b4ec55e4f199b11743a6a14594b12ea7696914ea5b64b80c5a543362df",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260816-feeda-pcs-processor-branches-and-feature-assembly.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260818-top-intp-gcms-request-and-response-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "cc89c6e2c24bf9772c87770400d3db9c6903a84133ad5e184c859d69bcea92f2",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260818-top-intp-gcms-request-and-response-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260819-grg-close-personalization-fake-id-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "761ff516f2259bf344bd4b46472d26df198c8f0907c11327746b856e90120a31",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260819-grg-close-personalization-fake-id-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260820-grg-diversity-merge-exec-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "507eddf8095a8dd0eb51d5413cfcff74895a5d65e3f1929252f0470d44255c6a",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260820-grg-diversity-merge-exec-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260821-grc-fill-meta-request-response-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "21218da494c4814def5f708fa5b9dd674173a861b01554abeb8606b2b8ff2ae9",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260821-grc-fill-meta-request-response-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260825-grc-fill-meta-request-response-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "7330449684b8153e128d5167541cd74562667a40dc15320c1265ec3c0e92edaa",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260825-grc-fill-meta-request-response-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260828-grc-fill-meta-gcms-scene-routing.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "ff34b35cb1484c25f4d1d31fbe90fc8f254027d1441cd8c21eadc3995823c291",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260828-grc-fill-meta-gcms-scene-routing.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260828-kanju-lcn-and-data-merge-funnel.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "098910d87f3cefa43fbb37c1110b1eb605f1fee3d745ed8594f43f10eba6d39d",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260828-kanju-lcn-and-data-merge-funnel.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260829-gr-request-close-personalization-fake-id.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "c2de6cc1b0daff3968bccf2a59885b0c079af780e5f5b5e0409f1db6327264e7",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260829-gr-request-close-personalization-fake-id.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260830-grc-grg-response-extmsg-roundtrip.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "89aa7f7e0960dfdff8dac10b0fb4df44b7b18fccdb4174b0ec942f0012d2e1d0",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260830-grc-grg-response-extmsg-roundtrip.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260901-grc-cost-hotspots-and-fan-cate-downrank.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "94d92a872fed20883875d1203fb4b5ddf51d7b3dec4b1f572cedcea3a24321ee",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260901-grc-cost-hotspots-and-fan-cate-downrank.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260906-grg-response-assembly-diversity-merge-future-safety.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "9e3e0acb434ce517104804ce511206bb11a09ff08e4fc09a9e61c0b96ec63910",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260906-grg-response-assembly-diversity-merge-future-safety.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260908-grg-diversity-merge-and-response-assembly.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "675dbf695ec426aadee7a8f54d8933cb571ae00d0000ade2535db6dd153619ad",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260908-grg-diversity-merge-and-response-assembly.md",
+      "sections": []
+    },
+    {
+      "path": "notes/business-lib/20260924-grg-deepes-quota-pcs-boundary.md",
+      "kind": "retired-appendix",
+      "reason": "重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论",
+      "original_sha256": "f901cf3b6a101ae57c6929486be6bb317b73b7ba5e15ec6ed355f74b9395920f",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260924-grg-deepes-quota-pcs-boundary.md",
+      "sections": []
+    },
+    {
+      "path": "notes/16-flatbuffers-zero-copy.md",
+      "kind": "consolidated-sections",
+      "reason": "共同原理改为主文引用，保留其余章节",
+      "original_sha256": "e11170a0dcf652bf5e637c08e3292ddcd434e905764422d57cabf5d993c47714",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/16-flatbuffers-zero-copy.md",
+      "sections": [
+        "一句话价值",
+        "核心内存布局",
+        "vtable 访问原理（Table::GetField 逐行解析）",
+        "向前/向后兼容性机制",
+        "FlatBufferBuilder：从高向低构建",
+        "与 Protobuf 对比"
+      ]
+    },
+    {
+      "path": "notes/31-flatbuffers.md",
+      "kind": "consolidated-sections",
+      "reason": "共同原理改为主文引用，保留其余章节",
+      "original_sha256": "87c643dbf7053c515f8b79209abaf247ecf33dd57e2e216cb8393d56b3344f00",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/31-flatbuffers.md",
+      "sections": [
+        "设计哲学：序列化的终极形态是什么？",
+        "核心实现：偏移量驱动的随机访问",
+        "与 Protobuf 的深度对比"
+      ]
+    },
+    {
+      "path": "notes/36-flatbuffers-prod.md",
+      "kind": "consolidated-sections",
+      "reason": "共同原理改为主文引用，保留其余章节",
+      "original_sha256": "b2b32cf568d2158b945b2c3febfa77e7ef75fdf410903f3bd3f73faf7c611039",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/36-flatbuffers-prod.md",
+      "sections": [
+        "1. 为什么还要再聊 FlatBuffers？",
+        "2. 核心实现回顾（仅记住三件事）"
+      ]
+    },
+    {
+      "path": "notes/40-brpc-bthread.md",
+      "kind": "consolidated-sections",
+      "reason": "共同原理改为主文引用，保留其余章节",
+      "original_sha256": "ef9ab41234fd97ced0d3e5ef22759212f7556df0200be908bc0f7fe20b6ce835",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/40-brpc-bthread.md",
+      "sections": [
+        "1. 核心定位",
+        "2. 三大核心组件",
+        "3. WorkStealingQueue — 无锁环形队列",
+        "5. 协程上下文切换"
+      ]
+    },
+    {
+      "path": "notes/37-protobuf-arena.md",
+      "kind": "consolidated-sections",
+      "reason": "共同原理改为主文引用，保留其余章节",
+      "original_sha256": "994ce700358e58fb51c05fec42ed84e4fb141314446f2da905d4a5e78af3d997",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/37-protobuf-arena.md",
+      "sections": [
+        "0. 为什么 Arena 是大流量 Protobuf 服务的\"命门\"",
+        "1. 核心数据结构（v3.x / v25 行为）"
+      ]
+    },
+    {
+      "path": "notes/02-absl-flat-hash-map.md",
+      "kind": "consolidated-sections",
+      "reason": "共同原理改为主文引用，保留其余章节",
+      "original_sha256": "98ec0a0e49c34b856a8a57ceb6cabfc069d1c226a80aed06cd4b35f10cf9bc03",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/02-absl-flat-hash-map.md",
+      "sections": [
+        "一、设计思想",
+        "二、核心实现",
+        "三、性能优化原理"
+      ]
+    },
+    {
+      "path": "notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive-enhanced.md",
+      "kind": "shared-paragraphs",
+      "reason": "18 段完全相同正文改为主文引用",
+      "original_sha256": "a3eb546c39f32a954561c92cff430fb0da1fb692637efaa487ba32dedd795a2e",
+      "original_url": "https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive-enhanced.md",
+      "sections": []
+    }
+  ]
+}

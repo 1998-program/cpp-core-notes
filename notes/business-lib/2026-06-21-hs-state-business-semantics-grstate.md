@@ -1,4 +1,8 @@
 # 2026-06-21 业务库代码理解：点展状态消费口径与 gr_state 防误用指南
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 选择 History Service 点展状态业务语义，与今日基础库 `gr_state` Redis/SNDB 双通道主题配对。  
 > 内网 KU：本次任务未提供 KU URL/doc-id；业务产品口径、实验策略与线上看板需人工补充。本文以代码库证据和基础库机制为准。  

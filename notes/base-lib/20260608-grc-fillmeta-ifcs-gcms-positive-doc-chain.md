@@ -1,4 +1,8 @@
 # GRC 基础库：IFCS/GCMS FillMeta 正排补全链路
+<!-- topic-nav:start -->
+> 主题：`base/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-08  
 > 主题来源：未发现本机 `daily-plan` 文件；按双 Markdown 工作流在 GRC 基础链路中选取“FillMeta → GcmsComponent → IFCS 正排补全”作为今日主题。  

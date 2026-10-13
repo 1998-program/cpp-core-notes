@@ -1,4 +1,8 @@
 # GRG DiversityMerge：业务多队列如何接入 MultiStreamEngine
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-04  
 > 主题来源：未发现本机 daily-plan 文件；按双 Markdown 工作流延续 2026-06-03 主题，今天聚焦 `feeda-mv-grg` 的 `DiversityMergeFunction` 如何准备 loads/rule/function/effect 四类输入队列、绑定 GraphDependency，并调用基础库 `MultiStreamEngine` 完成多队列合并。  

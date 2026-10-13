@@ -1,4 +1,8 @@
 # 2026-07-18 周六代码理解：DynamicTimeOutPlugin 控制器生命周期与分位超时分配
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 本文基于本地 `feed-general/framework` 代码阅读生成；KU 未能逐篇读取正文，业务背景与线上策略需人工补充。
 

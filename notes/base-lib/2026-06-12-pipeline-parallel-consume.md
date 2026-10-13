@@ -1,4 +1,8 @@
 # 2026-06-12 基础库代码理解：PipelineGraphFunction parallel_consume 批消费框架
+<!-- topic-nav:start -->
+> 主题：`base/pipeline-consume` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260612-pipelinegraphfunction-parallel-consume.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：周五自动选题，沿用周计划中的基础库主题 `PipelineGraphFunction parallel_consume 批消费框架`。KU/内网检索未参与，需人工补充 GraphEngine Channel/Publisher 规范；本笔记以 GRC/GRG 代码库检索结果为准。
 

@@ -1,37 +1,14 @@
 # FlatBuffers 生产实战：与 Protobuf/brpc/ng-framework 深度对比
+<!-- topic-nav:start -->
+> 主题：`cpp/flatbuffers` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](01-flatbuffers-zero-copy.md)
+<!-- topic-nav:end -->
+
+
+> 阅读分工：共同原理统一见[主题主文](01-flatbuffers-zero-copy.md)；本文保留补充场景与示例。被合并的旧讲解可在[原始版本](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/36-flatbuffers-prod.md)查阅。
 
 > 笔记编号：36　日期：2026-06-25　主题：FlatBuffers 零拷贝序列化在推荐在线服务的实战落地
 
 前面 #01、#16、#31 三篇覆盖了 FlatBuffers 的设计哲学、binary layout 与 builder 基础。本篇换一个角度，聚焦"在推荐融合在线服务（brpc + ng-framework + protobuf 主导）中，FlatBuffers 到底用在哪、怎么用、踩过什么坑"。
-
----
-
-## 1. 为什么还要再聊 FlatBuffers？
-
-在线推荐链路的典型痛点：
-
-- **召回 → 排序 → 重排** 之间需要透传大量 item 特征（数万 item × 数百维），单 RPC payload 经常 5–50 MB。
-- Protobuf 编解码是 CPU 重灾区：在 ng-framework P99 火焰图里，`protobuf::Message::ParseFromArray` 常年占 **8–15%**。
-- 排序服务对 item 特征是 **"读 1 次，丢掉"** 的访问模式——根本不需要把它们 deserialize 成一棵对象树。
-
-这正是 FlatBuffers 的甜区：**mmap / 直接指向 wire buffer，访问即解析**，零拷贝、零反序列化。
-
----
-
-## 2. 核心实现回顾（仅记住三件事）
-
-1. **逆序 builder**：`FlatBufferBuilder` 从 buffer 末尾向前写，最后写 root offset。所以"完成构建"才能取得最终偏移。
-2. **vtable 偏移寻址**：每个 table 通过一个 vtable 记录 "field id → 字段偏移"，缺失字段返回默认值。这让 **schema 演化天然向前/向后兼容**，新增字段老代码自动忽略。
-3. **`Verifier`**：访问前必须验签——验证所有 offset 都落在 buffer 内，防止恶意/损坏数据导致越界。**线上服务必须开**，否则 FlatBuffers 就是一个未校验的指针强转。
-
-```cpp
-flatbuffers::Verifier v(buf, size);
-if (!VerifyFeatureBatchBuffer(v)) {
-    LOG(ERROR) << "corrupted flatbuffer payload";
-    return -1;
-}
-const FeatureBatch* fb = GetFeatureBatch(buf);  // 零拷贝，直接用
-```
 
 ---
 

@@ -1,4 +1,10 @@
 # 🎛️ Agent Deck — AI Coding Agents 统一终端管理器
+<!-- topic-nav:start -->
+> 主题：`ai-tools/agent-deck` · 同题补充 / 历史版本 · [主题目录](../../ai-tools/README.md) · [先读主文](../../ai-tools/15-agent-deck-terminal-session-manager.md)
+<!-- topic-nav:end -->
+
+
+> 同题补充：[统一入口](../../ai-tools/15-agent-deck-terminal-session-manager.md)。两版安装方式、实现语言和配置示例存在冲突，均属于历史记录，执行前以项目官方文档为准。
 
 > 项目地址：[asheshgoplani/agent-deck](https://github.com/asheshgoplani/agent-deck) · 开源协议：MIT · 2026-05 登上 GitHub Trending
 

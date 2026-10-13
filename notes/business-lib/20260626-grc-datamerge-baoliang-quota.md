@@ -1,4 +1,8 @@
 # 2026-06-26 周度代码理解：GRC DataMerge/BaoliangMerge 召回配额与保量合流
+<!-- topic-nav:start -->
+> 主题：`business/quota-merge` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本文面向排查 GRC ua=85 视频沉浸式链路中“粗排有量但精排前截断异常”“保量资源挤占效果队列”“某类型 quota 未按预期扣减”“低活用户兴趣保量失效”等问题。  
 > 本次未使用 KU 正文检索补充；如需历史策略背景，需人工补充保量策略、DeepES quota 和 MultiStreamEngine 内部设计文档。

@@ -1,4 +1,8 @@
 # #17 · protobuf Arena — 批量分配与析构跳过
+<!-- topic-nav:start -->
+> 主题：`cpp/protobuf-arena` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > **仓库**: [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf) · `src/google/protobuf/arena.h`  
 > **定位**: 用一个 Arena 对象管理一批 protobuf message 的生命周期，**销毁时一次性释放所有内存，跳过逐对象析构**

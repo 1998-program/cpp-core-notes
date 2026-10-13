@@ -1,4 +1,8 @@
 # UA=189 播后推/相关推荐：入口资源驱动的过滤业务链路（2026-06-23）
+<!-- topic-nav:start -->
+> 主题：`business/related-filter` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周二 fallback 选择 lite-grc UA=189 业务过滤主题，聚焦播后推与相关推荐如何用入口资源队列 2356 约束候选集合。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前环境 `ku` 不在 PATH 且未提供 KU URL/doc-id，产品策略口径需人工补充；本文以代码库检索结果为准。
 

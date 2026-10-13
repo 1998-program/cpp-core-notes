@@ -1,4 +1,8 @@
 # 2026-07-07 周度代码理解：Protobuf SerializeToString 热点与 FlatBuffers 替代方向
+<!-- topic-nav:start -->
+> 主题：`base/protobuf-hotspots` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本文面向排查 GRC set2set/response/cache_queue 与 GRG response/extmsg 序列化点中的 CPU 抖动、尾延迟和跨层传输放大问题。  
 > 今日 daily-plan 的 KU 正文未提供 doc-id，未执行 KU 正文补充；以下结论基于本地 GRC/GRG 代码检索，历史设计背景需人工补充。

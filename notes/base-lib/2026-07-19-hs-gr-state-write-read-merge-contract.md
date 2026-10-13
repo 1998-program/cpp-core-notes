@@ -1,4 +1,8 @@
 # 2026-07-19 周度代码理解：History Service `gr_state` 写入、读取与合并契约
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 本文聚焦 History Service 的基础链路：`HSService` 入口如何落到 `HistoryService`，`HistoryContent.gr_state` 如何在 proto、DAO、SNDB 配置和服务初始化之间形成稳定契约，以及它为何是业务侧状态透传的唯一可靠通道之一。
 

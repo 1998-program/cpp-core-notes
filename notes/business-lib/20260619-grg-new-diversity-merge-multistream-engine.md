@@ -1,4 +1,8 @@
 # GRG NewDiversityMerge / MultiStreamEngine 执行闭环（2026-06-19）
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 本次 cron 未发现 `daily-plan-20260619.json`，按周五回退主题选取 GRG 新版多样性合并链路。内网 KU 未提供 URL/doc-id，需人工补充业务策略口径；本文以代码库检索结果为准。
 

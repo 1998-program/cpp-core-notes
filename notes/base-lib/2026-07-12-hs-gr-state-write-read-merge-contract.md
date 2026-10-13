@@ -1,4 +1,8 @@
 # 2026-07-12 基础库代码理解：HS gr_state 写入、读回与合并契约
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-12｜类型：基础库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 继续 History Service 点展状态主题。本篇从基础库角度梳理 `gr_state` 如何进入 `HistoryContent`、如何被 SNDB 读回、最终如何合并到 `HSResponse`。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；本次没有 KU URL/doc-id，内网产品背景需人工补充，以下结论来自本地代码库检索。  

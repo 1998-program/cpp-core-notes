@@ -1,4 +1,10 @@
 # 🦌 DeerFlow 2.0 — 字节跳动开源 SuperAgent 框架深度解析
+<!-- topic-nav:start -->
+> 主题：`ai-tools/deer-flow` · 同题补充 / 历史版本 · [主题目录](../../ai-tools/README.md) · [先读主文](../../ai-tools/13-deer-flow-bytedance-super-agent.md)
+<!-- topic-nav:end -->
+
+
+> 同题补充：[统一入口](../../ai-tools/13-deer-flow-bytedance-super-agent.md)。本页保留历史版本的分类或实践示例，不重复计为新项目。
 
 > 项目地址：[bytedance/deer-flow](https://github.com/bytedance/deer-flow) · 开源协议：MIT · 2026-02-28 登顶 GitHub Trending #1
 

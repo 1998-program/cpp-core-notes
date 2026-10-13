@@ -1,4 +1,8 @@
 # 20260529 下周代码理解候选选题与每日计划
+<!-- topic-nav:start -->
+> 主题：`planning/weekly-code-understanding-topics` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 - week_of: 2026-06-01
 - 代码库: feeda-mv-grc, feeda-mv-grg

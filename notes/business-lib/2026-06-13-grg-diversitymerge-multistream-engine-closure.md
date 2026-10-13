@@ -1,4 +1,8 @@
 # 2026-06-13 业务库代码理解：GRG DiversityMerge 接入 MultiStreamEngine 的执行闭环
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现本机 daily-plan 文件；按周六 fallback 选择 `feeda-mv-grg` 的 `DiversityMergeFunction`，聚焦它如何把 loads/rule/function/effect 输入队列转换成 MultiStreamEngine 容器，执行位置无关软打散、engine run、输出回填与实验后处理。内网 KU 未提供 URL/doc-id，业务策略背景需人工补充；本笔记以代码库检索结果为准。
 

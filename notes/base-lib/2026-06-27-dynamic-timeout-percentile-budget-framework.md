@@ -1,4 +1,8 @@
 # 2026-06-27 基础库代码理解：DynamicTimeOut 百分位预算分配与降级边界
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-27  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按近期双 Markdown 工作流周六 fallback，继续选择基础库 `feed-general/framework` 的 DynamicTimeOut 框架，本次聚焦“百分位窗口如何转换成 RPC 预算”。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，内网策略背景需人工补充。  

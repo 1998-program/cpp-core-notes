@@ -1,4 +1,8 @@
 # GRC FillMeta：GCMS/IFCS 双通道内容元数据契约（2026-06-25）
+<!-- topic-nav:start -->
+> 主题：`base/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周四 fallback 选择 GRC FillMeta + GCMS/IFCS 基础库主题。已按要求在执行环境中使用 `BAIDU_CC_USERNAME=hujiyang` 作为 KU/企业工具用户名约束；当前未提供 KU URL/doc-id，内网背景需人工补充，本文以本地代码理解笔记与既有证据路径为准。
 

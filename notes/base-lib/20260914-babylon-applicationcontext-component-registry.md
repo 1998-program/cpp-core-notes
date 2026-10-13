@@ -1,4 +1,8 @@
 # 业务代码库适配分析报告：`babylon::ApplicationContext` 组件注册与获取契约
+<!-- topic-nav:start -->
+> 主题：`base/application-context` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260910-application-context-component-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 主题：`baidu::feed::mlarch::babylon::ApplicationContext` —— feed-gr 体系（GRC/GRG/PCS/Dapper/ExecEngine）的统一组件注册表。
 > 主题来源：`daily-plan-20260529.json` 的 `base_lib_candidates` rank #11「配置驱动组件注册与 ApplicationContext 获取模式」。该主题在历史 40 篇 base-lib 笔记中**未被独立覆盖**，过去 09-01 (`Set2setPredictFunction`)、08-29 (`GR 服务入口、动态超时与 Graph reset`)、08-20 (`GraphPool`)、08-18 (`top-intp`) 等只把 `ApplicationContext::instance().get<T>()` 作为零散一行引用，缺少「注册 → 装配 → wireup → 获取」全链路契约。

@@ -1,4 +1,8 @@
 # 基础库代码理解：GRC/GRG TraceLog、VIP 与 HashLog 观测契约
+<!-- topic-nav:start -->
+> 主题：`base/tracelog` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260531-tracelog-vip-hashlog-business-log-layering.md)
+<!-- topic-nav:end -->
+
 
 > 主题：请求上下文中的 `is_vip_cuid` / `is_hash_log` / `is_debug` 如何注入 Graph，触发 trace 遍历，并在 response 前后完成日志对象清理。
 > 主题选择说明：唯一 daily-plan `daily-plan-20260529.json` 已明显过期；近期笔记已覆盖 GraphPool、ApplicationContext、fork/FlowContext、DeepEs、PipelineGraphFunction 等候选。本次按 fallback 选择计划候选中的 TraceLog/VIP/HashLog 采样与日志分层主题。KU 正文未逐篇读取，业务背景需人工补充；以下以源码证据为主。

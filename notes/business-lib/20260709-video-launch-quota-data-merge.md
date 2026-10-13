@@ -1,4 +1,8 @@
 # 2026-07-09 周度代码理解：召回 quota 与 video_launch 数据合并
+<!-- topic-nav:start -->
+> 主题：`business/quota-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260626-grc-datamerge-baoliang-quota.md)
+<!-- topic-nav:end -->
+
 
 > 今日未获得可直接读取的 KU doc-id；本文以本地 feeda-mv-grc 代码与配置检索为主，业务实验背景和收益口径需人工补充。
 

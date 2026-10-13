@@ -1,4 +1,8 @@
 # 2026-06-12 业务库代码理解：看剧/合集/短剧 LCN 与 video_launch 合流
+<!-- topic-nav:start -->
+> 主题：`business/kanju-lcn` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260612-kanju-heji-duanju-lcn-fuchi.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：周五自动选题，沿用周计划中的业务主题 `看剧/合集/短剧 LCN 与扶持策略`。KU/内网检索未参与，需人工补充业务实验背景、线上效果口径和策略负责人说明；本笔记以 GRC 代码库检索结果为准。
 

@@ -1,4 +1,8 @@
 # GRG DiversityMerge：多队列输入、MultiStreamEngine 调权与结果归并
+<!-- topic-nav:start -->
+> 主题：`business/diversity-merge` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-grg-new-diversity-merge-multistream-engine.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-03  
 > 主题来源：未发现本机 daily-plan 文件；按双 Markdown 工作流补齐业务库主题，选择 `feeda-mv-grg` 中 `DiversityMergeFunction` 如何接入基础库 `MultiStreamEngine` 完成多队列多样性合并。  

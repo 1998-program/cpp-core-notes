@@ -1,4 +1,8 @@
 ---
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](../business-lib/README.md) · [先读主文](../business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md)
+<!-- topic-nav:end -->
+
 title: 正排（GCMS/IFCS）在 feeda-mv-grc 中的作用
 生成时间: 2026-05-27 20:00:44 CST
 代码库路径: /home1/code_read/code-read-mv-grc/baidu/feed-gr/feeda-mv-grc
@@ -350,8 +354,4 @@ rg "call_ifcs_recall fail|gcms request failed|not found, deleted|open_gcms_stati
 3. **GenericGRCService 请求注入 graph 的细节未展开**：本次入口确认到 `src/main.cpp` 注册服务与 graph 配置，后续如写“请求如何进入 graph”，应继续读 `src/service/grc_service.*`。
 4. **ku 全站搜索不可用**：当前 `ku` CLI 无 `search` 子命令，本次只读取了代码配置引用文档。若需要更多业务背景，可通过已知 repo/目录 `query-repo` 或其它内网搜索工具补充 `GCMS/正排/ContentFeature/doc feature` 文档。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-20T19:17:11.121606
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260527-gcms-in-feeda-mv-grc.md)。

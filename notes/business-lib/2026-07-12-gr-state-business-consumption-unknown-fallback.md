@@ -1,4 +1,8 @@
 # 2026-07-12 业务库代码理解：点展状态 gr_state 的消费口径与 UNKNOWN 降级
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-12｜类型：业务库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 选择 History Service 点展状态业务语义，与今日基础库“HS gr_state 写入、读回与合并契约”配对。本篇聚焦业务侧如何安全消费 `gr_state`：什么时候可以解析为点展状态，什么时候必须降级为 UNKNOWN。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，策略口径与实验背景需人工补充，本文以本地代码库检索结果为准。  

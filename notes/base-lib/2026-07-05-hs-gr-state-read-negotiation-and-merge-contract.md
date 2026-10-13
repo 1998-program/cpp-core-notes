@@ -1,4 +1,8 @@
 # 2026-07-05 基础库代码理解：HS gr_state 读请求协商与合并契约
+<!-- topic-nav:start -->
+> 主题：`base/history-state-io` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260726-hs-gr-state-dual-channel-consistency.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-05｜类型：基础库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周日 fallback 继续 History Service `gr_state` 主题。本次不重复“字段值域”，而聚焦 `HSRequest.gr_state_read_sndb` 如何改变 Redis/SNDB 读取路径，以及结果如何合并到响应。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，内网策略背景需人工补充，本文以本地代码库检索结果为准。

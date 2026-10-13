@@ -12,6 +12,17 @@
 !test/**
 !pushed_history.json
 !.gitignore
+!AGENTS.md
+!CONTRIBUTING.md
+!governance/
+!governance/**
+!scripts/
+!scripts/**
+!.github/
+!.github/**
+
+__pycache__/
+*.pyc
 
 # 备份/临时
 _backup_cppnotes_20261012/

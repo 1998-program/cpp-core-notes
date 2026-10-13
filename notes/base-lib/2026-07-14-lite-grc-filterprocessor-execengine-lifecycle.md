@@ -1,4 +1,8 @@
 # lite-grc FilterProcessor 与 ExecEngine 过滤生命周期
+<!-- topic-nav:start -->
+> 主题：`base/filter-lifecycle` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-lite-grc-filterprocessor-exec-engine-lifecycle.md)
+<!-- topic-nav:end -->
+
 
 > 主题来源：本机未发现可用 `daily-plan` 文件，按周二兜底主题生成。内网 KU 检索未参与，本篇以代码库检索证据为准，线上策略背景需人工补充。
 

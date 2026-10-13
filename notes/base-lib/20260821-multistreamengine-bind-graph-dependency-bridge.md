@@ -1,4 +1,8 @@
 # 2026-08-21 周五代码理解：MultiStreamEngine bind_graph_dependency 桥接外层 GraphData
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-08-21  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的高优先级候选项回退；本次 cron 未发现可直接执行的当日 daily-plan，KU/业务背景需人工补充。  
@@ -109,117 +113,4 @@ theme
 ## 7. 结论
 `bind_graph_dependency` 是 MultiStreamEngine 的接线层。它的正确目标是稳定传递依赖、隔离执行引擎、并保持每轮运行的状态可回收。本文的业务背景仍需 KU/人工补充，但代码边界已经足够清楚：桥接层只做绑定，不做决策。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-08-22T19:01:43.662152
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
-
-# 业务代码库适配分析报告
-
-## 1. 分析摘要
-
-`bind_graph_dependency` 这类“外层 GraphData → engine_vertex 依赖绑定”的技术，本质上是把**请求层数据**和**执行引擎图**之间的接线逻辑收敛成一个稳定入口，适合处理图式流水线、规则编排、候选集传递和多 stage 执行。就你提供的业务扫描结果看，`feeda-mv-grc` 已经出现了较多图/依赖相关代码，且有 `graph_engine->get_vertexs_message(graph_name)` 这类依赖遍历逻辑，说明它对这类桥接模式的适配基础更强；而 `feeda-mv-grg` 目前只发现 1 个目标文件，属于更早期或更局部的落点，适合作为试点而不是全量改造。
-
-从规模上看，两边都大量使用 `std::vector`、`std::string`、`std::unordered_map`，说明现有代码本身已经在用“容器承载上下文/依赖”的方式工作。迁移到 `GraphData` / 依赖绑定模式的收益主要不在容器替换，而在于**把手工串联的参数、依赖 map、vertex 输入整理为统一入口**，减少顺序错位、状态残留和职责外溢。综合判断：`grc` 适合优先落地，`grg` 适合先做局部验证。
-
----
-
-## 2. 代码库详情
-
-### `feeda-mv-grg` 扫描发现
-
-- 目标技术的已发现使用：
-  - `strategy/diversity/rule/low_clarity_diversity_rule.cpp`
-- 现有 `std` 等价物使用规模：
-  - `std::vector`：1969 次，356 个文件
-  - `std::string`：2443 次，425 个文件
-  - `std::unordered_map`：734 次，205 个文件
-
-#### 观察
-- 当前只发现 **1 个目标文件**，说明这套“图依赖桥接/绑定”能力在 `grg` 中还不是通用基础设施，更像单点落地。
-- 但 `std` 容器使用量很大，说明业务代码中本来就存在大量“上下文 + 候选集 + 映射关系”的手工组织逻辑，具备向 `GraphData` 绑定模式迁移的土壤。
-- `strategy/diversity/rule/low_clarity_diversity_rule.cpp` 可以作为**试点文件**，验证是否能把规则输入、依赖和执行状态从局部函数参数中抽出来。
-
-### `feeda-mv-grc` 扫描发现
-
-- 目标技术的已发现使用：
-  - `operator/adjuster/function_queue/youzhi_queue_adjust.cpp`
-  - `operator/adjuster/sketchy/ltv_factor_cp_opt.cpp`
-  - `processor/multi_factor/subcate_future_factor_gen.cpp`
-  - `processor/new_adjust/precise_score_init.cpp`
-  - `processor/multi_factor/ltr_factor_gen_scene.cpp`
-  - 其余扫描结果共计 10 个文件
-- 可作为参考的相关代码：
-  - `service/grc_http_service.cpp:62`
-    ```cpp
-    std::unordered_map<std::string, std::vector<int>> depend_map;
-    auto &all_vertex = graph_engine->get_vertexs_message(graph_name);
-    for (int i = 0; i < all_vertex.size(); ++i) {
-        for (auto &depend : all_vertex[i].depends) {
-    ```
-- 现有 `std` 等价物使用规模：
-  - `std::vector`：8520 次，1290 个文件
-  - `std::string`：7267 次，1247 个文件
-  - `std::unordered_map`：2860 次，646 个文件
-
-#### 观察
-- `grc` 已经在多个模块里出现相关使用，覆盖调优、因子生成、场景处理和服务层，说明它更像一个**依赖图/规则图驱动**的业务代码库。
-- `service/grc_http_service.cpp` 已经出现 `graph_engine` 和 `depend_map` 的构建逻辑，这与 `bind_graph_dependency` 的“桥接层”思路高度接近，适合作为**抽取公共绑定层**的参考点。
-- 由于 `std::unordered_map`、`std::vector` 使用量非常大，如果把这些地方的手工依赖拼装统一收敛，收益会比 `grg` 更明显。
-
----
-
-## 3. 💡 适用性评估与建议
-
-- **优先在 `feeda-mv-grc/service/grc_http_service.cpp` 抽象公共绑定入口**
-  - 这里已经有 `graph_engine->get_vertexs_message(graph_name)` 和 `depend_map` 组装逻辑，最适合抽成类似 `bind_graph_dependency` 的函数。
-  - 建议把“请求参数解析 / 图依赖构建 / vertex 输入绑定”拆成三层，避免 HTTP 层直接操纵执行图细节。
-  - 适合先做为 `graph` 相关请求的统一桥接入口，再逐步复用到其他 processor。
-
-- **在 `feeda-mv-grc/operator/adjuster/function_queue/youzhi_queue_adjust.cpp` 里收敛队列依赖传递**
-  - 这类 adjuster/queue 代码通常会沿着多个函数传递候选数据、场景和控制参数，容易出现参数膨胀。
-  - 建议引入 `GraphData` 或轻量依赖上下文对象，把队列排序、过滤依赖和输入状态统一绑定后再执行。
-  - 如果当前存在多处手工拼接 `vector/map` 的逻辑，可以优先替换成一个绑定层入口。
-
-- **在 `feeda-mv-grc/processor/new_adjust/precise_score_init.cpp` 和 `processor/multi_factor/subcate_future_factor_gen.cpp` 统一初始化依赖**
-  - 这类“初始化 + 因子生成”链路很适合用先绑定、后执行的方式组织。
-  - 建议将前置数据准备、依赖完整性校验、执行阶段分离，避免在生成函数里夹杂业务兜底。
-  - 对对象复用场景，务必在每轮结束后 reset 绑定状态，防止旧依赖残留。
-
-- **在 `feeda-mv-grg/strategy/diversity/rule/low_clarity_diversity_rule.cpp` 做试点验证**
-  - `grg` 目前只看到 1 个目标文件，适合先验证“规则输入 → 依赖绑定 → 执行输出”的闭环是否稳定。
-  - 建议先只改这一个文件，把原先散落的规则上下文收口到统一 GraphData 结构。
-  - 如果效果稳定，再考虑扩展到同目录下其他 diversity 规则。
-
-- **为现有 `std::vector` / `std::unordered_map` 结构增加适配层，而不是直接大改业务接口**
-  - 两个代码库都大量使用这些容器，直接改接口代价高。
-  - 更稳妥的方式是：保持容器不变，在其外层包一层 `GraphData`/`dependency binding` 适配器。
-  - 这样能先降低接入成本，再逐步把手工传参替换成图依赖注入。
-
----
-
-## 4. ⚠️ 引入风险与限制
-
-- **状态污染风险**
-  - `GraphData`、vertex 或依赖 map 如果被复用而没有清理，下一轮执行可能读到旧依赖。
-  - 这个问题在对象池、缓存复用和多请求并发场景里尤其明显。
-
-- **绑定顺序错位风险**
-  - 如果执行先于绑定，或者只绑定了部分节点，就会出现隐性空值和半成品图执行。
-  - 建议把“完整性校验”放在进入 engine 执行前的硬门槛。
-
-- **职责外溢风险**
-  - 桥接层只应该做“接线”和状态传递，不应该承载 scene 选择、实验分流、业务兜底等决策。
-  - 一旦把业务分支塞进绑定层，后续排查和复用都会变差。
-
-- **迁移成本与兼容性风险**
-  - `grc` 和 `grg` 都有大量基于 `std` 容器的现有代码，若强行全量迁移，改动面会很大。
-  - 更适合采用“局部抽取公共绑定层 + 逐步替换调用点”的方式，避免一次性改坏现有链路。
-
---- 
-
-如果你愿意，我可以继续把这份分析整理成你笔记里可直接粘贴的“**业务代码库适配分析**”标准章节模板，或进一步按 `grg` / `grc` 分别输出落地改造清单。
-
----
-*本章节由 Hermes Agent 自动分析生成，基于代码库静态扫描结果。*
+> 内容整理：重复扫描统计驱动的历史适配附录；不作为已核实的迁移结论，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/base-lib/20260821-multistreamengine-bind-graph-dependency-bridge.md)。

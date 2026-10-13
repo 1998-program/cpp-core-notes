@@ -1,4 +1,8 @@
 # DynamicTimeOutPlugin 动态超时注入与场景映射
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-06（Sat）  
 > 来源：`daily-plan-20260529.json` 的 `recommended_7_plus_7.sat.base_lib`  

@@ -1,4 +1,8 @@
 # UA=189 合集/相关推荐过滤：入口资源与场景边界
+<!-- topic-nav:start -->
+> 主题：`business/related-filter` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-ua189-postplay-related-filter-business-chain.md)
+<!-- topic-nav:end -->
+
 
 > 主题来源：本机未发现可用 `daily-plan` 文件，按周二 fallback 主题生成。已设置 `BAIDU_CC_USERNAME=hujiyang`；本次未依赖 KU 正文检索，产品策略口径需人工补充。本文以 lite-grc 代码库检索结果为准。
 

@@ -1,4 +1,8 @@
 # GRC FillMeta：从召回队列到 IFCS 正排补全的业务链路
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260601-grc-gcms-ifcs-fill-meta-chain.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现本机 daily-plan 文件；按周一 fallback 选择 GRC 业务库主题：`news_updates_dibar` 场景中 `NewsFillMetaPipelineFunction`/`FillMetaBaseProcessor` 如何汇总召回 rid、调用 IFCS 正排、把 `MicroVideoInfo` 回填到队列元素，并驱动后续 filter/sketchy/rank/response。内网 KU 未提供可检索 URL/doc-id；业务策略口径需人工补充，本篇以代码库检索结果为准。
 

@@ -1,4 +1,8 @@
 # news_updates_dibar：图文速读底 bar 的召回、正排与排序闭环
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-18  
 > 今日主题来源：未发现显式 `daily-plan-20260618.json`；按近期双 Markdown 工作流 fallback 到业务库 `news_updates_dibar` 图文速读场景，和今日基础库 GCMS/IFCS FillMeta 主题配对。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，产品策略口径需人工补充。  

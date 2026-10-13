@@ -1,4 +1,8 @@
 # Related 场景过滤链：合集/题材信号与队列配置的业务语义
+<!-- topic-nav:start -->
+> 主题：`business/related-filter` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-23-ua189-postplay-related-filter-business-chain.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-30｜类型：业务库笔记｜主题来源：周二 fallback（daily-plan 未覆盖今日；内网文档检索不可用时以本地代码库检索替代）。原计划提到 UA=189 HejiLb/RelatedScene，当前代码证据中未找到 UA=189 与 HejiLb 字面量，因此本文聚焦可验证的 related_rec、合集 topic_feeds、退场/过滤回调链；UA=189 需人工补充确认。
 

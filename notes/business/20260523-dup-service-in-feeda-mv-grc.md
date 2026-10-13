@@ -1,4 +1,8 @@
 ---
+<!-- topic-nav:start -->
+> 主题：`business/dup-title` · 同题补充 / 历史版本 · [主题目录](../business-lib/README.md) · [先读主文](../business-lib/2026-06-10-dup-service-title-dup-flow.md)
+<!-- topic-nav:end -->
+
 title: "Dup Service（去重服务）在 feeda-mv-grc 中的作用：VFS 过滤链路与多策略去重"
 generated_at: 2026-05-23T20:00:00+08:00
 代码库路径: /home1/code_read/code-read-mv-grc/baidu/feed-gr/feeda-mv-grc
@@ -352,8 +356,4 @@ ChannelCollectorManager::instance().DapperDirectCollect(
 
 > ⚠️ 本次分析**不**把 `feeda-mv-grg` 的 Dup Service 结论直接套用到 `feeda-mv-grc`；所有证据均来自 `feeda-mv-grc` 本地代码。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-20T19:15:36.437054
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260523-dup-service-in-feeda-mv-grc.md)。

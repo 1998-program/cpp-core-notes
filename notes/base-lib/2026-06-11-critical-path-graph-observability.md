@@ -1,4 +1,8 @@
 # 2026-06-11 基础库代码理解：CriticalPath 图执行观测与虚拟节点上报
+<!-- topic-nav:start -->
+> 主题：`base/critical-path` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-02-critical-path-observability-framework.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现可用 daily-plan 文件，本次按周四 fallback 选择 `CriticalPath 图执行观测与 Dapper 虚拟节点`。内网 KU 未参与检索，需人工补充 GRC 图监控规范；本笔记以代码库检索结果为准。
 

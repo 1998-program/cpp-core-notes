@@ -134,8 +134,5 @@ Dapper 采集线程通过 `START_COLLECTOR_WORKER(FLAGS_dapper_conf_file, FLAGS_
 1. 未在当前 GRG 仓库中直接找到 `multi_stream_engine_plugin` 的实现文件；已确认配置与调用点为 `vertex.conf:930-932`、`diversity_merge.cpp:86-90`，下一步应在外部依赖 `baidu/feed/general/common-processor/plugin/exec_engine.h` 或 `baidu/feed/gr/exec_engine` 中追踪。
 2. 未在当前仓库中直接找到 `ExecType` 数值 1/3 的枚举说明；当前只能确认其配置位置与业务使用，不展开解释其调度细节。
 3. 今日计划未提供业务 KU 文档 URL，未做内网文档读取；如需补充业务背景，可后续提供与 GRG 多样性、soft rule 或 MultiStreamEngine 相关 KU URL。
----
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-20T19:19:49.745297
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260529-grg-diversity-soft-rules-in-feeda-mv-grg.md)。

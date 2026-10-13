@@ -1,4 +1,8 @@
 ---
+<!-- topic-nav:start -->
+> 主题：`business/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](../business-lib/README.md) · [先读主文](../business-lib/20260601-grc-gcms-ifcs-fill-meta-chain.md)
+<!-- topic-nav:end -->
+
 title: 正排（GCMS/IFCS）在 feeda-mv-grc 中的作用：召回结果补元信息、过滤与特征构造
 generated_at: 2026-05-21T20:00:47+08:00
 代码库路径: /home1/code_read/code-read-mv-grc/baidu/feed-gr/feeda-mv-grc
@@ -515,8 +519,4 @@ GCMS scene 枚举（`src/plugin/gcms_component.h:19-24`）：
 3. **`autor_level_sm` 小流量 sid 列表的动态更新机制**：当前代码中硬编码为 17 个 sid，`src/processor/fill_meta.cpp:208-220`。下一步确认是否有动态配置或实验参数化的方式。
 4. **FillMetaBaseProcessor 的 GCMS 查询结果如何与 anonymous depend 匹配**：代码显示对 `merge_rids` 一次性查询，但 `RecallResult` 中每个匿名 depend 的类型/来源处理逻辑（`src/processor/fill_meta.cpp:285-321`）仍有未完全解析的分支，如 `_hk_handle_names` / `_channel_handle_names` 对正排字段的特殊处理。
 
----
-
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-20T19:14:29.786272
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business/20260521-gcms-in-feeda-mv-grc.md)。

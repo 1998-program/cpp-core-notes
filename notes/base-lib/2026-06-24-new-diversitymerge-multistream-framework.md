@@ -1,4 +1,8 @@
 # NewDiversityMerge：MultiStreamEngine 多队列打散基础框架（2026-06-24）
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周三 fallback 选择 GRG 多流打散基础库主题。已设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，内网背景需人工补充，本文以代码库检索结果为准。
 

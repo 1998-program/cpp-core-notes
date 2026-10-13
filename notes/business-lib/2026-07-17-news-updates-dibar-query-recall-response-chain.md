@@ -1,4 +1,8 @@
 # 2026-07-17 业务代码理解：news_updates_dibar 场景到 query_recall 响应链
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 本文补齐 MV-GR 业务侧链路：`news_updates_dibar` 如何由场景配置命中策略，携带多路历史前缀进入 `query_recall` 图，再经 `QueryRecallFunction`、`UnionRecall` 和 `GenQueryRecResponseFunction` 生成查询召回响应。
 

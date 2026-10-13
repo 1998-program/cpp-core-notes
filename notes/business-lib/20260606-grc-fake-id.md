@@ -1,4 +1,8 @@
 # GRC fake_id 关闭/替换链路
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-06（Sat）  
 > 来源：`daily-plan-20260529.json` 的 `recommended_7_plus_7.sat.business`  

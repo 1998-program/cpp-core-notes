@@ -1,4 +1,8 @@
 # 2026-07-04 基础库代码理解：DynamicTimeOut Controller 复用与预算生命周期
+<!-- topic-nav:start -->
+> 主题：`base/dynamic-timeout` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260725-dynamic-timeout-plugin-budget-control.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-04｜类型：基础库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周六 fallback 继续选择 `feed-general/framework` 的 DynamicTimeOut 框架。本次聚焦请求级 controller 复用、scene 绑定、默认值短路、分位窗口双缓冲与预算输出生命周期。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，内网策略背景需人工补充，本文以本地代码库检索结果为准。

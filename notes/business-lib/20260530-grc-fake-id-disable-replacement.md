@@ -1,4 +1,8 @@
 # GRC fake_id 关闭/替换链路
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-05-30  
 > 主题来源：`notes/weekly-topic-selection/daily-plan-20260529.json` 的 `sat.business` 计划项  
@@ -211,8 +215,5 @@ data
 
 - 当前本地代码能证明 fake_id 的消费链路，但未找到 `CommonInfo::fake_id` 的赋值闭环。需要补充：最近提交 `feed-arch-37113` 的 diff、上游 CommonInfo 填充模块、或内部文档，才能完整说明“关闭/替换”的业务触发条件与 rollout 范围。
 - 如果目标是验证线上已关闭，应结合日志字段 `fake_id_size`、UFS fork request、PredictorUser uid/cuid/bid 抽样，而不是只看代码中是否仍保留 fake_id 分支。
----
 
-## 七、业务代码库适配分析
-> **分析时间**：2026-07-20T19:21:18.807678
-> **目标代码库**：feeda-mv-grg（序列生成）、feeda-mv-grc（召回汇聚）
+> 内容整理：仅有分析时间与目标库信息的空附录，已移出正文。[查看原始版本及附录](https://github.com/1998-program/cpp-core-notes/blob/5738832bab4b13ba26356af0a37a0a32e477b675/notes/business-lib/20260530-grc-fake-id-disable-replacement.md)。

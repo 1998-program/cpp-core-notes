@@ -1,4 +1,8 @@
 # DC-GRG show-state 消费：`UNKNOWN` 兜底与关注频道去重边界
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-26  
 > 类型：业务库笔记  

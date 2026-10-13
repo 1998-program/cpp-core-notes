@@ -1,4 +1,8 @@
 # 2026-06-14 业务库代码理解：HS state[] 点展状态语义与 IssuedItem 字段误区
+<!-- topic-nav:start -->
+> 主题：`business/state-semantics` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-21-hs-state-business-semantics-grstate.md)
+<!-- topic-nav:end -->
+
 
 > 今日主题来源：未发现本机 daily-plan 文件；按周日 fallback 选择 History Service 点展状态业务语义。内网 KU 未提供 URL/doc-id，状态口径需人工补充；本篇以代码库与已沉淀的 gr_state 透传机制为准。
 

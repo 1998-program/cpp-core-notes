@@ -1,4 +1,8 @@
 # 14 · Awesome LLM Apps — 100+ 可运行的 AI Agent 实例
+<!-- topic-nav:start -->
+> 主题：`ai-tools/awesome-llm-apps` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 **项目**：[Shubhamsaboo/awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps)
 **Stars**：111.9k ⭐ · Python · Apache-2.0

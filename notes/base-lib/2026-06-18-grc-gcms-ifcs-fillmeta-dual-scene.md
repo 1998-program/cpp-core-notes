@@ -1,4 +1,8 @@
 # GRC GCMS/IFCS 正排补全：同一组件支撑视频与图文双场景
+<!-- topic-nav:start -->
+> 主题：`base/gcms-fillmeta` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260619-gcms-ifcs-dual-scene-fillmeta-architecture.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-18  
 > 今日主题来源：未发现显式 `daily-plan-20260618.json`；按近期双 Markdown 工作流 fallback 到 `GcmsComponent + FillMetaPipeline` 基础库主题。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；本次未提供 KU URL/doc-id，内网业务背景需人工补充，本文以代码库检索结果为准。  

@@ -1,4 +1,8 @@
 # 2026-07-04 业务库代码理解：关闭个性化 fake_id 跨服务责任边界
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-04｜类型：业务库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周六 fallback 选择“关闭个性化推荐”业务链路，与今日基础库 DynamicTimeOut controller 生命周期主题配对。本篇聚焦 `is_close_individual`、`fake_id`、真实 uid/cuid/baiduid 在 GR 本地依赖、GR→GRC、GRG 图入口之间的责任边界。已按任务要求设置 `BAIDU_CC_USERNAME=hujiyang`；当前未提供 KU URL/doc-id，产品口径需人工补充，本文以代码库检索结果为准。

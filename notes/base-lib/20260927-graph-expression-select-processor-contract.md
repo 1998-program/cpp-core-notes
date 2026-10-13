@@ -1,4 +1,8 @@
 # 2026-09-27 基础库代码理解：Graph Expression 与 SelectProcessor 条件门控合同
+<!-- topic-nav:start -->
+> 主题：`base/expression-routing` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260909-expression-condition-routing-contract.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-27（周日）
 > 主题选择：目标日期没有新的 daily-plan；仓内唯一计划 `daily-plan-20260529.json` 已过期。计划周日槽位的基础库主题 TraceLog/VIP/HashLog 已由 2026-09-24 笔记覆盖，因此按邻近未覆盖主题回退到 **Expression/条件图路由与 SelectProcessor 排查**。KU 正文未读取，业务背景需人工补充；以下只依据 GRC 源码与 graph 配置证据。

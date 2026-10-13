@@ -1,4 +1,8 @@
 # 2026-07-16 基础库代码理解：MultiStreamEnginePlugin 的 GraphDependency 绑定边界
+<!-- topic-nav:start -->
+> 主题：`base/multistream-binding` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-07-16｜类型：基础库笔记  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按周四 fallback 选择 ExecEngine/MultiStreamEngine 运行时依赖绑定主题。  

@@ -1,4 +1,8 @@
 # 2026-07-20 业务代码理解：`news_updates_dibar` 多队列合并到响应输出链
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 今日未发现可用的 daily-plan 文件，按周一 fallback 主题分析“业务输出链”。本文聚焦 `news_updates_dibar` 场景如何从 scene/strategy 配置进入多队列合并，再落到 `NewResponseFunction`/`ResponseFunction` 的 extmsg 序列化输出边界。
 

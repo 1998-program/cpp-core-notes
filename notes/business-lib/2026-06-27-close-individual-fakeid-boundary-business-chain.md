@@ -1,4 +1,8 @@
 # 2026-06-27 业务库代码理解：关闭个性化 fake_id 边界与动态超时旁路
+<!-- topic-nav:start -->
+> 主题：`business/personalization-id` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-07-04-close-individual-fakeid-cross-service-boundary.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-06-27  
 > 今日主题来源：本机未发现可用 `daily-plan` 文件；按近期双 Markdown 工作流周六 fallback，继续选择“关闭个性化推荐”链路，本次聚焦 fake_id 是否跨 GR/GRC/GRG 边界传递，以及动态超时 scene 映射对排障的旁路影响。已按要求设置 `BAIDU_CC_USERNAME=hujiyang`；未提供 KU URL/doc-id，产品口径需人工补充。  

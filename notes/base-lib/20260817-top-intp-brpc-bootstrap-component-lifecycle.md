@@ -1,4 +1,8 @@
 # top-intp brpc 启动与组件生命周期：gflags、日志、组件单例到服务注册
+<!-- topic-nav:start -->
+> 主题：`base/top-intp-bootstrap` · 主文 · [主题目录](README.md)
+<!-- topic-nav:end -->
+
 
 > 2026-08-17 运行说明：未发现当日 daily-plan，按历史未覆盖主题 fallback 到 top-intp 的 brpc 启动链与组件生命周期。KU/业务背景需人工补充；本文只使用本地代码与配置证据。
 

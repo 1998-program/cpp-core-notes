@@ -1,4 +1,8 @@
 # 2026-09-04 周五业务库理解：看剧/合集/短剧 LCN 与扶持策略
+<!-- topic-nav:start -->
+> 主题：`business/kanju-lcn` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](20260612-kanju-heji-duanju-lcn-fuchi.md)
+<!-- topic-nav:end -->
+
 
 > 日期：2026-09-04  
 > 主题来源：当前 canonical 笔记仓库未找到 2026-09-04 当日 daily-plan；按旧计划 `notes/weekly-topic-selection/daily-plan-20260529.json` 的 Friday 配对回退到 `看剧/合集/短剧 LCN 与扶持策略`。KU 正文未读取，业务背景需人工补充。  

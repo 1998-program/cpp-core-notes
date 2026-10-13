@@ -1,4 +1,8 @@
 # MV-GRG news_updates_dibar：NewDiversityMerge 到 ResponseFunction 的业务响应边界
+<!-- topic-nav:start -->
+> 主题：`business/news-dibar` · 同题补充 / 历史版本 · [主题目录](README.md) · [先读主文](2026-06-18-news-updates-dibar-dual-content-flow.md)
+<!-- topic-nav:end -->
+
 
 > 运行说明：2026-08-07 未发现 daily-plan 文件，本篇按附近未覆盖主题 fallback 生成。当前 cron 环境中 `ku` 命令不可用，KU/业务背景需人工补充；本文结论基于 MV-GRG 代码与配置证据。
 
