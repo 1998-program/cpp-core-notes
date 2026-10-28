@@ -115,7 +115,7 @@ sopt.arena_options = opts;          // brpc 转发至每次请求
 - protobuf 源码：`src/google/protobuf/arena.{h,cc}`、`arena_impl.h`
 - brpc：`src/brpc/server.cpp`（auto_arena 装配点）
 - 设计文档：[Protobuf Arena Allocation](https://protobuf.dev/reference/cpp/arenas/)
-- 性能对照实验：cpp-core-notes/notes/24-jemalloc.md、35-brpc-iobuf.md
+- 性能对照实验：notes/cpp-lib/24-jemalloc.md、35-brpc-iobuf.md
 
 ---
 

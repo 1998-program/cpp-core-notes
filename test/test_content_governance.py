@@ -65,6 +65,15 @@ class GovernanceChecks(unittest.TestCase):
             self.assertTrue(any("notes/c.md" in error for error in errors))
             self.assertTrue(any("恰有一篇主文" in error for error in errors))
 
+    def test_cpp_index_and_documents_use_cpp_lib(self):
+        topics = g.read_json("governance/catalog.json")["topics"]
+        self.assertEqual(g.CATEGORIES["cpp"][1], "notes/cpp-lib/README.md")
+        for topic in topics:
+            if topic["category"] == "cpp":
+                for doc in topic["documents"]:
+                    self.assertEqual(Path(doc["path"]).parent.as_posix(), "notes/cpp-lib")
+                    self.assertTrue((ROOT / doc["path"]).is_file())
+
     def test_stale_daily_plan_is_rejected(self):
         result = subprocess.run([
             "python3", str(ROOT / "scripts/content_governance.py"), "candidate", "--topic", "graphpool",
@@ -78,6 +87,15 @@ class GovernanceChecks(unittest.TestCase):
         for path, content in g.generated_files(topics).items():
             with self.subTest(path=path):
                 self.assertEqual((ROOT / path).read_text(), content)
+
+
+def current_path(historical_path):
+    """Resolve relocated C++ notes while retaining historical ledger paths."""
+    old = Path(historical_path)
+    moved = ROOT / "notes/cpp-lib" / old.name
+    if old.parent.as_posix() == "notes" and moved.is_file():
+        return moved
+    return ROOT / old
 
 
 class MigrationPreservation(unittest.TestCase):
@@ -108,7 +126,7 @@ class MigrationPreservation(unittest.TestCase):
                 old = self.originals[path]
                 primary = re.split(r"^## (?:七|十三)、业务代码库适配分析\s*$", old, flags=re.M)[0].rstrip()
                 primary = re.sub(r"\n---\s*$", "", primary).rstrip()
-                current = g.NAV.sub("", (ROOT / path).read_text())
+                current = g.NAV.sub("", current_path(path).read_text())
                 self.assertEqual(current.split("\n\n> 内容整理：")[0].rstrip(), primary)
 
     def test_consolidation_keeps_other_sections_verbatim(self):
@@ -116,18 +134,25 @@ class MigrationPreservation(unittest.TestCase):
             if change["kind"] != "consolidated-sections":
                 continue
             old = sections(self.originals[change["path"]])
-            current = sections((ROOT / change["path"]).read_text())
+            current = sections(current_path(change["path"]).read_text())
             for heading, text in old.items():
                 with self.subTest(path=change["path"], heading=heading):
                     if heading in change["sections"]:
                         self.assertNotIn(heading, current)
                     else:
+                        if change["path"] == "notes/37-protobuf-arena.md" and heading == "8. 参考":
+                            old_path = "cpp-core-notes/notes/24-jemalloc.md"
+                            new_path = "notes/cpp-lib/24-jemalloc.md"
+                            self.assertEqual(text.count(old_path), 1)
+                            self.assertEqual(current[heading].count(new_path), 1)
+                            self.assertNotIn(old_path, current[heading])
+                            text = text.replace(old_path, new_path)
                         self.assertEqual(text.strip(), current[heading].strip())
 
     def test_enhanced_figures_are_preserved(self):
         change = next(c for c in self.ledger["changes"] if c["kind"] == "shared-paragraphs")
         old = self.originals[change["path"]]
-        current = (ROOT / change["path"]).read_text()
+        current = current_path(change["path"]).read_text()
         figures = re.findall(r"```(?:plantuml|infographic|mermaid).*?```", old, re.S)
         # The HTML architecture section is also retained byte for byte.
         figures.append(sections(old)["0. 架构全景图"])

@@ -163,10 +163,10 @@ brpc 的 Block 默认大小 8KB，超过这个尺寸的 user buffer（如大 doc
 
 ## 关联阅读
 
-- `notes/18-brpc-bthread.md` — bthread 调度与 IOBuf 配合
-- `notes/34-brpc-butex.md` — bthread 同步原语
-- `notes/17-protobuf-arena-allocator.md` — Arena 与 IOBuf 的生命周期协作
-- `notes/24-jemalloc.md` — Block 池底层的内存分配
+- `notes/cpp-lib/18-brpc-bthread.md` — bthread 调度与 IOBuf 配合
+- `notes/cpp-lib/34-brpc-butex.md` — bthread 同步原语
+- `notes/cpp-lib/17-protobuf-arena-allocator.md` — Arena 与 IOBuf 的生命周期协作
+- `notes/cpp-lib/24-jemalloc.md` — Block 池底层的内存分配
 - `notes/25-folly-iobuf.md` — 对比版：folly 的零拷贝缓冲设计
 
 ---

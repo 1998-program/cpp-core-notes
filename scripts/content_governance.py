@@ -13,7 +13,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 CATEGORIES = {
-    "cpp": ("C++ 基础库", "notes/README.md"),
+    "cpp": ("C++ 基础库", "notes/cpp-lib/README.md"),
     "base": ("基础框架与源码实践", "notes/base-lib/README.md"),
     "business": ("业务链路与契约", "notes/business-lib/README.md"),
     "ai-tools": ("AI 工具", "ai-tools/README.md"),

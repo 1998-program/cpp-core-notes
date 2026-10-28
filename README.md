@@ -8,7 +8,7 @@
 
 | 分类 | 主题数 | 资料数 | 入口 |
 |---|---:|---:|---|
-| C++ 基础库 | 27 | 34 | [主题目录](notes/README.md) |
+| C++ 基础库 | 27 | 34 | [主题目录](notes/cpp-lib/README.md) |
 | 基础框架与源码实践 | 69 | 144 | [主题目录](notes/base-lib/README.md) |
 | 业务链路与契约 | 70 | 143 | [主题目录](notes/business-lib/README.md) |
 | AI 工具 | 46 | 49 | [主题目录](ai-tools/README.md) |
@@ -18,10 +18,10 @@
 
 ## 常见主题
 
-- [FlatBuffers：零拷贝序列化](notes/01-flatbuffers-zero-copy.md)
-- [Swiss Table：absl::flat_hash_map](notes/41-absl-flat-hash-map.md)
-- [jemalloc：Arena 与内存管理](notes/24-jemalloc.md)
-- [bthread：M:N 调度](notes/18-brpc-bthread.md)
+- [FlatBuffers：零拷贝序列化](notes/cpp-lib/01-flatbuffers-zero-copy.md)
+- [Swiss Table：absl::flat_hash_map](notes/cpp-lib/41-absl-flat-hash-map.md)
+- [jemalloc：Arena 与内存管理](notes/cpp-lib/24-jemalloc.md)
+- [bthread：M:N 调度](notes/cpp-lib/18-brpc-bthread.md)
 - [GraphPool：请求图复用与 reset](notes/base-lib/20260827-graphpool-try-get-run-reset-lifecycle.md)
 - [MultiStreamEngine：GraphDependency 绑定](notes/base-lib/20260529-exec-engine-multistreamengine-graphdependency-deep-dive.md)
 - [DynamicTimeOut：全链路预算](notes/base-lib/20260725-dynamic-timeout-plugin-budget-control.md)
