@@ -667,28 +667,28 @@
       "id": "cpp/flatbuffers",
       "category": "cpp",
       "title": "FlatBuffers：零拷贝序列化",
-      "canonical": "notes/01-flatbuffers-zero-copy.md",
+      "canonical": "notes/cpp-lib/01-flatbuffers-zero-copy.md",
       "documents": [
         {
-          "path": "notes/01-flatbuffers-zero-copy.md",
+          "path": "notes/cpp-lib/01-flatbuffers-zero-copy.md",
           "title": "FlatBuffers · 零拷贝序列化设计",
           "role": "primary",
           "scope": ""
         },
         {
-          "path": "notes/16-flatbuffers-zero-copy.md",
+          "path": "notes/cpp-lib/16-flatbuffers-zero-copy.md",
           "title": "#16 · FlatBuffers — 零拷贝序列化设计解析",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
         },
         {
-          "path": "notes/31-flatbuffers.md",
+          "path": "notes/cpp-lib/31-flatbuffers.md",
           "title": "31 · FlatBuffers 零拷贝序列化引擎",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
         },
         {
-          "path": "notes/36-flatbuffers-prod.md",
+          "path": "notes/cpp-lib/36-flatbuffers-prod.md",
           "title": "FlatBuffers 生产实战：与 Protobuf/brpc/ng-framework 深度对比",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
@@ -699,16 +699,16 @@
       "id": "cpp/swiss-table",
       "category": "cpp",
       "title": "absl::flat_hash_map：Swiss Table",
-      "canonical": "notes/41-absl-flat-hash-map.md",
+      "canonical": "notes/cpp-lib/41-absl-flat-hash-map.md",
       "documents": [
         {
-          "path": "notes/02-absl-flat-hash-map.md",
+          "path": "notes/cpp-lib/02-absl-flat-hash-map.md",
           "title": "absl::flat_hash_map · SIMD 哈希探测",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
         },
         {
-          "path": "notes/41-absl-flat-hash-map.md",
+          "path": "notes/cpp-lib/41-absl-flat-hash-map.md",
           "title": "absl::flat_hash_map — Swiss Table 高性能哈希表",
           "role": "primary",
           "scope": ""
@@ -719,10 +719,10 @@
       "id": "cpp/absl-inlined-vector",
       "category": "cpp",
       "title": "absl::InlinedVector · 栈上优化小容器",
-      "canonical": "notes/03-absl-inlined-vector.md",
+      "canonical": "notes/cpp-lib/03-absl-inlined-vector.md",
       "documents": [
         {
-          "path": "notes/03-absl-inlined-vector.md",
+          "path": "notes/cpp-lib/03-absl-inlined-vector.md",
           "title": "absl::InlinedVector · 栈上优化小容器",
           "role": "primary",
           "scope": ""
@@ -733,10 +733,10 @@
       "id": "cpp/folly-fbstring",
       "category": "cpp",
       "title": "folly::fbstring · SSO 字符串优化深度解析",
-      "canonical": "notes/04-folly-fbstring.md",
+      "canonical": "notes/cpp-lib/04-folly-fbstring.md",
       "documents": [
         {
-          "path": "notes/04-folly-fbstring.md",
+          "path": "notes/cpp-lib/04-folly-fbstring.md",
           "title": "folly::fbstring · SSO 字符串优化深度解析",
           "role": "primary",
           "scope": ""
@@ -747,10 +747,10 @@
       "id": "cpp/folly-f14map",
       "category": "cpp",
       "title": "05 - folly::F14Map：向量化哈希表",
-      "canonical": "notes/05-folly-f14map.md",
+      "canonical": "notes/cpp-lib/05-folly-f14map.md",
       "documents": [
         {
-          "path": "notes/05-folly-f14map.md",
+          "path": "notes/cpp-lib/05-folly-f14map.md",
           "title": "05 - folly::F14Map：向量化哈希表",
           "role": "primary",
           "scope": ""
@@ -761,10 +761,10 @@
       "id": "cpp/mimalloc-segmented-allocator",
       "category": "cpp",
       "title": "06-mimalloc-segmented-allocator.md",
-      "canonical": "notes/06-mimalloc-segmented-allocator.md",
+      "canonical": "notes/cpp-lib/06-mimalloc-segmented-allocator.md",
       "documents": [
         {
-          "path": "notes/06-mimalloc-segmented-allocator.md",
+          "path": "notes/cpp-lib/06-mimalloc-segmented-allocator.md",
           "title": "06-mimalloc-segmented-allocator.md",
           "role": "primary",
           "scope": ""
@@ -775,16 +775,16 @@
       "id": "cpp/jemalloc",
       "category": "cpp",
       "title": "jemalloc：Arena 与内存管理",
-      "canonical": "notes/24-jemalloc.md",
+      "canonical": "notes/cpp-lib/24-jemalloc.md",
       "documents": [
         {
-          "path": "notes/07-jemalloc-arena-memory.md",
+          "path": "notes/cpp-lib/07-jemalloc-arena-memory.md",
           "title": "07-jemalloc-arena-memory.md",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
         },
         {
-          "path": "notes/24-jemalloc.md",
+          "path": "notes/cpp-lib/24-jemalloc.md",
           "title": "jemalloc：高性能内存分配器深度解析",
           "role": "primary",
           "scope": ""
@@ -795,10 +795,10 @@
       "id": "cpp/rocksdb-block-cache",
       "category": "cpp",
       "title": "08-rocksdb-block-cache.md",
-      "canonical": "notes/08-rocksdb-block-cache.md",
+      "canonical": "notes/cpp-lib/08-rocksdb-block-cache.md",
       "documents": [
         {
-          "path": "notes/08-rocksdb-block-cache.md",
+          "path": "notes/cpp-lib/08-rocksdb-block-cache.md",
           "title": "08-rocksdb-block-cache.md",
           "role": "primary",
           "scope": ""
@@ -809,10 +809,10 @@
       "id": "cpp/leveldb-skiplist",
       "category": "cpp",
       "title": "09 · LevelDB::SkipList — 无锁跳表实现",
-      "canonical": "notes/09-leveldb-skiplist.md",
+      "canonical": "notes/cpp-lib/09-leveldb-skiplist.md",
       "documents": [
         {
-          "path": "notes/09-leveldb-skiplist.md",
+          "path": "notes/cpp-lib/09-leveldb-skiplist.md",
           "title": "09 · LevelDB::SkipList — 无锁跳表实现",
           "role": "primary",
           "scope": ""
@@ -823,10 +823,10 @@
       "id": "cpp/seastar-future-coroutine",
       "category": "cpp",
       "title": "10 · seastar::future — 用户态协程调度",
-      "canonical": "notes/10-seastar-future-coroutine.md",
+      "canonical": "notes/cpp-lib/10-seastar-future-coroutine.md",
       "documents": [
         {
-          "path": "notes/10-seastar-future-coroutine.md",
+          "path": "notes/cpp-lib/10-seastar-future-coroutine.md",
           "title": "10 · seastar::future — 用户态协程调度",
           "role": "primary",
           "scope": ""
@@ -837,10 +837,10 @@
       "id": "cpp/dpdk-rte-ring",
       "category": "cpp",
       "title": "DPDK::rte_ring — 无锁环形队列深度解析",
-      "canonical": "notes/11-dpdk-rte-ring.md",
+      "canonical": "notes/cpp-lib/11-dpdk-rte-ring.md",
       "documents": [
         {
-          "path": "notes/11-dpdk-rte-ring.md",
+          "path": "notes/cpp-lib/11-dpdk-rte-ring.md",
           "title": "DPDK::rte_ring — 无锁环形队列深度解析",
           "role": "primary",
           "scope": ""
@@ -851,10 +851,10 @@
       "id": "cpp/boost-intrusive",
       "category": "cpp",
       "title": "Boost::intrusive — 侵入式容器深度解析",
-      "canonical": "notes/12-boost-intrusive.md",
+      "canonical": "notes/cpp-lib/12-boost-intrusive.md",
       "documents": [
         {
-          "path": "notes/12-boost-intrusive.md",
+          "path": "notes/cpp-lib/12-boost-intrusive.md",
           "title": "Boost::intrusive — 侵入式容器深度解析",
           "role": "primary",
           "scope": ""
@@ -865,10 +865,10 @@
       "id": "cpp/abseil-cord-rope",
       "category": "cpp",
       "title": "#13 · abseil::Cord — 绳索字符串 (Rope) 设计解析",
-      "canonical": "notes/13-abseil-cord-rope.md",
+      "canonical": "notes/cpp-lib/13-abseil-cord-rope.md",
       "documents": [
         {
-          "path": "notes/13-abseil-cord-rope.md",
+          "path": "notes/cpp-lib/13-abseil-cord-rope.md",
           "title": "#13 · abseil::Cord — 绳索字符串 (Rope) 设计解析",
           "role": "primary",
           "scope": ""
@@ -879,10 +879,10 @@
       "id": "cpp/folly-atomichashmap",
       "category": "cpp",
       "title": "#14 · folly::AtomicHashMap — 无锁哈希表设计解析",
-      "canonical": "notes/14-folly-atomichashmap.md",
+      "canonical": "notes/cpp-lib/14-folly-atomichashmap.md",
       "documents": [
         {
-          "path": "notes/14-folly-atomichashmap.md",
+          "path": "notes/cpp-lib/14-folly-atomichashmap.md",
           "title": "#14 · folly::AtomicHashMap — 无锁哈希表设计解析",
           "role": "primary",
           "scope": ""
@@ -893,10 +893,10 @@
       "id": "cpp/tcmalloc-threadcache",
       "category": "cpp",
       "title": "#15 · tcmalloc::ThreadCache — 线程本地分配缓存",
-      "canonical": "notes/15-tcmalloc-threadcache.md",
+      "canonical": "notes/cpp-lib/15-tcmalloc-threadcache.md",
       "documents": [
         {
-          "path": "notes/15-tcmalloc-threadcache.md",
+          "path": "notes/cpp-lib/15-tcmalloc-threadcache.md",
           "title": "#15 · tcmalloc::ThreadCache — 线程本地分配缓存",
           "role": "primary",
           "scope": ""
@@ -907,16 +907,16 @@
       "id": "cpp/protobuf-arena",
       "category": "cpp",
       "title": "Protobuf Arena：分配与所有权",
-      "canonical": "notes/17-protobuf-arena-allocator.md",
+      "canonical": "notes/cpp-lib/17-protobuf-arena-allocator.md",
       "documents": [
         {
-          "path": "notes/17-protobuf-arena-allocator.md",
+          "path": "notes/cpp-lib/17-protobuf-arena-allocator.md",
           "title": "#17 · protobuf Arena — 批量分配与析构跳过",
           "role": "primary",
           "scope": ""
         },
         {
-          "path": "notes/37-protobuf-arena.md",
+          "path": "notes/cpp-lib/37-protobuf-arena.md",
           "title": "protobuf::Arena —— 把 Protobuf 反序列化做成\"一次性分配\"的内存竞技场",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
@@ -927,16 +927,16 @@
       "id": "cpp/bthread",
       "category": "cpp",
       "title": "brpc::bthread：M:N 调度",
-      "canonical": "notes/18-brpc-bthread.md",
+      "canonical": "notes/cpp-lib/18-brpc-bthread.md",
       "documents": [
         {
-          "path": "notes/18-brpc-bthread.md",
+          "path": "notes/cpp-lib/18-brpc-bthread.md",
           "title": "18. brpc::bthread — M:N 协程调度引擎深度解析",
           "role": "primary",
           "scope": ""
         },
         {
-          "path": "notes/40-brpc-bthread.md",
+          "path": "notes/cpp-lib/40-brpc-bthread.md",
           "title": "brpc::bthread — M:N 协程调度引擎与工作窃取队列",
           "role": "supplement",
           "scope": "保留该版本的场景示例、证据与图解；与主文对照阅读。"
@@ -947,10 +947,10 @@
       "id": "cpp/folly-mpmcqueue",
       "category": "cpp",
       "title": "folly::MPMCQueue — 多生产者多消费者无锁队列深度解析",
-      "canonical": "notes/19-folly-mpmcqueue.md",
+      "canonical": "notes/cpp-lib/19-folly-mpmcqueue.md",
       "documents": [
         {
-          "path": "notes/19-folly-mpmcqueue.md",
+          "path": "notes/cpp-lib/19-folly-mpmcqueue.md",
           "title": "folly::MPMCQueue — 多生产者多消费者无锁队列深度解析",
           "role": "primary",
           "scope": ""
@@ -961,10 +961,10 @@
       "id": "cpp/tbb-concurrent-queue",
       "category": "cpp",
       "title": "tbb::concurrent_queue — Intel oneTBB 无锁并发队列深度解析",
-      "canonical": "notes/20-tbb-concurrent-queue.md",
+      "canonical": "notes/cpp-lib/20-tbb-concurrent-queue.md",
       "documents": [
         {
-          "path": "notes/20-tbb-concurrent-queue.md",
+          "path": "notes/cpp-lib/20-tbb-concurrent-queue.md",
           "title": "tbb::concurrent_queue — Intel oneTBB 无锁并发队列深度解析",
           "role": "primary",
           "scope": ""
@@ -975,10 +975,10 @@
       "id": "cpp/folly-concurrenthashmap",
       "category": "cpp",
       "title": "folly::ConcurrentHashMap —— 分段锁并发哈希表深度解析",
-      "canonical": "notes/21-folly-concurrenthashmap.md",
+      "canonical": "notes/cpp-lib/21-folly-concurrenthashmap.md",
       "documents": [
         {
-          "path": "notes/21-folly-concurrenthashmap.md",
+          "path": "notes/cpp-lib/21-folly-concurrenthashmap.md",
           "title": "folly::ConcurrentHashMap —— 分段锁并发哈希表深度解析",
           "role": "primary",
           "scope": ""
@@ -989,10 +989,10 @@
       "id": "cpp/hazard-pointer-smr",
       "category": "cpp",
       "title": "22. Hazard Pointer：无锁内存安全回收（SMR）机制深度解析",
-      "canonical": "notes/22-hazard-pointer-smr.md",
+      "canonical": "notes/cpp-lib/22-hazard-pointer-smr.md",
       "documents": [
         {
-          "path": "notes/22-hazard-pointer-smr.md",
+          "path": "notes/cpp-lib/22-hazard-pointer-smr.md",
           "title": "22. Hazard Pointer：无锁内存安全回收（SMR）机制深度解析",
           "role": "primary",
           "scope": ""
@@ -1003,10 +1003,10 @@
       "id": "cpp/std-pmr-memory-resource",
       "category": "cpp",
       "title": "std::pmr::memory_resource 深度解析",
-      "canonical": "notes/23-std-pmr-memory-resource.md",
+      "canonical": "notes/cpp-lib/23-std-pmr-memory-resource.md",
       "documents": [
         {
-          "path": "notes/23-std-pmr-memory-resource.md",
+          "path": "notes/cpp-lib/23-std-pmr-memory-resource.md",
           "title": "std::pmr::memory_resource 深度解析",
           "role": "primary",
           "scope": ""
@@ -1017,10 +1017,10 @@
       "id": "cpp/boost-asio",
       "category": "cpp",
       "title": "boost::asio · 异步 I/O 引擎与推荐在线架构实战",
-      "canonical": "notes/27-boost-asio.md",
+      "canonical": "notes/cpp-lib/27-boost-asio.md",
       "documents": [
         {
-          "path": "notes/27-boost-asio.md",
+          "path": "notes/cpp-lib/27-boost-asio.md",
           "title": "boost::asio · 异步 I/O 引擎与推荐在线架构实战",
           "role": "primary",
           "scope": ""
@@ -1031,10 +1031,10 @@
       "id": "cpp/brpc-butex",
       "category": "cpp",
       "title": "34 · brpc::butex —— 用户态 futex 与 bthread 同步原语的灵魂",
-      "canonical": "notes/34-brpc-butex.md",
+      "canonical": "notes/cpp-lib/34-brpc-butex.md",
       "documents": [
         {
-          "path": "notes/34-brpc-butex.md",
+          "path": "notes/cpp-lib/34-brpc-butex.md",
           "title": "34 · brpc::butex —— 用户态 futex 与 bthread 同步原语的灵魂",
           "role": "primary",
           "scope": ""
@@ -1045,10 +1045,10 @@
       "id": "cpp/brpc-iobuf",
       "category": "cpp",
       "title": "brpc::IOBuf 零拷贝缓冲链与 ng-framework 在线服务实战",
-      "canonical": "notes/35-brpc-iobuf.md",
+      "canonical": "notes/cpp-lib/35-brpc-iobuf.md",
       "documents": [
         {
-          "path": "notes/35-brpc-iobuf.md",
+          "path": "notes/cpp-lib/35-brpc-iobuf.md",
           "title": "brpc::IOBuf 零拷贝缓冲链与 ng-framework 在线服务实战",
           "role": "primary",
           "scope": ""
@@ -1059,10 +1059,10 @@
       "id": "cpp/brpc-bvar",
       "category": "cpp",
       "title": "brpc::bvar —— 用户态零竞争计数器：在线服务监控的隐形基石",
-      "canonical": "notes/38-brpc-bvar.md",
+      "canonical": "notes/cpp-lib/38-brpc-bvar.md",
       "documents": [
         {
-          "path": "notes/38-brpc-bvar.md",
+          "path": "notes/cpp-lib/38-brpc-bvar.md",
           "title": "brpc::bvar —— 用户态零竞争计数器：在线服务监控的隐形基石",
           "role": "primary",
           "scope": ""
@@ -1073,10 +1073,10 @@
       "id": "cpp/brpc-execution-queue",
       "category": "cpp",
       "title": "39-brpc-execution-queue.md",
-      "canonical": "notes/39-brpc-execution-queue.md",
+      "canonical": "notes/cpp-lib/39-brpc-execution-queue.md",
       "documents": [
         {
-          "path": "notes/39-brpc-execution-queue.md",
+          "path": "notes/cpp-lib/39-brpc-execution-queue.md",
           "title": "39-brpc-execution-queue.md",
           "role": "primary",
           "scope": ""
