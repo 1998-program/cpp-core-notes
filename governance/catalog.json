@@ -3962,6 +3962,20 @@
           "scope": ""
         }
       ]
+    },
+    {
+      "id": "cpp/2026-10-28-leveldb-slice",
+      "category": "cpp",
+      "title": "leveldb::Slice —— 不拥有内存的只读字节视图",
+      "canonical": "notes/cpp-lib/2026-10-28-leveldb-slice.md",
+      "documents": [
+        {
+          "path": "notes/cpp-lib/2026-10-28-leveldb-slice.md",
+          "title": "leveldb::Slice —— 不拥有内存的只读字节视图",
+          "role": "primary",
+          "scope": ""
+        }
+      ]
     }
   ]
 }
