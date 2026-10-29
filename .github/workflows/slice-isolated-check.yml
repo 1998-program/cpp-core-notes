@@ -1,0 +1,52 @@
+name: Slice isolated example check
+on:
+  push:
+    branches: [test/slice-isolated-ci-20261029]
+
+permissions: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Read public test branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact public inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum -c <<'EOF'
+          f83f643fe9a10f5b5b24978a54ad3f8b7a3e60059e1b67d0f852bd8f42bfa3be  example.cpp
+          b1124749326893ca3a81a8affbb936baffe10bb86a7c725ed17c21d7441eb1a0  include/leveldb/slice.h
+          16d10725a7121568913e6b994c58c6a1227f459713065a8640c4d8f130cb5af7  include/leveldb/export.h
+          2041610414b58e8c7674ad1e87d9e93a81b71e6953ed6a199f8e08e18cb5f5c4  canary.cpp
+          EOF
+      - name: Run canary then example in isolated container
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/slice-input/include/leveldb"
+          cp example.cpp canary.cpp "$RUNNER_TEMP/slice-input/"
+          cp include/leveldb/{slice,export}.h "$RUNNER_TEMP/slice-input/include/leveldb/"
+          docker pull gcc@sha256:3617a214e52a25bde5375dc9503b5e67f01b6c7322a30137e2790aa8e6db5d1f
+          docker run --rm --network none --read-only --user 65534:65534 \
+            --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 \
+            --memory 512m --cpus 1 --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            --mount "type=bind,src=$RUNNER_TEMP/slice-input,dst=/input,readonly" \
+            --entrypoint /usr/bin/env \
+            gcc@sha256:3617a214e52a25bde5375dc9503b5e67f01b6c7322a30137e2790aa8e6db5d1f \
+            -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
+            /bin/sh -eu -c '
+              g++ -std=c++11 -O2 -Wall -Wextra /input/canary.cpp -o /tmp/canary
+              /tmp/canary
+              echo "CANARY passed; compiling fixed Slice example"
+              g++ -std=c++11 -O2 -Wall -Wextra -I /input/include /input/example.cpp -o /tmp/example
+              /tmp/example > /tmp/output
+              cat /tmp/output
+              printf "whole=7 payload=3 shared=1 nul=1\ntail=2 tail_is_payload_plus_1=1\nowned=3\n" > /tmp/expected
+              cmp /tmp/output /tmp/expected
+              echo "EXAMPLE_PASS"
+            '
