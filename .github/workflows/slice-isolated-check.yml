@@ -41,10 +41,10 @@ jobs:
             -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
             /bin/sh -eu -c '
               g++ -std=c++11 -O2 -Wall -Wextra /input/canary.cpp -o /tmp/canary
-              /tmp/canary
+              /usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp /tmp/canary
               echo "CANARY passed; compiling fixed Slice example"
               g++ -std=c++11 -O2 -Wall -Wextra -I /input/include /input/example.cpp -o /tmp/example
-              /tmp/example > /tmp/output
+              /usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp /tmp/example > /tmp/output
               cat /tmp/output
               printf "whole=7 payload=3 shared=1 nul=1\ntail=2 tail_is_payload_plus_1=1\nowned=3\n" > /tmp/expected
               cmp /tmp/output /tmp/expected
