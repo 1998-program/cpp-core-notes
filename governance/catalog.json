@@ -3962,6 +3962,19 @@
           "scope": ""
         }
       ]
+    },
+    {
+      "id": "cpp/leveldb-bloom-filter-policy",
+      "title": "LevelDB BloomFilterPolicy：位数组、探测与“可能存在”",
+      "category": "cpp",
+      "canonical": "notes/cpp-lib/2026-11-17-leveldb-bloom-filter-policy.md",
+      "documents": [
+        {
+          "path": "notes/cpp-lib/2026-11-17-leveldb-bloom-filter-policy.md",
+          "title": "LevelDB BloomFilterPolicy：位数组、探测与“可能存在”",
+          "role": "primary"
+        }
+      ]
     }
   ]
 }
